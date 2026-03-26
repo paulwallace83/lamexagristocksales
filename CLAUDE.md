@@ -109,6 +109,29 @@ When inventory is pasted from the pivot table, the hierarchical rows break down 
 
 - **Unitrade International (HK)** and **Pacific Jade International Inc** are trading companies that source from multiple manufacturers in China. When displaying inventory, list the **Supplier as "Various"** (not the trading company name). COO remains "China".
 
+## QA Document Portal
+
+- **`/qa`** — Protected dashboard showing document status for all products
+- **`/qa/upload/[id]`** — Per-product upload page with labeled sections
+- **Auth:** NextAuth.js with credentials provider. QA login at `/qa/login`
+- **Notification email:** `coa@lamexfoods.us`
+- **Storage:** Local filesystem in `public/uploads/{product-id}/{category}/`
+- **Metadata:** Tracked in `data/documents.json`
+
+### Required Documents Per Product
+
+Every product requires:
+1. **COA** (Certificate of Analysis) — always required
+2. **Pesticide / Test Results** — always required
+3. **Label Photos** — always required
+4. **Product Photos** — **ONLY for IQF and frozen products. Do NOT request product photos for Juice Concentrate or Puree products.**
+
+### Product Photo Rule
+
+```
+Show product photos if: format === "IQF" OR (processType === "Frozen" AND format !== "Juice Concentrate" AND format !== "Puree")
+```
+
 ## Industry Context
 
 - Understand common processed fruit/veg terminology (Brix, mesh size, diced vs sliced vs whole, IQF vs block frozen, single strength vs concentrate)

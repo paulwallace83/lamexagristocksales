@@ -8,6 +8,9 @@ import {
   formatWeight,
   formatQuantity,
 } from "@/lib/inventory";
+import { getDocumentsForProduct, getRequiredCategories, getCategoryLabel } from "@/lib/documents";
+
+export const dynamic = "force-dynamic";
 
 export function generateStaticParams() {
   return getAllProductIds().map((id) => ({ id }));
@@ -131,14 +134,61 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        {/* Documents placeholder */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50">
-          <h2 className="text-lg font-bold text-gray-900 mb-2">Documents</h2>
-          <p className="text-sm text-gray-500">
-            COAs, lab results, product photos, and spec sheets will be available here.
-            Contact us for documentation on any product.
-          </p>
-        </div>
+        {/* Documents */}
+        <DocumentsSection productId={id} />
+      </div>
+    </div>
+  );
+}
+
+function DocumentsSection({ productId }: { productId: string }) {
+  const product = getProductById(productId);
+  if (!product) return null;
+
+  const documents = getDocumentsForProduct(productId);
+  const categories = getRequiredCategories(product);
+
+  const hasAny = documents.length > 0;
+
+  if (!hasAny) {
+    return (
+      <div className="p-6 border-t border-gray-200 bg-gray-50">
+        <h2 className="text-lg font-bold text-gray-900 mb-2">Documents</h2>
+        <p className="text-sm text-gray-500">
+          Documents are being prepared for this product. Contact us for COAs, test results, or product photos.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 border-t border-gray-200">
+      <h2 className="text-lg font-bold text-gray-900 mb-4">Documents</h2>
+      <div className="space-y-4">
+        {categories.map((category) => {
+          const docs = documents.filter((d) => d.category === category);
+          if (docs.length === 0) return null;
+          return (
+            <div key={category}>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                {getCategoryLabel(category)}
+              </h3>
+              <div className="space-y-1">
+                {docs.map((doc) => (
+                  <a
+                    key={doc.id}
+                    href={`/uploads/${doc.productId}/${doc.category}/${doc.filename}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-[#4a90c4] hover:underline"
+                  >
+                    <span>{doc.originalName}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

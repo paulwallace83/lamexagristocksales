@@ -22,9 +22,12 @@
   "homepage": "https://github.com/paulwallace83/lamexagristocksales#readme",
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.2",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
+    "bcryptjs": "^3.0.3",
     "next": "^16.2.1",
+    "next-auth": "^5.0.0-beta.30",
     "postcss": "^8.5.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

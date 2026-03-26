@@ -1,0 +1,10 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "email": "coa@lamexfoods.us",
+      "name": "QA Team",
+      "password": "$2b$10$pE8xfjanicKUevW1mRwbxOQ/9BkDK0Y6pTELjCIO7VfAj9HQmaB7y"
+    }
+  ]
+}
