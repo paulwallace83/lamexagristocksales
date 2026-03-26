@@ -83,6 +83,18 @@ When inventory is pasted from the pivot table, the hierarchical rows break down 
 - Weight is always in **lbs** unless explicitly stated otherwise.
 - "Cases" in the raw data is a generic unit count — the actual unit type (drums, totes, cases, bags, bins, etc.) must be identified and labeled correctly per product.
 
+### Grade Handling
+
+- **Do NOT display grade labels** (e.g., Grade A, Choice, Fancy) on the web page, emails, or any client-facing output. Grades are inconsistent across products and reduce visual consistency.
+- Grade data may exist in the raw data but should be stripped from display.
+
+### Organic vs Conventional
+
+- Every product is either **Organic** or **Conventional**. There is no third category.
+- A product is **Organic** only if it was explicitly labelled as such (NOP, Organic, Org, etc.) in the source data.
+- All other products are **Conventional** by default.
+- The web page and emails must clearly distinguish between Organic and Conventional products (e.g., badges, filter, visual separation).
+
 ### BBD (Best Before Date) Handling
 
 - The "Min of Stock_BestBefore" from the pivot table represents the MINIMUM BBD across all lots for that supplier grouping. Some lots under the same supplier may have later dates.

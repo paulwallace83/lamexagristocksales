@@ -33,11 +33,10 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         <div className="bg-green-700 px-6 py-5 text-white">
           <h1 className="text-2xl font-bold">{product.product}</h1>
           <div className="flex flex-wrap gap-2 mt-2">
-            {product.organic && (
-              <span className="bg-green-600 text-white text-xs font-medium px-2.5 py-1 rounded">Organic</span>
-            )}
-            {product.grade && (
-              <span className="bg-white/20 text-white text-xs font-medium px-2.5 py-1 rounded">{product.grade}</span>
+            {product.organic ? (
+              <span className="bg-green-600 text-white text-xs font-semibold px-2.5 py-1 rounded">Organic</span>
+            ) : (
+              <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded">Conventional</span>
             )}
             {product.certifications.map((c) => (
               <span key={c} className="bg-white/20 text-white text-xs font-medium px-2.5 py-1 rounded">{c}</span>

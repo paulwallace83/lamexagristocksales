@@ -49,7 +49,6 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
         p.format,
         p.specification,
         p.variety,
-        p.grade,
         p.processType,
         ...p.certifications,
       ]
@@ -102,14 +101,13 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
                   <Link href={`/product/${p.id}`} className="text-green-700 font-semibold hover:underline">
                     {p.product}
                   </Link>
-                  {p.organic && (
-                    <span className="ml-2 inline-block bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">
+                  {p.organic ? (
+                    <span className="ml-2 inline-block bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">
                       Organic
                     </span>
-                  )}
-                  {p.grade && (
-                    <span className="ml-1 inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">
-                      {p.grade}
+                  ) : (
+                    <span className="ml-2 inline-block bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded">
+                      Conventional
                     </span>
                   )}
                 </td>
@@ -144,14 +142,11 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
           <Link key={p.id} href={`/product/${p.id}`} className="block bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-2">
               <h3 className="text-green-700 font-semibold">{p.product}</h3>
-              <div className="flex gap-1">
-                {p.organic && (
-                  <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">Organic</span>
-                )}
-                {p.grade && (
-                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">{p.grade}</span>
-                )}
-              </div>
+              {p.organic ? (
+                <span className="bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">Organic</span>
+              ) : (
+                <span className="bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded">Conventional</span>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
               <div><span className="font-medium text-gray-500">Format:</span> {p.format}</div>
