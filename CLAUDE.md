@@ -67,6 +67,36 @@ A web page where clients can:
 - Claude will ask clarifying questions about products when specs are ambiguous
 - Claude will suggest improvements to presentation, categorization, and client experience over time
 
+## Data Import Rules
+
+When inventory is pasted from the pivot table, the hierarchical rows break down as:
+
+1. **Row 1** — Stock Description (product name)
+2. **Row 2** — Warehouse location
+3. **Row 3** — Customer name — **ALWAYS STRIP THIS. Never include customer names in inventory output, emails, or the web page.** This is confidential sales data.
+4. **Row 4** — Supplier + Contract number
+
+### Required Fields
+
+- **Country of Origin (COO) is MANDATORY** for every stock item. If COO cannot be determined from the data, flag it immediately and do not publish the item until COO is confirmed.
+- **Warehouse locations MUST include City and State.** If not provided in the raw data, ask for clarification.
+- Weight is always in **lbs** unless explicitly stated otherwise.
+- "Cases" in the raw data is a generic unit count — the actual unit type (drums, totes, cases, bags, bins, etc.) must be identified and labeled correctly per product.
+
+### BBD (Best Before Date) Handling
+
+- The "Min of Stock_BestBefore" from the pivot table represents the MINIMUM BBD across all lots for that supplier grouping. Some lots under the same supplier may have later dates.
+- **Never flag or differentiate items based on BBD.** Do not label items as "expired", "for immediate use", "discounted", etc. Present all inventory uniformly.
+
+### Reference Files
+
+- **[warehouses.md](warehouses.md)** — Master list of all warehouses with city and state. Update whenever a new warehouse appears in data.
+- **[suppliers.md](suppliers.md)** — Master list of all suppliers with country of origin and products. Update whenever a new supplier appears in data. Use this to auto-resolve COO for known suppliers.
+
+### Trading Company Rule
+
+- **Unitrade International (HK)** and **Pacific Jade International Inc** are trading companies that source from multiple manufacturers in China. When displaying inventory, list the **Supplier as "Various"** (not the trading company name). COO remains "China".
+
 ## Industry Context
 
 - Understand common processed fruit/veg terminology (Brix, mesh size, diced vs sliced vs whole, IQF vs block frozen, single strength vs concentrate)
