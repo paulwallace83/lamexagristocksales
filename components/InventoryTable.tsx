@@ -77,6 +77,14 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
           Showing {filtered.length} of {products.length} products
           {" | "}Last updated: {lastUpdated}
         </p>
+        {(filters.commodity || filters.format || filters.origin || filters.state || filters.search || filters.type) && (
+          <button
+            onClick={() => setFilters({ commodity: "", format: "", origin: "", state: "", search: "", type: "" })}
+            className="text-sm text-[#4a90c4] hover:underline"
+          >
+            Clear all filters
+          </button>
+        )}
       </div>
 
       {/* Desktop table */}
