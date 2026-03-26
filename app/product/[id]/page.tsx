@@ -24,17 +24,17 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <Link href="/" className="text-sm text-green-600 hover:underline mb-4 inline-block">
+      <Link href="/" className="text-sm text-[#4a90c4] hover:underline mb-4 inline-block">
         &larr; Back to Inventory
       </Link>
 
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="bg-green-700 px-6 py-5 text-white">
+        <div className="bg-[#1a2b5f] px-6 py-5 text-white">
           <h1 className="text-2xl font-bold">{product.product}</h1>
           <div className="flex flex-wrap gap-2 mt-2">
             {product.organic ? (
-              <span className="bg-green-600 text-white text-xs font-semibold px-2.5 py-1 rounded">Organic</span>
+              <span className="bg-[#1a2b5f] text-white text-xs font-semibold px-2.5 py-1 rounded">Organic</span>
             ) : (
               <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded">Conventional</span>
             )}
@@ -78,7 +78,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             <p className="text-xs font-semibold text-gray-500 uppercase">Price</p>
             <Link
               href={`/contact?product=${encodeURIComponent(product.product)}`}
-              className="inline-block mt-0.5 bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-green-700 transition-colors"
+              className="inline-block mt-0.5 bg-[#1a2b5f] text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-[#1a2b5f] transition-colors"
             >
               Inquire
             </Link>

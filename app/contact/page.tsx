@@ -38,7 +38,7 @@ function ContactForm() {
             required
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#4a90c4]"
           />
         </div>
         <div>
@@ -48,7 +48,7 @@ function ContactForm() {
             required
             value={form.company}
             onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#4a90c4]"
           />
         </div>
         <div>
@@ -58,7 +58,7 @@ function ContactForm() {
             required
             value={form.email}
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#4a90c4]"
           />
         </div>
         <div>
@@ -67,7 +67,7 @@ function ContactForm() {
             type="tel"
             value={form.phone}
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#4a90c4]"
           />
         </div>
       </div>
@@ -77,7 +77,7 @@ function ContactForm() {
           type="text"
           value={form.product}
           onChange={(e) => setForm((f) => ({ ...f, product: e.target.value }))}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#4a90c4]"
           placeholder="e.g., Mango IQF, Apple Juice Concentrate"
         />
       </div>
@@ -87,13 +87,13 @@ function ContactForm() {
           rows={4}
           value={form.message}
           onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#4a90c4]"
           placeholder="Quantity needed, delivery requirements, quality specs, etc."
         />
       </div>
       <button
         type="submit"
-        className="w-full bg-green-600 text-white font-semibold py-3 px-6 rounded-md hover:bg-green-700 transition-colors"
+        className="w-full bg-[#1a2b5f] text-white font-semibold py-3 px-6 rounded-md hover:bg-[#4a90c4] transition-colors"
       >
         Send Inquiry
       </button>
@@ -104,7 +104,7 @@ function ContactForm() {
 export default function ContactPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <Link href="/" className="text-sm text-green-600 hover:underline mb-4 inline-block">
+      <Link href="/" className="text-sm text-[#4a90c4] hover:underline mb-4 inline-block">
         &larr; Back to Inventory
       </Link>
 

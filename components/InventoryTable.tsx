@@ -98,9 +98,9 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
           </thead>
           <tbody>
             {filtered.map((p) => (
-              <tr key={p.id} className="border-b border-gray-100 hover:bg-green-50 transition-colors">
+              <tr key={p.id} className="border-b border-gray-100 hover:bg-blue-50 transition-colors">
                 <td className="px-4 py-3">
-                  <Link href={`/product/${p.id}`} className="text-green-700 font-semibold hover:underline">
+                  <Link href={`/product/${p.id}`} className="text-[#1a2b5f] font-semibold hover:underline">
                     {p.product}
                   </Link>
                 </td>
@@ -129,7 +129,7 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
                 <td className="px-4 py-3 text-center">
                   <Link
                     href={`/contact?product=${encodeURIComponent(p.product)}`}
-                    className="inline-block bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-green-700 transition-colors"
+                    className="inline-block bg-[#1a2b5f] text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-[#4a90c4] transition-colors"
                   >
                     Inquire
                   </Link>
@@ -145,7 +145,7 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
         {filtered.map((p) => (
           <Link key={p.id} href={`/product/${p.id}`} className="block bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-2">
-              <h3 className="text-green-700 font-semibold">{p.product}</h3>
+              <h3 className="text-[#1a2b5f] font-semibold">{p.product}</h3>
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
               <div>
@@ -175,7 +175,7 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
           <p className="text-lg">No products match your filters.</p>
           <button
             onClick={() => setFilters({ commodity: "", format: "", origin: "", state: "", search: "", type: "" })}
-            className="mt-2 text-green-600 hover:underline text-sm"
+            className="mt-2 text-[#4a90c4] hover:underline text-sm"
           >
             Clear all filters
           </button>

@@ -36,7 +36,7 @@ export default function FilterBar({
             placeholder="Search products..."
             value={filters.search}
             onChange={(e) => onFilterChange("search", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#4a90c4] focus:border-transparent"
           />
         </div>
 
@@ -47,7 +47,7 @@ export default function FilterBar({
           <select
             value={filters.commodity}
             onChange={(e) => onFilterChange("commodity", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#4a90c4]"
           >
             <option value="">All</option>
             {commodities.map((c) => (
@@ -63,7 +63,7 @@ export default function FilterBar({
           <select
             value={filters.type}
             onChange={(e) => onFilterChange("type", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#4a90c4]"
           >
             <option value="">All</option>
             <option value="Organic">Organic</option>
@@ -78,7 +78,7 @@ export default function FilterBar({
           <select
             value={filters.format}
             onChange={(e) => onFilterChange("format", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#4a90c4]"
           >
             <option value="">All</option>
             {formats.map((f) => (
@@ -94,7 +94,7 @@ export default function FilterBar({
           <select
             value={filters.origin}
             onChange={(e) => onFilterChange("origin", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#4a90c4]"
           >
             <option value="">All</option>
             {origins.map((o) => (
@@ -110,7 +110,7 @@ export default function FilterBar({
           <select
             value={filters.state}
             onChange={(e) => onFilterChange("state", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#4a90c4]"
           >
             <option value="">All States</option>
             {states.map((s) => (
