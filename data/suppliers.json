@@ -1,0 +1,113 @@
+{
+  "suppliers": [
+    {
+      "id": "mavideniz",
+      "name": "Mavideniz Gida San AS",
+      "countryOfOrigin": "Turkey",
+      "products": ["Apple JC", "Pomegranate JC"],
+      "tradingCompany": false
+    },
+    {
+      "id": "unitrade",
+      "name": "Unitrade International (HK) Company Limited",
+      "countryOfOrigin": "China",
+      "products": ["Apple JC", "Pear JC"],
+      "tradingCompany": true,
+      "displayName": "Various",
+      "note": "Trading company — sources from multiple Chinese manufacturers"
+    },
+    {
+      "id": "erkon",
+      "name": "Erkon Konsantre San. Ve Tic. A.S.",
+      "countryOfOrigin": "Turkey",
+      "products": ["Apple JC"],
+      "tradingCompany": false
+    },
+    {
+      "id": "ceres",
+      "name": "Ceres Fruit Processors (Pty) Ltd",
+      "countryOfOrigin": "South Africa",
+      "products": ["Apple JC"],
+      "tradingCompany": false
+    },
+    {
+      "id": "semvra",
+      "name": "Semvra USA, LLC",
+      "countryOfOrigin": "Ecuador",
+      "products": ["Banana IQF"],
+      "tradingCompany": false
+    },
+    {
+      "id": "teno",
+      "name": "Teno Export SA",
+      "countryOfOrigin": "Chile",
+      "products": ["Blackberry IQF", "Grapes IQF"],
+      "tradingCompany": false
+    },
+    {
+      "id": "mondi-lamex",
+      "name": "Mondi Lamex Serbia",
+      "countryOfOrigin": "Serbia",
+      "products": ["Blackberry IQF", "Blackberry Puree"],
+      "tradingCompany": false
+    },
+    {
+      "id": "olmue",
+      "name": "Olmue",
+      "countryOfOrigin": "Chile",
+      "products": ["Dark Sweet Cherries IQF"],
+      "tradingCompany": false
+    },
+    {
+      "id": "nicole-bertolini",
+      "name": "Nicole Bertolini",
+      "countryOfOrigin": "Italy",
+      "products": ["Kiwi JC"],
+      "tradingCompany": false
+    },
+    {
+      "id": "san-miguel",
+      "name": "S.A. San Miguel Processed Products",
+      "countryOfOrigin": "Argentina",
+      "products": ["Lemon JC"],
+      "tradingCompany": false
+    },
+    {
+      "id": "viru",
+      "name": "Viru S.A.",
+      "countryOfOrigin": "Peru",
+      "products": ["Mango IQF"],
+      "tradingCompany": false
+    },
+    {
+      "id": "pacific-jade",
+      "name": "Pacific Jade International Inc",
+      "countryOfOrigin": "China",
+      "products": ["Pear JC"],
+      "tradingCompany": true,
+      "displayName": "Various",
+      "note": "Trading company — sources from multiple Chinese manufacturers"
+    },
+    {
+      "id": "hebei-fengte",
+      "name": "Hebei Fengte Fruit and Vegetable Juice Co.",
+      "countryOfOrigin": "China",
+      "products": ["Pear JC"],
+      "tradingCompany": false
+    },
+    {
+      "id": "prime-products",
+      "name": "Prime Products Industry Co Ltd",
+      "countryOfOrigin": "Thailand",
+      "products": ["Pineapple Puree"],
+      "tradingCompany": false
+    },
+    {
+      "id": "treko",
+      "name": "Treko Gida Sanayi A.S.",
+      "countryOfOrigin": "Turkey",
+      "products": ["Pomegranate JC"],
+      "tradingCompany": false
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "warehouses": [
+    {
+      "id": "newark-rw",
+      "name": "Newark Refrigerated Warehouse",
+      "city": "Newark",
+      "state": "NJ",
+      "storageType": "Refrigerated/Frozen"
+    },
+    {
+      "id": "promate-vernon",
+      "name": "Promate Produce",
+      "city": "Vernon",
+      "state": "CA",
+      "storageType": "Refrigerated/Frozen"
+    },
+    {
+      "id": "corex-ontario",
+      "name": "Corex Alliance",
+      "city": "Ontario",
+      "state": "CA",
+      "storageType": "Refrigerated/Frozen"
+    },
+    {
+      "id": "first-choice-vineland",
+      "name": "First Choice Freezer",
+      "city": "Vineland",
+      "state": "NJ",
+      "storageType": "Frozen"
+    },
+    {
+      "id": "coolport-oakland",
+      "name": "Cool Port - Oakland (Lineage)",
+      "city": "Oakland",
+      "state": "CA",
+      "storageType": "Frozen"
+    },
+    {
+      "id": "uscold-laredo",
+      "name": "US Cold Storage Plant #1",
+      "city": "Laredo",
+      "state": "TX",
+      "storageType": "Frozen"
+    },
+    {
+      "id": "flexcold-jax",
+      "name": "Flexcold",
+      "city": "Jacksonville",
+      "state": "FL",
+      "storageType": "Refrigerated/Frozen"
+    },
+    {
+      "id": "velocity-cranberry",
+      "name": "Velocity USA / Dry Warehouse",
+      "city": "Cranberry",
+      "state": "NJ",
+      "storageType": "Ambient/Dry"
+    }
+  ]
+}
