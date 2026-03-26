@@ -11,7 +11,7 @@ interface FilterBarProps {
     origin: string;
     state: string;
     search: string;
-    organic: boolean;
+    type: string;
   };
   onFilterChange: (key: string, value: string | boolean) => void;
 }
@@ -53,6 +53,21 @@ export default function FilterBar({
             {commodities.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
+          </select>
+        </div>
+
+        <div className="min-w-[150px]">
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+            Type
+          </label>
+          <select
+            value={filters.type}
+            onChange={(e) => onFilterChange("type", e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            <option value="">All</option>
+            <option value="Organic">Organic</option>
+            <option value="Conventional">Conventional</option>
           </select>
         </div>
 
@@ -103,16 +118,6 @@ export default function FilterBar({
             ))}
           </select>
         </div>
-
-        <label className="flex items-center gap-2 min-w-[120px] py-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={filters.organic}
-            onChange={(e) => onFilterChange("organic", e.target.checked)}
-            className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
-          />
-          <span className="text-sm font-medium text-gray-700">Organic Only</span>
-        </label>
       </div>
     </div>
   );

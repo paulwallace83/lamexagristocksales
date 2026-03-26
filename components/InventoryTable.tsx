@@ -26,7 +26,7 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
     origin: "",
     state: "",
     search: "",
-    organic: false,
+    type: "",
   });
 
   const { commodities, formats, origins, states } = getFilterOptions(products);
@@ -40,7 +40,8 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
     if (filters.format && p.format !== filters.format) return false;
     if (filters.origin && !p.listings.some((l) => l.countryOfOrigin === filters.origin)) return false;
     if (filters.state && !p.listings.some((l) => l.state === filters.state)) return false;
-    if (filters.organic && !p.organic) return false;
+    if (filters.type === "Organic" && !p.organic) return false;
+    if (filters.type === "Conventional" && p.organic) return false;
     if (filters.search) {
       const q = filters.search.toLowerCase();
       const searchable = [
@@ -84,6 +85,7 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
           <thead>
             <tr className="bg-gray-50 border-b-2 border-gray-200">
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Product</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Format</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Spec</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Origin</th>
@@ -101,12 +103,14 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
                   <Link href={`/product/${p.id}`} className="text-green-700 font-semibold hover:underline">
                     {p.product}
                   </Link>
+                </td>
+                <td className="px-4 py-3 text-center">
                   {p.organic ? (
-                    <span className="ml-2 inline-block bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">
+                    <span className="inline-block bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">
                       Organic
                     </span>
                   ) : (
-                    <span className="ml-2 inline-block bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded">
+                    <span className="inline-block bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded">
                       Conventional
                     </span>
                   )}
@@ -142,18 +146,21 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
           <Link key={p.id} href={`/product/${p.id}`} className="block bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-2">
               <h3 className="text-green-700 font-semibold">{p.product}</h3>
-              {p.organic ? (
-                <span className="bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">Organic</span>
-              ) : (
-                <span className="bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded">Conventional</span>
-              )}
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+              <div>
+                <span className="font-medium text-gray-500">Type:</span>{" "}
+                {p.organic ? (
+                  <span className="bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">Organic</span>
+                ) : (
+                  <span className="bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded">Conventional</span>
+                )}
+              </div>
               <div><span className="font-medium text-gray-500">Format:</span> {p.format}</div>
               <div><span className="font-medium text-gray-500">Origin:</span> {getUniqueCOOs(p).join(", ")}</div>
               <div><span className="font-medium text-gray-500">Qty:</span> {formatQuantity(getTotalQuantity(p), p.unitType)}</div>
               <div><span className="font-medium text-gray-500">Weight:</span> {formatWeight(getTotalWeight(p))}</div>
-              <div className="col-span-2"><span className="font-medium text-gray-500">Pack:</span> {p.packSize}</div>
+              <div><span className="font-medium text-gray-500">Pack:</span> {p.packSize}</div>
               <div className="col-span-2">
                 <span className="font-medium text-gray-500">Warehouse:</span>{" "}
                 {getUniqueWarehouses(p).join(" | ")}
@@ -167,7 +174,7 @@ export default function InventoryTable({ products, lastUpdated }: InventoryTable
         <div className="text-center py-12 text-gray-400">
           <p className="text-lg">No products match your filters.</p>
           <button
-            onClick={() => setFilters({ commodity: "", format: "", origin: "", state: "", search: "", organic: false })}
+            onClick={() => setFilters({ commodity: "", format: "", origin: "", state: "", search: "", type: "" })}
             className="mt-2 text-green-600 hover:underline text-sm"
           >
             Clear all filters
