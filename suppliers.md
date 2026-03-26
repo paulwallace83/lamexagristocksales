@@ -16,3 +16,4 @@
 | Hebei Fengte Fruit and Vegetable Juice Co. | China | Pear JC | |
 | Prime Products Industry Co Ltd | Thailand | Pineapple Puree | |
 | Treko Gida Sanayi A.S. | Turkey | Pomegranate JC | |
+| Olmue | Chile | Dark Sweet Cherries IQF | |

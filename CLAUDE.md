@@ -20,7 +20,7 @@ Organize available stock into a structured inventory list including:
 - Lot / batch numbers
 - Best-by or production date
 - Quantity available (cases, pallets, lbs/kg)
-- Price per unit (if applicable, or "inquire")
+- Price: Always display as **"Inquire"** on the web page and emails. Never publish pricing publicly. Pricing is handled offline.
 - Status (available, reserved, incoming)
 
 ### 2. Attach Supporting Documents
