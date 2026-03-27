@@ -1,6 +1,8 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
-import { getInventory, Product } from "./inventory";
+import { getDb } from "./db";
+import { getInventory } from "./inventory-db";
+import type { Product } from "./inventory";
 
 export interface DocumentEntry {
   id: string;
@@ -16,41 +18,40 @@ export interface DocumentsData {
   documents: DocumentEntry[];
 }
 
-const DOCUMENTS_PATH = join(process.cwd(), "data", "documents.json");
-
 export function getDocuments(): DocumentsData {
-  try {
-    const data = readFileSync(DOCUMENTS_PATH, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return { documents: [] };
-  }
-}
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM documents").all() as Array<{
+    id: string; product_id: string; category: string;
+    filename: string; original_name: string; uploaded_at: string; uploaded_by: string;
+  }>;
 
-export function saveDocuments(data: DocumentsData): void {
-  writeFileSync(DOCUMENTS_PATH, JSON.stringify(data, null, 2));
+  return {
+    documents: rows.map(toDocumentEntry),
+  };
 }
 
 export function getDocumentsForProduct(productId: string): DocumentEntry[] {
-  const { documents } = getDocuments();
-  return documents.filter((d) => d.productId === productId);
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM documents WHERE product_id = ?").all(productId) as Array<{
+    id: string; product_id: string; category: string;
+    filename: string; original_name: string; uploaded_at: string; uploaded_by: string;
+  }>;
+
+  return rows.map(toDocumentEntry);
 }
 
 export function addDocument(entry: DocumentEntry): void {
-  const data = getDocuments();
-  data.documents.push(entry);
-  saveDocuments(data);
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO documents (id, product_id, category, filename, original_name, uploaded_at, uploaded_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(entry.id, entry.productId, entry.category, entry.filename, entry.originalName, entry.uploadedAt, entry.uploadedBy);
 }
 
 export function removeDocument(productId: string, documentId: string): boolean {
-  const data = getDocuments();
-  const idx = data.documents.findIndex(
-    (d) => d.productId === productId && d.id === documentId
-  );
-  if (idx === -1) return false;
-  data.documents.splice(idx, 1);
-  saveDocuments(data);
-  return true;
+  const db = getDb();
+  const result = db.prepare("DELETE FROM documents WHERE product_id = ? AND id = ?").run(productId, documentId);
+  return result.changes > 0;
 }
 
 export function getUploadDir(productId: string, category: string): string {
@@ -119,4 +120,19 @@ export function getDocumentStatus(): ProductDocStatus[] {
       complete,
     };
   });
+}
+
+function toDocumentEntry(row: {
+  id: string; product_id: string; category: string;
+  filename: string; original_name: string; uploaded_at: string; uploaded_by: string;
+}): DocumentEntry {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    category: row.category as DocumentEntry["category"],
+    filename: row.filename,
+    originalName: row.original_name,
+    uploadedAt: row.uploaded_at,
+    uploadedBy: row.uploaded_by,
+  };
 }

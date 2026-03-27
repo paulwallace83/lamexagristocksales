@@ -1,4 +1,4 @@
-import { getInventory } from "@/lib/inventory";
+import { getInventory } from "@/lib/inventory-db";
 import InventoryTable from "@/components/InventoryTable";
 
 export default function Home() {

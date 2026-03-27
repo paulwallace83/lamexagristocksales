@@ -1,8 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { readFileSync } from "fs";
-import { join } from "path";
 import bcrypt from "bcryptjs";
+import { getDb } from "./db";
 
 interface User {
   id: string;
@@ -13,8 +12,8 @@ interface User {
 
 function getUsers(): User[] {
   try {
-    const data = readFileSync(join(process.cwd(), "data", "users.json"), "utf-8");
-    return JSON.parse(data).users;
+    const db = getDb();
+    return db.prepare("SELECT * FROM users").all() as User[];
   } catch {
     return [];
   }

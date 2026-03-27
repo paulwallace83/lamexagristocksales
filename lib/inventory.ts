@@ -1,5 +1,3 @@
-import inventoryData from "@/data/inventory.json";
-
 export interface Listing {
   warehouse: string;
   city: string;
@@ -36,18 +34,6 @@ export interface Product {
 export interface InventoryData {
   lastUpdated: string;
   products: Product[];
-}
-
-export function getInventory(): InventoryData {
-  return inventoryData as InventoryData;
-}
-
-export function getProductById(id: string): Product | undefined {
-  return (inventoryData as InventoryData).products.find((p) => p.id === id);
-}
-
-export function getAllProductIds(): string[] {
-  return (inventoryData as InventoryData).products.map((p) => p.id);
 }
 
 export function getTotalQuantity(product: Product): number {

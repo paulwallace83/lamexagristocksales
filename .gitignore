@@ -4,3 +4,6 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 .env.local
+lamex.db
+lamex.db-wal
+lamex.db-shm

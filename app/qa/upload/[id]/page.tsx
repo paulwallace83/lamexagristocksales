@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getProductById, getAllProductIds } from "@/lib/inventory";
+import { getProductById } from "@/lib/inventory-db";
 import { getDocumentsForProduct, getRequiredCategories, getCategoryLabel } from "@/lib/documents";
 import Link from "next/link";
 import UploadSection from "./UploadSection";

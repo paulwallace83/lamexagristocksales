@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getProductById, getAllProductIds } from "@/lib/inventory-db";
 import {
-  getProductById,
-  getAllProductIds,
   getTotalQuantity,
   getTotalWeight,
   formatWeight,
