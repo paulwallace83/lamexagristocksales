@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getDocumentStatus, getCategoryLabel, type DocCategory } from "@/lib/documents";
+import { getDocumentStatus } from "@/lib/documents";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +26,10 @@ export default async function QADashboard() {
           <thead>
             <tr className="bg-gray-50 border-b-2 border-gray-200">
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Product</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">COA</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Test Results</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Labels</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Photos</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Lot COAs</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Contract Specs</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Contract Labels</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Contract Photos</th>
               <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
               <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Action</th>
             </tr>
@@ -39,16 +39,20 @@ export default async function QADashboard() {
               <tr key={s.productId} className="border-b border-gray-100 hover:bg-blue-50">
                 <td className="px-4 py-3 font-medium text-gray-900">{s.product}</td>
                 <td className="px-4 py-3 text-center">
-                  <StatusBadge count={s.uploaded.coa} required={s.requiredCategories.includes("coa")} />
+                  <CoverageBadge have={s.lotsWithCOA} total={s.lotCount} />
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <StatusBadge count={s.uploaded["test-results"]} required={s.requiredCategories.includes("test-results")} />
+                  <CoverageBadge have={s.contractsWithSpecs} total={s.contractCount} />
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <StatusBadge count={s.uploaded.labels} required={s.requiredCategories.includes("labels")} />
+                  <CoverageBadge have={s.contractsWithLabels} total={s.contractCount} />
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <StatusBadge count={s.uploaded.photos} required={s.requiredCategories.includes("photos")} />
+                  {s.requiredDocs.contractLevel.includes("photos") ? (
+                    <CoverageBadge have={s.contractsWithPhotos} total={s.contractCount} />
+                  ) : (
+                    <span className="text-gray-300 text-sm">N/A</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-center">
                   {s.complete ? (
@@ -74,12 +78,14 @@ export default async function QADashboard() {
   );
 }
 
-function StatusBadge({ count, required }: { count: number; required: boolean }) {
-  if (!required) {
-    return <span className="text-gray-300 text-sm">N/A</span>;
+function CoverageBadge({ have, total }: { have: number; total: number }) {
+  if (total === 0) {
+    return <span className="text-gray-400 text-sm">No lots</span>;
   }
-  if (count > 0) {
-    return <span className="text-green-600 font-bold">{count}</span>;
-  }
-  return <span className="text-red-500 font-bold">0</span>;
+  const allDone = have >= total;
+  return (
+    <span className={allDone ? "text-green-600 font-bold" : "text-red-500 font-bold"}>
+      {have}/{total}
+    </span>
+  );
 }

@@ -74,14 +74,37 @@ CREATE TABLE IF NOT EXISTS listing_contracts (
   PRIMARY KEY (listing_id, contract)
 );
 
+CREATE TABLE IF NOT EXISTS lots (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing_id  INTEGER NOT NULL REFERENCES listings(id),
+  lot_number  TEXT NOT NULL,
+  quantity    INTEGER NOT NULL,
+  weight_lbs  REAL NOT NULL,
+  bbd         TEXT NOT NULL,
+  UNIQUE(listing_id, lot_number)
+);
+
+CREATE TABLE IF NOT EXISTS lot_contracts (
+  lot_id   INTEGER NOT NULL REFERENCES lots(id),
+  contract TEXT NOT NULL,
+  PRIMARY KEY (lot_id, contract)
+);
+
 CREATE TABLE IF NOT EXISTS documents (
   id            TEXT PRIMARY KEY,
   product_id    TEXT NOT NULL REFERENCES products(id),
-  category      TEXT NOT NULL CHECK(category IN ('coa','test-results','labels','photos')),
+  category      TEXT NOT NULL CHECK(category IN ('coa','test-results','specs','labels','photos')),
   filename      TEXT NOT NULL,
   original_name TEXT NOT NULL,
   uploaded_at   TEXT NOT NULL,
-  uploaded_by   TEXT NOT NULL
+  uploaded_by   TEXT NOT NULL,
+  base_contract TEXT
+);
+
+CREATE TABLE IF NOT EXISTS document_lots (
+  document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  lot_id      INTEGER NOT NULL REFERENCES lots(id),
+  PRIMARY KEY (document_id, lot_id)
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -94,10 +117,21 @@ CREATE TABLE IF NOT EXISTS users (
 
 let _db: Database.Database | null = null;
 
+function migrate(db: Database.Database): void {
+  // Migrate documents table: add base_contract column and 'specs' category
+  const docInfo = db.prepare("PRAGMA table_info(documents)").all() as Array<{ name: string }>;
+  const hasBaseContract = docInfo.some((col) => col.name === "base_contract");
+  if (docInfo.length > 0 && !hasBaseContract) {
+    // Old schema exists without base_contract — recreate (safe since documents is empty)
+    db.exec("DROP TABLE IF EXISTS documents");
+  }
+}
+
 export function getDb(): Database.Database {
   if (!_db) {
     _db = new Database(join(process.cwd(), "lamex.db"));
     _db.pragma("journal_mode = WAL");
+    migrate(_db);
     _db.exec(SCHEMA_SQL);
   }
   return _db;

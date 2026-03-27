@@ -25,13 +25,19 @@ Organize available stock into a structured inventory list including:
 
 ### 2. Attach Supporting Documents
 
-For each product, link or reference:
+Documents are organized by lot and contract:
 
-- Certificate of Analysis (COA)
-- Lab/test results (micro, pesticide, heavy metals, allergens, etc.)
-- Product photos (product, packaging, pallet)
-- Spec sheets
-- Organic / Kosher / Non-GMO / other certifications
+**Per lot:**
+- Certificate of Analysis (COA) — one COA can cover multiple lots
+- Lab/test results (micro, pesticide, heavy metals, allergens, etc.) — optional per lot
+
+**Per contract (base contract number):**
+- Spec sheets — one per contract, shared across all containers/lots
+- Label photos
+- Product photos (IQF/frozen products only)
+
+**Per product:**
+- Organic / Kosher / Non-GMO / other certifications (tracked as product metadata)
 
 ### 3. Generate a Marketing Email
 
@@ -55,10 +61,12 @@ A web page where clients can:
 
 ## Technical Approach
 
-- The inventory page will be built as a lightweight web app (HTML/CSS/JS or a framework like Next.js) that can be hosted on Vercel, Netlify, or similar
-- Inventory data will be stored in a structured format (JSON, CSV, or a simple database) that can be updated weekly
-- Documents (COAs, photos, PDFs) will be stored in a cloud folder (Google Drive, S3, or similar) and linked from the inventory page
-- The email will be generated as HTML that can be sent via any email marketing tool or directly
+- **Framework:** Next.js (App Router) with TypeScript and Tailwind CSS
+- **Database:** SQLite via better-sqlite3 (`lamex.db`). Schema defined in `lib/db.ts`, auto-created on first access.
+- **Data import:** Raw JSON files in `/data` directory are loaded into SQLite via `scripts/seed.ts` (`npx tsx scripts/seed.ts`)
+- **Documents:** Stored on local filesystem in `public/uploads/` and tracked in SQLite (`documents`, `document_lots` tables)
+- **Auth:** NextAuth.js with credentials provider and JWT sessions
+- **Hosting:** Can be deployed to Vercel, Netlify, or similar (requires server mode, not static export)
 
 ## Collaboration Model
 
@@ -97,7 +105,8 @@ When inventory is pasted from the pivot table, the hierarchical rows break down 
 
 ### BBD (Best Before Date) Handling
 
-- The "Min of Stock_BestBefore" from the pivot table represents the MINIMUM BBD across all lots for that supplier grouping. Some lots under the same supplier may have later dates.
+- When lot data is available, each lot has its own BBD. BBD is displayed at the lot level on the product detail page.
+- The listing-level `min_bbd` represents the MINIMUM BBD across all lots for that supplier grouping (legacy field, used when lot data is not yet populated).
 - **Never flag or differentiate items based on BBD.** Do not label items as "expired", "for immediate use", "discounted", etc. Present all inventory uniformly.
 
 ### Reference Files
@@ -111,20 +120,44 @@ When inventory is pasted from the pivot table, the hierarchical rows break down 
 
 ## QA Document Portal
 
-- **`/qa`** — Protected dashboard showing document status for all products
-- **`/qa/upload/[id]`** — Per-product upload page with labeled sections
+- **`/qa`** — Protected dashboard showing lot-level and contract-level document coverage per product
+- **`/qa/upload/[id]`** — Per-product upload page with two sections: lot documents and contract documents
 - **Auth:** NextAuth.js with credentials provider. QA login at `/qa/login`
 - **Notification email:** `coa@lamexfoods.us`
-- **Storage:** Local filesystem in `public/uploads/{product-id}/{category}/`
-- **Metadata:** Tracked in `data/documents.json`
+- **Metadata:** Tracked in SQLite (`documents`, `document_lots` tables)
 
-### Required Documents Per Product
+### Document Hierarchy
 
-Every product requires:
-1. **COA** (Certificate of Analysis) — always required
-2. **Pesticide / Test Results** — always required
-3. **Label Photos** — always required
-4. **Product Photos** — **ONLY for IQF and frozen products. Do NOT request product photos for Juice Concentrate or Puree products.**
+Documents are associated at two distinct levels:
+
+#### Lot-Level Documents
+Stored in `public/uploads/{product-id}/lots/{lot-id}/{category}/`
+
+1. **COA** (Certificate of Analysis) — per lot. One COA can cover multiple lots (uploaded once, tagged to multiple lots via `document_lots` junction table).
+2. **Pesticide / Test Results** — per lot. Optional — some lots may not have separate test results.
+
+#### Contract-Level Documents
+Stored in `public/uploads/{product-id}/contracts/{base-contract}/{category}/`
+
+3. **Specification Sheets** — per base contract number. Shared across all lots/containers under that contract.
+4. **Label Photos** — per base contract number.
+5. **Product Photos** — per base contract number. **ONLY for IQF and frozen products. Do NOT request product photos for Juice Concentrate or Puree products.**
+
+### Contract Number Format
+
+- Full reference: `XXXXXX-YY` where `XXXXXX` is the base contract number and `YY` is the container number (e.g., `124717-04` = 4th container of contract 124717)
+- Bare numbers (e.g., `123492`) represent contracts with a single container
+- Spec sheets, labels, and photos are shared across all containers under the same base contract
+- The full contract-container reference (e.g., `124717-04`) is the **Lamex reference number** displayed to customers
+
+### Lot Model
+
+- Lots are children of listings (a listing = product + warehouse + supplier)
+- Each lot has: supplier-defined lot number, quantity, weight, BBD
+- A lot can span multiple containers (contract-container references) of the same base contract
+- A container can have multiple lots (especially for IQF products)
+- Lot numbers are supplier-defined and included in the pivot table data
+- Lot numbers and Lamex reference numbers are visible to customers on the public product detail page
 
 ### Product Photo Rule
 
@@ -140,11 +173,28 @@ Show product photos if: format === "IQF" OR (processType === "Frozen" AND format
 - Warehouse locations matter for freight cost — always display prominently
 - Certifications (USDA Organic, Kosher, BRC, SQF, Non-GMO Project) are key differentiators
 
+## Database Schema
+
+Key tables in `lamex.db` (full DDL in `lib/db.ts`):
+
+- **`products`** — Master product data (id, commodity, format, process_type, organic, pack_size, etc.)
+- **`listings`** — Inventory records (product_id FK, warehouse, supplier, quantity, weight_lbs, arrived, min_bbd)
+- **`lots`** — Per-lot detail within a listing (listing_id FK, lot_number, quantity, weight_lbs, bbd)
+- **`lot_contracts`** — Many-to-many between lots and contract-container references
+- **`listing_contracts`** — Many-to-many between listings and contract-container references
+- **`documents`** — Uploaded documents (product_id FK, category, filename, base_contract)
+- **`document_lots`** — Many-to-many between documents and lots (for COAs covering multiple lots)
+- **`suppliers`** — Supplier master data with COO and trading company flag
+- **`warehouses`** — Warehouse master data with city, state, storage type
+- **`users`** — QA portal authentication
+- **`product_certifications`** — Certifications per product (Organic, Kosher, etc.)
+
 ## Code Conventions
 
 - Keep the codebase simple and maintainable
 - Use semantic HTML and accessible markup
 - Mobile-first responsive design
-- All inventory data in `/data` directory
-- All document assets (COAs, photos) referenced via `/public/assets` or cloud URLs
+- Inventory source data (JSON) in `/data` directory; runtime data in SQLite (`lamex.db`)
+- Document uploads in `public/uploads/{product-id}/lots/` and `public/uploads/{product-id}/contracts/`
+- All path segments from user input must be sanitized before use in filesystem operations
 - Email templates in `/emails` directory

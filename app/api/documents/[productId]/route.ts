@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unlinkSync, existsSync } from "fs";
-import { join } from "path";
+import { join, resolve } from "path";
 import { auth } from "@/lib/auth";
-import { getDocumentsForProduct, removeDocument } from "@/lib/documents";
+import { getDocumentsForProduct, removeDocument, getDocumentUrl } from "@/lib/documents";
+
+/** Sanitize path segments to prevent directory traversal */
+function safePath(segment: string): string {
+  return segment.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
 
 export async function GET(
   _req: NextRequest,
@@ -13,7 +18,10 @@ export async function GET(
 
   const withUrls = documents.map((d) => ({
     ...d,
-    url: `/uploads/${d.productId}/${d.category}/${d.filename}`,
+    url: getDocumentUrl(d.productId, d.category, d.filename, {
+      lotId: d.lotIds.length > 0 ? d.lotIds[0] : undefined,
+      baseContract: d.baseContract ?? undefined,
+    }),
   }));
 
   return NextResponse.json({ documents: withUrls });
@@ -33,12 +41,33 @@ export async function DELETE(
   const documentId = searchParams.get("documentId");
   const filename = searchParams.get("filename");
   const category = searchParams.get("category");
+  const lotId = searchParams.get("lotId");
+  const baseContract = searchParams.get("baseContract");
 
   if (!documentId || !filename || !category) {
     return NextResponse.json({ error: "Missing documentId, filename, or category" }, { status: 400 });
   }
 
-  const filepath = join(process.cwd(), "public", "uploads", productId, category, filename);
+  // Sanitize all path segments to prevent directory traversal
+  const safeProductId = safePath(productId);
+  const safeFilename = safePath(filename);
+  const safeCategory = safePath(category);
+  const uploadsRoot = resolve(process.cwd(), "public", "uploads");
+
+  let filepath: string;
+  if (lotId) {
+    filepath = join(uploadsRoot, safeProductId, "lots", safePath(lotId), safeCategory, safeFilename);
+  } else if (baseContract) {
+    filepath = join(uploadsRoot, safeProductId, "contracts", safePath(baseContract), safeCategory, safeFilename);
+  } else {
+    filepath = join(uploadsRoot, safeProductId, safeCategory, safeFilename);
+  }
+
+  // Final guard: ensure resolved path stays within uploads directory
+  if (!resolve(filepath).startsWith(uploadsRoot)) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+  }
+
   if (existsSync(filepath)) {
     unlinkSync(filepath);
   }

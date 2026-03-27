@@ -12,6 +12,9 @@ const db = getDb();
 
 // Clear all tables (order matters for FK references)
 db.exec(`
+  DELETE FROM document_lots;
+  DELETE FROM lot_contracts;
+  DELETE FROM lots;
   DELETE FROM listing_contracts;
   DELETE FROM listings;
   DELETE FROM product_certifications;
@@ -104,11 +107,11 @@ const seed = db.transaction(() => {
 
   // Documents
   const insertDoc = db.prepare(`
-    INSERT INTO documents (id, product_id, category, filename, original_name, uploaded_at, uploaded_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO documents (id, product_id, category, filename, original_name, uploaded_at, uploaded_by, base_contract)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
   for (const d of documents.documents) {
-    insertDoc.run(d.id, d.productId, d.category, d.filename, d.originalName, d.uploadedAt, d.uploadedBy);
+    insertDoc.run(d.id, d.productId, d.category, d.filename, d.originalName, d.uploadedAt, d.uploadedBy, d.baseContract ?? null);
   }
 
   // Users
