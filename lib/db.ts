@@ -131,6 +131,7 @@ export function getDb(): Database.Database {
   if (!_db) {
     _db = new Database(join(process.cwd(), "lamex.db"));
     _db.pragma("journal_mode = WAL");
+    _db.pragma("foreign_keys = ON"); // Always enforce FK — safety net if prior crash left it OFF
     migrate(_db);
     _db.exec(SCHEMA_SQL);
   }

@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "tsx scripts/seed.ts && next build",
     "start": "next start",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "sync": "tsx scripts/sync-inventory.ts"
   },
   "repository": {
     "type": "git",

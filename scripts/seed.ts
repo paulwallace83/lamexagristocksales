@@ -1,3 +1,10 @@
+/**
+ * scripts/seed.ts — Full destructive seed for fresh installs.
+ * Clears ALL tables (including documents and users) and reloads from JSON.
+ *
+ * For weekly inventory syncs, use `npm run sync` (scripts/sync-inventory.ts)
+ * which preserves documents and users.
+ */
 import { readFileSync } from "fs";
 import { join } from "path";
 import { getDb } from "../lib/db";
@@ -10,19 +17,19 @@ function readJson(filename: string) {
 
 const db = getDb();
 
-// Clear all tables (order matters for FK references)
+// Clear all tables (order matters for FK references — children before parents)
 db.exec(`
   DELETE FROM document_lots;
+  DELETE FROM documents;
   DELETE FROM lot_contracts;
   DELETE FROM lots;
   DELETE FROM listing_contracts;
   DELETE FROM listings;
   DELETE FROM product_certifications;
-  DELETE FROM products;
   DELETE FROM supplier_products;
+  DELETE FROM products;
   DELETE FROM suppliers;
   DELETE FROM warehouses;
-  DELETE FROM documents;
   DELETE FROM users;
   DELETE FROM metadata;
 `);
@@ -86,7 +93,7 @@ const seed = db.transaction(() => {
       p.organic ? 1 : 0, p.packSize, p.unitType, p.storageType ?? null
     );
 
-    for (const cert of p.certifications) {
+    for (const cert of p.certifications || []) {
       insertCert.run(p.id, cert);
     }
 

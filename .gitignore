@@ -7,3 +7,5 @@ next-env.d.ts
 lamex.db
 lamex.db-wal
 lamex.db-shm
+secrets.md
+data/snapshots/*.json

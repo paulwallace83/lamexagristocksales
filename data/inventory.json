@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-26",
+  "lastUpdated": "2026-03-27",
   "products": [
     {
       "id": "apple-jc-70bx-organic",
@@ -12,7 +12,9 @@
       "variety": null,
       "grade": null,
       "organic": true,
-      "certifications": ["Organic"],
+      "certifications": [
+        "Organic"
+      ],
       "packSize": "54 gal drums / 275 kg net",
       "unitType": "drums",
       "listings": [
@@ -22,11 +24,13 @@
           "state": "NJ",
           "supplier": "Mavideniz Gida San AS",
           "countryOfOrigin": "Turkey",
-          "quantity": 80,
-          "weightLbs": 48502,
+          "quantity": 70,
+          "weightLbs": 42000,
           "arrived": "2026-03-20",
           "minBBD": "2028-02-10",
-          "contracts": ["129640"]
+          "contracts": [
+            "129640"
+          ]
         }
       ]
     },
@@ -52,10 +56,14 @@
           "supplier": "Various",
           "countryOfOrigin": "China",
           "quantity": 40,
-          "weightLbs": 24250.70,
+          "weightLbs": 24250.7,
           "arrived": "Sep-Oct 2025",
           "minBBD": "2027-07-13",
-          "contracts": ["127837", "127459-02", "127459-03"]
+          "contracts": [
+            "127837",
+            "127459-02",
+            "127459-03"
+          ]
         },
         {
           "warehouse": "Newark Refrigerated Warehouse",
@@ -88,10 +96,17 @@
           "supplier": "Various",
           "countryOfOrigin": "China",
           "quantity": 32,
-          "weightLbs": 19447.70,
+          "weightLbs": 19447.7,
           "arrived": "May-Jul 2025",
           "minBBD": "2026-05-12",
-          "contracts": ["121965-69", "121965-70", "121965-71", "121965-72", "121965-75", "121965-80"]
+          "contracts": [
+            "121965-69",
+            "121965-70",
+            "121965-71",
+            "121965-72",
+            "121965-75",
+            "121965-80"
+          ]
         },
         {
           "warehouse": "Corex Alliance",
@@ -100,10 +115,15 @@
           "supplier": "Various",
           "countryOfOrigin": "China",
           "quantity": 203,
-          "weightLbs": 126062.30,
+          "weightLbs": 126062.3,
           "arrived": "Jun-Jul 2025",
           "minBBD": "2025-04-07",
-          "contracts": ["121965-77", "121965-78", "121965-79", "121965-81"]
+          "contracts": [
+            "121965-77",
+            "121965-78",
+            "121965-79",
+            "121965-81"
+          ]
         }
       ]
     },
@@ -132,7 +152,9 @@
           "weightLbs": 18000,
           "arrived": "Feb 2025",
           "minBBD": "2025-12-10",
-          "contracts": ["121707-03"]
+          "contracts": [
+            "121707-03"
+          ]
         }
       ]
     },
@@ -161,7 +183,9 @@
           "weightLbs": 8040,
           "arrived": "Jun-Sep 2025",
           "minBBD": "2027-01-03",
-          "contracts": ["123223-08"]
+          "contracts": [
+            "123223-08"
+          ]
         }
       ]
     },
@@ -176,7 +200,9 @@
       "variety": null,
       "grade": null,
       "organic": true,
-      "certifications": ["NOP Organic"],
+      "certifications": [
+        "NOP Organic"
+      ],
       "packSize": "30 lb cases",
       "unitType": "cases",
       "listings": [
@@ -190,7 +216,9 @@
           "weightLbs": 47400,
           "arrived": "Jun 2025",
           "minBBD": "2026-12-17",
-          "contracts": ["120604-10"]
+          "contracts": [
+            "120604-10"
+          ]
         }
       ]
     },
@@ -216,7 +244,7 @@
           "supplier": "Mondi Lamex Serbia",
           "countryOfOrigin": "Serbia",
           "quantity": 15360,
-          "weightLbs": 617447.60,
+          "weightLbs": 617447.6,
           "arrived": "Jan 2025-Feb 2026",
           "minBBD": "2025-09-15",
           "contracts": []
@@ -277,7 +305,9 @@
           "weightLbs": 46864,
           "arrived": "Sep 2025",
           "minBBD": "2027-05-22",
-          "contracts": ["124717-04"]
+          "contracts": [
+            "124717-04"
+          ]
         },
         {
           "warehouse": "US Cold Storage Plant #1",
@@ -289,7 +319,9 @@
           "weightLbs": 31560,
           "arrived": "Sep 2025",
           "minBBD": "2027-05-22",
-          "contracts": ["124717-05"]
+          "contracts": [
+            "124717-05"
+          ]
         }
       ]
     },
@@ -315,10 +347,12 @@
           "supplier": "Nicole Bertolini",
           "countryOfOrigin": "Italy",
           "quantity": 16,
-          "weightLbs": 9347.60,
+          "weightLbs": 9347.6,
           "arrived": "Dec 2025",
           "minBBD": "2027-11-14",
-          "contracts": ["127630"]
+          "contracts": [
+            "127630"
+          ]
         }
       ]
     },
@@ -333,7 +367,9 @@
       "variety": null,
       "grade": null,
       "organic": true,
-      "certifications": ["Organic"],
+      "certifications": [
+        "Organic"
+      ],
       "packSize": "54 gal drums / 250 kg net",
       "unitType": "drums",
       "listings": [
@@ -344,10 +380,14 @@
           "supplier": "S.A. San Miguel Processed Products",
           "countryOfOrigin": "Argentina",
           "quantity": 244,
-          "weightLbs": 134482.80,
+          "weightLbs": 134482.8,
           "arrived": "Jan 2026",
           "minBBD": "2027-06-22",
-          "contracts": ["128364-01", "128364-02", "128364-03"]
+          "contracts": [
+            "128364-01",
+            "128364-02",
+            "128364-03"
+          ]
         }
       ]
     },
@@ -373,10 +413,27 @@
           "supplier": "Viru S.A.",
           "countryOfOrigin": "Peru",
           "quantity": 19834,
-          "weightLbs": 595020.40,
+          "weightLbs": 595020.4,
           "arrived": "Jun-Dec 2025",
           "minBBD": "2027-05-11",
-          "contracts": ["122361-11", "125981-09", "125981-10", "125981-12", "125981-13", "125981-14", "125981-15", "125981-16", "125981-17", "125981-18", "125981-19", "125981-20", "125981-21", "125981-22", "125981-23", "125981-24"]
+          "contracts": [
+            "122361-11",
+            "125981-09",
+            "125981-10",
+            "125981-12",
+            "125981-13",
+            "125981-14",
+            "125981-15",
+            "125981-16",
+            "125981-17",
+            "125981-18",
+            "125981-19",
+            "125981-20",
+            "125981-21",
+            "125981-22",
+            "125981-23",
+            "125981-24"
+          ]
         }
       ]
     },
@@ -407,7 +464,10 @@
           "packDetail": "54 gal drums",
           "arrived": "Mar-Apr 2025",
           "minBBD": "2026-08-02",
-          "contracts": ["123492", "124213"]
+          "contracts": [
+            "123492",
+            "124213"
+          ]
         },
         {
           "warehouse": "Newark Refrigerated Warehouse",
@@ -421,7 +481,20 @@
           "packDetail": "302 gal totes",
           "arrived": "Mar 2026",
           "minBBD": "2025-08-22",
-          "contracts": ["126176-32", "126176-33", "126176-34", "126176-36", "126176-37", "126176-38", "126176-39", "126176-40", "126176-41", "126176-42", "126176-43", "126176-44"]
+          "contracts": [
+            "126176-32",
+            "126176-33",
+            "126176-34",
+            "126176-36",
+            "126176-37",
+            "126176-38",
+            "126176-39",
+            "126176-40",
+            "126176-41",
+            "126176-42",
+            "126176-43",
+            "126176-44"
+          ]
         },
         {
           "warehouse": "Newark Refrigerated Warehouse",
@@ -449,7 +522,12 @@
           "packDetail": "54 gal drums",
           "arrived": "Nov-Dec 2025",
           "minBBD": "2027-09-21",
-          "contracts": ["127460-01", "127460-03", "127460-04", "127460-05"]
+          "contracts": [
+            "127460-01",
+            "127460-03",
+            "127460-04",
+            "127460-05"
+          ]
         },
         {
           "warehouse": "Flexcold",
@@ -463,7 +541,9 @@
           "packDetail": "54 gal drums",
           "arrived": "Feb 2026",
           "minBBD": "2027-08-05",
-          "contracts": ["129055"]
+          "contracts": [
+            "129055"
+          ]
         }
       ]
     },
@@ -490,10 +570,13 @@
           "supplier": "Prime Products Industry Co Ltd",
           "countryOfOrigin": "Thailand",
           "quantity": 36,
-          "weightLbs": 16510.80,
+          "weightLbs": 16510.8,
           "arrived": "Sep 2025-Jan 2026",
           "minBBD": "2027-06-15",
-          "contracts": ["125963", "127275-01"]
+          "contracts": [
+            "125963",
+            "127275-01"
+          ]
         }
       ]
     },
@@ -522,7 +605,11 @@
           "weightLbs": 105491.48,
           "arrived": "Jan-Mar 2026",
           "minBBD": "2027-10-30",
-          "contracts": ["127924-01", "127924-02", "127924-03"]
+          "contracts": [
+            "127924-01",
+            "127924-02",
+            "127924-03"
+          ]
         },
         {
           "warehouse": "Corex Alliance",
@@ -534,7 +621,9 @@
           "weightLbs": 47678,
           "arrived": "Mar 2026",
           "minBBD": "2027-01-20",
-          "contracts": ["128756"]
+          "contracts": [
+            "128756"
+          ]
         }
       ]
     }
