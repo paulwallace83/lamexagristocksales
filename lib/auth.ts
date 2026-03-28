@@ -42,6 +42,7 @@ function getUsers(): DbUser[] {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
       name: "Email & Password",

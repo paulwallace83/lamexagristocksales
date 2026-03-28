@@ -204,7 +204,7 @@ export default function DiscountFormClient({ existingItems, productOptions }: Pr
       } else {
         setMessage({
           type: "success",
-          text: `Moved ${data.items.length} lot(s) to discount. Run sync or seed to deduct from regular inventory.`,
+          text: `Moved ${data.items.length} lot(s) to discount and deducted from regular inventory.`,
         });
         setItems([...data.items, ...items]);
         setSelectedLots(new Set());
