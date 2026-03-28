@@ -96,8 +96,18 @@ async function processReview(indices: Set<number>) {
     return NextResponse.json({ error: "No import-review.json found" }, { status: 404 });
   }
 
+  // If inventory-proposed.json was already synced/cleaned, seed from current inventory.json
   if (!existsSync(proposedPath)) {
-    return NextResponse.json({ error: "No inventory-proposed.json found — run import-excel first" }, { status: 404 });
+    const inventoryPath = join(dataDir, "inventory.json");
+    if (!existsSync(inventoryPath)) {
+      return NextResponse.json({ error: "No inventory-proposed.json or inventory.json found" }, { status: 404 });
+    }
+    try {
+      const current = readFileSync(inventoryPath, "utf-8");
+      writeFileSync(proposedPath, current, "utf-8");
+    } catch {
+      return NextResponse.json({ error: "Failed to seed inventory-proposed.json from inventory.json" }, { status: 500 });
+    }
   }
 
   // Load data
@@ -266,17 +276,25 @@ async function processReview(indices: Set<number>) {
   writeFileSync(tmpPath, JSON.stringify(proposed, null, 2), "utf-8");
   renameSync(tmpPath, proposedPath);
 
-  // Delete review file
-  unlinkSync(reviewPath);
+  // Remove only the applied items from the review file; keep remaining items for further review
+  const remainingItems = reviewItems.filter((_, i) => !indices.has(i));
+  if (remainingItems.length === 0) {
+    unlinkSync(reviewPath);
+  } else {
+    const tmpReview = reviewPath + ".tmp";
+    writeFileSync(tmpReview, JSON.stringify(remainingItems, null, 2), "utf-8");
+    renameSync(tmpReview, reviewPath);
+  }
 
   const totalNewProducts = newProductIds.size;
   const totalMergedProducts = mergedProductIds.size;
 
   return NextResponse.json({
-    message: `Added ${selectedItems.length} rows (${fmtNum(Math.round(addedWeight))} lbs) across ${totalNewProducts + totalMergedProducts} products. ${totalNewProducts} new, ${totalMergedProducts} updated. Review file cleared.`,
+    message: `Added ${selectedItems.length} rows (${fmtNum(Math.round(addedWeight))} lbs) across ${totalNewProducts + totalMergedProducts} products. ${totalNewProducts} new, ${totalMergedProducts} updated.${remainingItems.length > 0 ? ` ${remainingItems.length} items still pending review.` : " Review file cleared."}`,
     addedItems: selectedItems.length,
     addedWeight: Math.round(addedWeight),
     newProducts: totalNewProducts,
+    remainingItems: remainingItems.length,
   });
 }
 

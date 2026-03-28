@@ -26,7 +26,7 @@ export default function ReviewClient({
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [result, setResult] = useState<{ success: boolean; message: string; remainingItems?: number } | null>(null);
 
   const directGroups = groups.filter((g) => !g.reserved);
   const reservedGroups = groups.filter((g) => g.reserved);
@@ -62,7 +62,7 @@ export default function ReviewClient({
       });
       const data = await res.json();
       if (res.ok) {
-        setResult({ success: true, message: data.message || "Review applied successfully" });
+        setResult({ success: true, message: data.message || "Review applied successfully", remainingItems: data.remainingItems ?? 0 });
       } else {
         setResult({ success: false, message: data.error || "Failed to apply review" });
       }
@@ -74,14 +74,31 @@ export default function ReviewClient({
   };
 
   if (result?.success) {
+    const hasRemaining = (result.remainingItems ?? 0) > 0;
     return (
       <div className="max-w-4xl mx-auto px-4 py-12 text-center">
         <div className="bg-green-50 border border-green-200 rounded-lg p-8">
-          <h2 className="text-2xl font-bold text-green-800 mb-2">Review Complete</h2>
+          <h2 className="text-2xl font-bold text-green-800 mb-2">
+            {hasRemaining ? "Items Added" : "Review Complete"}
+          </h2>
           <p className="text-green-700 mb-4">{result.message}</p>
-          <p className="text-sm text-gray-600">
-            Next step: run <code className="bg-gray-100 px-2 py-1 rounded">npm run sync</code> to apply changes.
-          </p>
+          {hasRemaining ? (
+            <div className="flex flex-col items-center gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-5 py-2 bg-[#1a2b5f] text-white font-semibold rounded-md hover:bg-[#4a90c4] transition-colors"
+              >
+                Review Remaining {result.remainingItems} Items
+              </button>
+              <p className="text-sm text-gray-500">
+                Or run <code className="bg-gray-100 px-2 py-1 rounded">npm run sync</code> to apply what&apos;s been approved so far.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600">
+              Next step: run <code className="bg-gray-100 px-2 py-1 rounded">npm run sync</code> to apply changes.
+            </p>
+          )}
         </div>
       </div>
     );

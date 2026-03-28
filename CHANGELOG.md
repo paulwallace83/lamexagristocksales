@@ -5,6 +5,17 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.7.1] — 2026-03-27
+
+### Fixed
+- **Partial review apply** — `import-review.json` now retains unapplied items after submit; only selected items are removed. File is only deleted when all items have been applied.
+- **Review portal fallback** — `/api/review/apply` seeds `inventory-proposed.json` from `inventory.json` when the proposed file has already been cleaned up by a prior sync, preventing a 404 error mid-review cycle.
+
+### Changed
+- **Review success screen** — shows "Items Added" with a **Review Remaining N Items** button when unapplied items remain; shows "Review Complete" only when all items have been processed.
+
+---
+
 ## [0.7.0] — 2026-03-27
 
 ### Added
