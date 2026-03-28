@@ -344,7 +344,70 @@ function regenerateWarehousesMd() {
 regenerateSuppliersMd();
 regenerateWarehousesMd();
 
-// ─── Step 5: Cleanup ─────────────────────────────────────────────
+// ─── Step 5: Deduct discount lots from regular inventory ─────────
+
+import { deductDiscountLots, validateDiscountItems, getDiscountItems } from "../lib/discount";
+
+const deductionReport = deductDiscountLots();
+if (deductionReport.lotsRemoved > 0 || deductionReport.missing > 0) {
+  console.log(`\n🏷️  Discount lot deduction:`);
+  if (deductionReport.lotsRemoved > 0) {
+    console.log(`   ✅ ${deductionReport.lotsRemoved} lot(s) removed from regular inventory`);
+    for (const d of deductionReport.details.filter((r) => r.action === "deducted")) {
+      console.log(`      - ${d.id}: ${d.product} — ${d.note}`);
+    }
+  }
+  if (deductionReport.listingsEmptied > 0) {
+    console.log(`   📦 ${deductionReport.listingsEmptied} listing(s) emptied and removed`);
+  }
+  if (deductionReport.productsRemoved > 0) {
+    console.log(`   🗑️  ${deductionReport.productsRemoved} product(s) removed (all lots discounted)`);
+  }
+  if (deductionReport.missing > 0) {
+    console.log(`   ⚠️  ${deductionReport.missing} discount lot(s) not found in ERP data:`);
+    for (const d of deductionReport.details.filter((r) => r.action === "missing")) {
+      console.log(`      - ${d.id}: ${d.product} — ${d.note}`);
+    }
+  }
+}
+
+// ─── Step 6: Validate remaining discount items ──────────────────
+
+const activeDiscountItems = getDiscountItems("active");
+if (activeDiscountItems.length > 0) {
+  console.log(`\n🏷️  Validating ${activeDiscountItems.length} active discount item(s) against new inventory...`);
+
+  const currentProducts = inventory.products.map((p: any) => ({
+    id: p.id,
+    product: p.product,
+    listings: (p.listings || []).map((l: any) => ({
+      warehouse: l.warehouse,
+      supplier: l.supplier,
+    })),
+  }));
+
+  const report = validateDiscountItems(currentProducts);
+
+  if (report.validated > 0) {
+    console.log(`   ✅ ${report.validated} item(s) validated (stock still present)`);
+  }
+  if (report.missing > 0) {
+    console.log(`   ⚠️  ${report.missing} item(s) marked as MISSING (stock no longer in inventory):`);
+    for (const d of report.details.filter((r) => r.action === "missing")) {
+      console.log(`      - ${d.id}: ${d.product} — ${d.note}`);
+    }
+  }
+  if (report.overlaps.length > 0) {
+    console.log(`   ℹ️  ${report.overlaps.length} standalone item(s) may overlap with regular inventory:`);
+    for (const d of report.details.filter((r) => r.action === "overlap")) {
+      console.log(`      - ${d.id}: ${d.product} — ${d.note}`);
+    }
+  }
+} else {
+  console.log("\n🏷️  No active discount items to validate.");
+}
+
+// ─── Step 7: Cleanup ─────────────────────────────────────────────
 
 try {
   unlinkSync(proposedPath);

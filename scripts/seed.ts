@@ -31,6 +31,7 @@ db.exec(`
   DELETE FROM suppliers;
   DELETE FROM warehouses;
   DELETE FROM users;
+  DELETE FROM discount_items;
   DELETE FROM metadata;
 `);
 
@@ -174,4 +175,16 @@ const seed = db.transaction(() => {
 });
 
 seed();
+
+// Load discount inventory (if any)
+import { loadDiscountFromJson, deductDiscountLots } from "../lib/discount";
+const discountCount = loadDiscountFromJson();
+if (discountCount > 0) {
+  console.log(`  ${discountCount} discount items`);
+  const deduction = deductDiscountLots();
+  if (deduction.lotsRemoved > 0) {
+    console.log(`  ${deduction.lotsRemoved} lot(s) deducted from regular inventory (moved to discount)`);
+  }
+}
+
 console.log("Done.");

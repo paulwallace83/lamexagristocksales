@@ -2,33 +2,31 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AdminHeader from "@/components/AdminHeader";
 
-export default async function QALayout({ children }: { children: React.ReactNode }) {
+export default async function DiscountLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
   if (!session?.user) {
-    return <>{children}</>;
+    redirect("/qa/login");
   }
 
-  const isReviewer = session.user.role === "reviewer";
+  if (session.user.role !== "reviewer") {
+    redirect("/qa");
+  }
 
   const navLinks = [
     { href: "/qa", label: "Documents" },
-    ...(isReviewer
-      ? [
-          { href: "/review", label: "Import Review" },
-          { href: "/admin/discount", label: "Discount" },
-        ]
-      : []),
+    { href: "/review", label: "Import Review" },
+    { href: "/admin/discount", label: "Discount" },
     { href: "/", label: "Public Site" },
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
       <AdminHeader
-        portalName="QA Portal"
-        portalBadgeClass="bg-white/20"
+        portalName="Discount Inventory"
+        portalBadgeClass="bg-amber-500/80"
         navLinks={navLinks}
-        currentPath="/qa"
+        currentPath="/admin/discount"
         userEmail={session.user.email ?? ""}
       />
       <main>{children}</main>

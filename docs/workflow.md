@@ -19,6 +19,7 @@ Use these files consistently:
 - data/inventory.json: authoritative inventory state — products, listings, contracts. Updated via weekly sync.
 - data/suppliers.json: authoritative supplier master — name, COO, trading company flag. Edit this to add suppliers.
 - data/warehouses.json: authoritative warehouse master — name, city, state, storage type. Edit this to add warehouses.
+- data/discount-inventory.json: discount/clearance items — persists independently from weekly sync. Updated via admin UI or Claude chat.
 - data/snapshots/: timestamped copies of inventory.json from before each sync (gitignored).
 
 ### Sync Scripts
@@ -33,7 +34,7 @@ Each week, the user provides raw pivot table data. Claude processes it through t
 4. Claude runs computeDiff() from lib/sync.ts to compare proposed vs current data/inventory.json.
 5. Claude presents the diff report: additions, removals, quantity changes, new suppliers/warehouses, and any blocking warnings.
 6. User reviews and approves (or requests corrections).
-7. Claude runs `npm run sync` which: snapshots current state, overwrites inventory.json, re-seeds SQLite (preserving documents + users), regenerates suppliers.md and warehouses.md.
+7. Claude runs `npm run sync` which: snapshots current state, overwrites inventory.json, re-seeds SQLite (preserving documents + users), deducts active discount lots from regular inventory, validates remaining discount items, regenerates suppliers.md and warehouses.md.
 8. Claude presents a reconciliation report (per-product totals) for the user to cross-check against the raw data.
 9. User signs off on reconciliation. Sync is complete.
 

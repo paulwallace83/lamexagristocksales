@@ -1,0 +1,34 @@
+{
+  "lastUpdated": "2026-03-28",
+  "items": [
+    {
+      "id": "disc-001",
+      "productId": "banana-iqf-slices",
+      "product": "Banana IQF",
+      "commodity": "Banana",
+      "category": "Fruit",
+      "format": "IQF",
+      "organic": false,
+      "packSize": "30 lb cases",
+      "unitType": "cases",
+      "warehouse": "First Choice Freezer",
+      "city": "Vineland",
+      "state": "NJ",
+      "supplier": "Semvra USA, LLC",
+      "countryOfOrigin": "Ecuador",
+      "quantity": 600,
+      "weightLbs": 18000,
+      "lotNumber": "0000748642",
+      "contracts": [
+        "121707-03"
+      ],
+      "bbd": "2025-12-10",
+      "reason": "expired",
+      "notes": "Product is now past expiration and slightly brown",
+      "askingPrice": "0.30",
+      "status": "active",
+      "addedDate": "2026-03-28",
+      "lastValidated": "2026-03-28"
+    }
+  ]
+}

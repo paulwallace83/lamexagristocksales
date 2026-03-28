@@ -5,6 +5,35 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.9.1] — 2026-03-28
+
+### Added
+- **Discount & Clearance inventory** — separate section for insurance claims, expired, overstock, and damaged items with reason badges, asking prices, and lot-level detail
+- **Lot picker** (`/admin/discount`) — select a product, check lots to move, set per-lot reason/notes/price overrides, batch submit
+- **Immediate lot deduction** — lots are removed from regular inventory the moment they're added to discount (no sync required); re-applied automatically during weekly sync
+- **Lot restoration** — "Restore" action permanently removes the discount entry and immediately re-inserts the lot into regular inventory within a single transaction
+- **Batch discount API** (`/api/discount/batch`) — atomic batch endpoint with duplicate lot guard, per-item validation, and server-side lot data lookup
+- **Shared admin header** (`components/AdminHeader.tsx`) — consistent navigation across QA, Review, and Discount portals with clear visual distinction between nav tabs, user info, and sign-out action
+- **User guide** (`docs/user-guide.md`) — comprehensive system documentation covering all workflows, ready for wiki publishing
+
+### Changed
+- Sync pipeline includes discount lot deduction step after inventory seed
+- Seed script loads discount items from JSON and applies lot deductions on fresh installs
+- Products with zero listings (fully discounted) hidden from public inventory page
+- Price display auto-formats bare numbers as "$X/lb" in the discount section
+
+### Security
+- Auth required on all discount API GET endpoints (previously public)
+- PATCH endpoint validates all fields individually with type checks, length limits, and enum validation
+- POST endpoint validates numeric fields as actual numbers (not string coercion)
+- Batch endpoint validates duplicate lots within the same request
+- ID parameter validated against `disc-\d{1,6}` format before database queries
+- Immutable fields (`id`, `addedDate`) explicitly rejected in PATCH requests
+- Safe JSON.parse with fallback in contract deserialization
+- Restore operation wrapped in single transaction (deletion + lot re-insertion atomic)
+
+---
+
 ## [0.9.0] — 2026-03-28
 
 ### Added

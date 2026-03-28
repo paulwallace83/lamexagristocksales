@@ -37,6 +37,13 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Past-BBD dates highlighted with amber label on product detail pages.
 - Security hardening: file upload size/type limits, auth on document GET API, strong AUTH_SECRET.
 
+### Discount & Clearance Inventory (v0.9.1)
+- Discount section on public inventory page (amber collapsible group below format groups).
+- Lot-level deduction: discount lots removed from regular inventory during sync.
+- Admin portal (`/admin/discount`) for managing discount items.
+- Post-sync validation and auto-deduction in sync pipeline.
+- Comprehensive user guide (`docs/user-guide.md`) for wiki publishing.
+
 ## Active Priorities
 ### 1. QA Document Operations
 - Tighten upload workflow around the IQF/frozen product photo rule.

@@ -1,12 +1,15 @@
 import { getInventory, getInventoryStats } from "@/lib/inventory-db";
 import { getProductDocMap } from "@/lib/documents";
 import { formatWeight } from "@/lib/inventory";
+import { getDiscountItems } from "@/lib/discount";
 import InventoryTable from "@/components/InventoryTable";
+import DiscountSection from "@/components/DiscountSection";
 
 export default function Home() {
   const { products, lastUpdated } = getInventory();
   const stats = getInventoryStats();
   const docMap = getProductDocMap();
+  const discountItems = getDiscountItems("active");
 
   // Serialize the doc map for the client component
   const productIdsWithDocs = Array.from(docMap.keys());
@@ -44,6 +47,7 @@ export default function Home() {
           lastUpdated={lastUpdated}
           productIdsWithDocs={productIdsWithDocs}
         />
+        <DiscountSection items={discountItems} />
       </div>
     </div>
   );

@@ -114,6 +114,34 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL,
   role     TEXT NOT NULL DEFAULT 'qa'
 );
+
+CREATE TABLE IF NOT EXISTS discount_items (
+  id                TEXT PRIMARY KEY,
+  product_id        TEXT,
+  product           TEXT NOT NULL,
+  commodity         TEXT NOT NULL,
+  category          TEXT NOT NULL,
+  format            TEXT NOT NULL,
+  organic           INTEGER NOT NULL DEFAULT 0,
+  pack_size         TEXT NOT NULL,
+  unit_type         TEXT NOT NULL,
+  warehouse         TEXT NOT NULL,
+  city              TEXT NOT NULL,
+  state             TEXT NOT NULL,
+  supplier          TEXT NOT NULL,
+  country_of_origin TEXT NOT NULL,
+  quantity          INTEGER NOT NULL,
+  weight_lbs        REAL NOT NULL,
+  lot_number        TEXT,
+  contracts         TEXT,
+  bbd               TEXT,
+  reason            TEXT NOT NULL,
+  notes             TEXT,
+  asking_price      TEXT,
+  status            TEXT NOT NULL DEFAULT 'active',
+  added_date        TEXT NOT NULL,
+  last_validated    TEXT
+);
 `;
 
 let _db: Database.Database | null = null;

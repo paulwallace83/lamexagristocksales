@@ -122,24 +122,27 @@ export function getInventory(): InventoryData {
     listingsByProduct.set(l.product_id, arr);
   }
 
-  // Assemble products
-  const products: Product[] = productRows.map((row) => ({
-    id: row.id,
-    product: row.product,
-    commodity: row.commodity,
-    category: row.category,
-    format: row.format,
-    processType: row.process_type,
-    specification: row.specification,
-    variety: row.variety,
-    grade: row.grade,
-    organic: row.organic === 1,
-    certifications: certsByProduct.get(row.id) ?? [],
-    packSize: row.pack_size,
-    unitType: row.unit_type,
-    ...(row.storage_type != null && { storageType: row.storage_type }),
-    listings: listingsByProduct.get(row.id) ?? [],
-  }));
+  // Assemble products (exclude stubs with no listings — e.g., fully discounted products
+  // kept only because documents reference them)
+  const products: Product[] = productRows
+    .filter((row) => (listingsByProduct.get(row.id) ?? []).length > 0)
+    .map((row) => ({
+      id: row.id,
+      product: row.product,
+      commodity: row.commodity,
+      category: row.category,
+      format: row.format,
+      processType: row.process_type,
+      specification: row.specification,
+      variety: row.variety,
+      grade: row.grade,
+      organic: row.organic === 1,
+      certifications: certsByProduct.get(row.id) ?? [],
+      packSize: row.pack_size,
+      unitType: row.unit_type,
+      ...(row.storage_type != null && { storageType: row.storage_type }),
+      listings: listingsByProduct.get(row.id) ?? [],
+    }));
 
   return { lastUpdated, products };
 }
