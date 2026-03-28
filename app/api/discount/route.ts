@@ -20,6 +20,13 @@ const VALID_REASONS: DiscountReason[] = [
 const MAX_STRING_LENGTH = 500;
 const MAX_NOTES_LENGTH = 1000;
 
+/** Validate that a string is a real calendar date in YYYY-MM-DD format. */
+function isValidIsoDate(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(s);
+  return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
@@ -136,7 +143,7 @@ export async function POST(request: Request) {
     weightLbs: body.weightLbs as number,
     lotNumber: typeof body.lotNumber === "string" ? body.lotNumber.trim() : null,
     contracts,
-    bbd: typeof body.bbd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.bbd) ? body.bbd : null,
+    bbd: typeof body.bbd === "string" && isValidIsoDate(body.bbd) ? body.bbd : null,
     reason: body.reason as DiscountReason,
     notes: typeof body.notes === "string" ? body.notes.trim() : null,
     askingPrice: typeof body.askingPrice === "string" ? body.askingPrice.trim() : null,

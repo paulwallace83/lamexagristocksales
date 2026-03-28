@@ -5,6 +5,20 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.9.2] — 2026-03-28
+
+### Security
+- **Fixed production auth failure** — added `trustHost: true` to NextAuth config; without it, the `UntrustedHost` error blocked all session checks in production mode, making login non-functional
+- **Hardened discount ID validation** — regex tightened from `\d{1,6}` to `\d{3,}` to match generated ID format (minimum 3 digits)
+- **Real calendar date validation** for BBD fields — regex-only check allowed invalid dates like `2026-13-99`; replaced with `new Date()` parse + round-trip verification
+- **Upload path boundary check** — added `resolve().startsWith(uploadsRoot)` guard after path construction to prevent any path traversal edge cases
+- **Orphan file cleanup** — upload route now deletes the written file if the database insert fails, preventing orphaned files
+- **Session maxAge** set to 8 hours (previously defaulted to 30 days)
+- Replaced `updates as any` cast in PATCH route with proper `Partial<Omit<DiscountItem, ...>>` type
+- Corrected misleading success message in lot picker (deduction is immediate, not deferred to sync)
+
+---
+
 ## [0.9.1] — 2026-03-28
 
 ### Added

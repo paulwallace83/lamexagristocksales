@@ -5,6 +5,7 @@ import {
   updateDiscountItem,
   removeDiscountItem,
   restoreToInventory,
+  type DiscountItem,
   type DiscountReason,
   type DiscountStatus,
 } from "@/lib/discount";
@@ -25,7 +26,14 @@ const MAX_STRING_LENGTH = 500;
 const MAX_NOTES_LENGTH = 1000;
 
 function validateId(id: string): boolean {
-  return /^disc-\d{1,6}$/.test(id);
+  // IDs are generated as disc-001, disc-002, ... (minimum 3 digits, no upper bound)
+  return /^disc-\d{3,}$/.test(id);
+}
+
+function isValidIsoDate(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(s);
+  return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
 
 export async function GET(
@@ -165,8 +173,8 @@ export async function PATCH(
 
   // Date field
   if (body.bbd !== undefined) {
-    if (body.bbd !== null && (typeof body.bbd !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(body.bbd))) {
-      return NextResponse.json({ error: "bbd must be an ISO date string (YYYY-MM-DD)" }, { status: 400 });
+    if (body.bbd !== null && (typeof body.bbd !== "string" || !isValidIsoDate(body.bbd))) {
+      return NextResponse.json({ error: "bbd must be a valid ISO date string (YYYY-MM-DD)" }, { status: 400 });
     }
     updates.bbd = body.bbd;
   }
@@ -193,7 +201,7 @@ export async function PATCH(
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
-  const updated = updateDiscountItem(id, updates as any);
+  const updated = updateDiscountItem(id, updates as Partial<Omit<DiscountItem, "id" | "addedDate">>);
   if (!updated) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFileSync } from "fs";
-import { join } from "path";
+import { writeFileSync, unlinkSync } from "fs";
+import { join, resolve } from "path";
 import { auth } from "@/lib/auth";
 import { addDocument, getUploadDir, getDocumentUrl } from "@/lib/documents";
 import type { DocCategory } from "@/lib/documents";
@@ -77,20 +77,33 @@ export async function POST(req: NextRequest) {
 
   const dir = getUploadDir(safeProductId, category, storageOpts);
   const filepath = join(dir, filename);
+
+  // Verify the resolved path stays within the uploads directory
+  const uploadsRoot = resolve(process.cwd(), "public", "uploads");
+  if (!resolve(filepath).startsWith(uploadsRoot + "/")) {
+    return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
+  }
+
   writeFileSync(filepath, buffer);
 
   const docId = `${productId}-${category}-${timestamp}`;
-  addDocument({
-    id: docId,
-    productId,
-    category: cat,
-    filename,
-    originalName: file.name,
-    uploadedAt: new Date().toISOString(),
-    uploadedBy: session.user.email || "unknown",
-    baseContract: CONTRACT_CATEGORIES.includes(cat) ? baseContract : null,
-    lotIds: LOT_CATEGORIES.includes(cat) ? lotIds : undefined,
-  });
+  try {
+    addDocument({
+      id: docId,
+      productId,
+      category: cat,
+      filename,
+      originalName: file.name,
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: session.user.email || "unknown",
+      baseContract: CONTRACT_CATEGORIES.includes(cat) ? baseContract : null,
+      lotIds: LOT_CATEGORIES.includes(cat) ? lotIds : undefined,
+    });
+  } catch (err) {
+    // Clean up the written file to avoid orphaned files
+    try { unlinkSync(filepath); } catch { /* best-effort */ }
+    throw err;
+  }
 
   const url = getDocumentUrl(productId, category, filename, storageOpts);
 
