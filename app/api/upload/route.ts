@@ -8,6 +8,14 @@ import type { DocCategory } from "@/lib/documents";
 const VALID_CATEGORIES: DocCategory[] = ["coa", "test-results", "specs", "labels", "photos"];
 const LOT_CATEGORIES: DocCategory[] = ["coa", "test-results"];
 const CONTRACT_CATEGORIES: DocCategory[] = ["specs", "labels", "photos"];
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
 
 /** Sanitize path segments to prevent directory traversal */
 function safePath(segment: string): string {
@@ -29,6 +37,14 @@ export async function POST(req: NextRequest) {
 
   if (!file || !productId || !category) {
     return NextResponse.json({ error: "Missing file, productId, or category" }, { status: 400 });
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    return NextResponse.json({ error: "File exceeds maximum size of 50 MB" }, { status: 413 });
+  }
+
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    return NextResponse.json({ error: "File type not allowed. Use PDF or image files." }, { status: 400 });
   }
 
   if (!VALID_CATEGORIES.includes(category as DocCategory)) {

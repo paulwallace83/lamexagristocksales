@@ -5,6 +5,33 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.9.0] — 2026-03-28
+
+### Added
+- **Format-grouped inventory** — public inventory page groups products by format (IQF, Juice Concentrate, Puree) with collapsible sections, product counts, and total weight per group
+- **Cascading filters** — inventory filter dropdowns now show only options available given the other active filters (e.g., selecting Organic narrows commodity, format, origin, and warehouse to matching values)
+- **QA dashboard status filter** — filter buttons (All / Missing / Partial / Complete) with counts let QA focus on products that need attention
+- **Partial document status** — amber "Partial" badge and amber lot pills when some (but not all) required documents are uploaded; coverage numbers use amber for partial progress
+- **Prominent Lamex reference numbers** — QA upload page displays contract references prominently at the listing level with navy badges
+- **Past-BBD highlight** — lot BBD dates in the past are highlighted with a soft amber label on product detail pages
+
+### Changed
+- Organic label simplified — removed cloud-upload icon, now plain green text
+- "Conv." expanded to "Conventional" across inventory table and mobile cards
+- Removed redundant "Organic" certification badge from product name area (already shown in Type column)
+- Removed product thumbnail photo from product detail page header
+- Removed Format column from desktop inventory table (redundant with format group headers)
+- QA dashboard extracted to client component (`QADashboardClient.tsx`) to support interactive filtering
+
+### Security
+- Added 50 MB file upload size limit
+- Added MIME type whitelist (PDF and image files only)
+- Added auth check on GET `/api/documents/[productId]` (was unauthenticated)
+- Replaced weak `AUTH_SECRET` with cryptographically random 256-bit key
+- Fixed BBD render bug (empty string no longer renders "BBD: ")
+
+---
+
 ## [0.8.0] — 2026-03-27
 
 ### Added

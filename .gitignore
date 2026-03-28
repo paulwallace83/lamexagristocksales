@@ -9,3 +9,4 @@ lamex.db-wal
 lamex.db-shm
 secrets.md
 data/snapshots/*.json
+public/uploads/

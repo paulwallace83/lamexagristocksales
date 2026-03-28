@@ -11,13 +11,65 @@ import {
   getUniqueWarehouses,
   formatWeight,
   formatQuantity,
-  getFilterOptions,
 } from "@/lib/inventory";
 
 interface InventoryTableProps {
   products: Product[];
   lastUpdated: string;
   productIdsWithDocs?: string[];
+}
+
+const FORMAT_ORDER = ["IQF", "Juice Concentrate", "Puree"];
+
+function groupByFormat(products: Product[]): [string, Product[]][] {
+  const groups = new Map<string, Product[]>();
+  for (const p of products) {
+    const list = groups.get(p.format) || [];
+    list.push(p);
+    groups.set(p.format, list);
+  }
+  return FORMAT_ORDER.filter((f) => groups.has(f)).map((f) => [f, groups.get(f)!]);
+}
+
+function GroupHeader({
+  format,
+  count,
+  totalWeight,
+  expanded,
+  onToggle,
+}: {
+  format: string;
+  count: number;
+  totalWeight: number;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center justify-between px-4 py-3 bg-[#1a2b5f]/[0.04] border border-gray-200 rounded-lg hover:bg-[#1a2b5f]/[0.07] transition-colors group"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-1 h-6 rounded-full bg-[#1a2b5f]" />
+        <h3 className="text-[#1a2b5f] font-semibold text-sm sm:text-base">{format}</h3>
+        <span className="text-xs text-gray-500 font-medium">
+          {count} product{count !== 1 ? "s" : ""}
+        </span>
+        <span className="hidden sm:inline text-xs text-gray-400">
+          {formatWeight(totalWeight)}
+        </span>
+      </div>
+      <svg
+        className={`w-5 h-5 text-gray-400 group-hover:text-[#1a2b5f] transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+  );
 }
 
 export default function InventoryTable({ products, lastUpdated, productIdsWithDocs = [] }: InventoryTableProps) {
@@ -29,9 +81,9 @@ export default function InventoryTable({ products, lastUpdated, productIdsWithDo
     search: "",
     type: "",
   });
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const docsSet = useMemo(() => new Set(productIdsWithDocs), [productIdsWithDocs]);
-  const { commodities, formats, origins, states } = getFilterOptions(products);
 
   const handleFilterChange = (key: string, value: string | boolean) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -41,31 +93,55 @@ export default function InventoryTable({ products, lastUpdated, productIdsWithDo
     setFilters((prev) => ({ ...prev, [key]: "" }));
   };
 
-  const filtered = products.filter((p) => {
-    if (filters.commodity && p.commodity !== filters.commodity) return false;
-    if (filters.format && p.format !== filters.format) return false;
-    if (filters.origin && !p.listings.some((l) => l.countryOfOrigin === filters.origin)) return false;
-    if (filters.state && !p.listings.some((l) => l.state === filters.state)) return false;
-    if (filters.type === "Organic" && !p.organic) return false;
-    if (filters.type === "Conventional" && p.organic) return false;
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
-      const searchable = [
-        p.product,
-        p.commodity,
-        p.format,
-        p.specification,
-        p.variety,
-        p.processType,
-        ...p.certifications,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      if (!searchable.includes(q)) return false;
-    }
-    return true;
-  });
+  // Individual filter predicates keyed by filter name
+  const predicates: Record<string, (p: Product) => boolean> = useMemo(() => {
+    const searchQ = filters.search?.toLowerCase();
+    return {
+      commodity: (p) => !filters.commodity || p.commodity === filters.commodity,
+      format: (p) => !filters.format || p.format === filters.format,
+      origin: (p) => !filters.origin || p.listings.some((l) => l.countryOfOrigin === filters.origin),
+      state: (p) => !filters.state || p.listings.some((l) => l.state === filters.state),
+      type: (p) => {
+        if (filters.type === "Organic") return p.organic;
+        if (filters.type === "Conventional") return !p.organic;
+        return true;
+      },
+      search: (p) => {
+        if (!searchQ) return true;
+        return [p.product, p.commodity, p.format, p.specification, p.variety, p.processType, ...p.certifications]
+          .filter(Boolean).join(" ").toLowerCase().includes(searchQ);
+      },
+    };
+  }, [filters]);
+
+  const filtered = products.filter((p) => Object.values(predicates).every((fn) => fn(p)));
+
+  // Cascading options: each dropdown shows only values available given the other active filters
+  const { commodities, formats, origins, states, types } = useMemo(() => {
+    const excluding = (exclude: string) =>
+      products.filter((p) => Object.entries(predicates).every(([k, fn]) => k === exclude || fn(p)));
+    const forCommodity = excluding("commodity");
+    const forFormat = excluding("format");
+    const forOrigin = excluding("origin");
+    const forState = excluding("state");
+    const forType = excluding("type");
+    const availableTypes: string[] = [];
+    if (forType.some((p) => p.organic)) availableTypes.push("Organic");
+    if (forType.some((p) => !p.organic)) availableTypes.push("Conventional");
+    return {
+      commodities: [...new Set(forCommodity.map((p) => p.commodity))].sort(),
+      formats: [...new Set(forFormat.map((p) => p.format))].sort(),
+      origins: [...new Set(forOrigin.flatMap((p) => p.listings.map((l) => l.countryOfOrigin)))].sort(),
+      states: [...new Set(forState.flatMap((p) => p.listings.map((l) => l.state)))].sort(),
+      types: availableTypes,
+    };
+  }, [predicates, products]);
+
+  const groups = useMemo(() => groupByFormat(filtered), [filtered]);
+
+  const toggleGroup = (format: string) => {
+    setCollapsed((prev) => ({ ...prev, [format]: !prev[format] }));
+  };
 
   const activeFilters = Object.entries(filters).filter(([, v]) => v !== "");
   const hasFilters = activeFilters.length > 0;
@@ -77,6 +153,7 @@ export default function InventoryTable({ products, lastUpdated, productIdsWithDo
         formats={formats}
         origins={origins}
         states={states}
+        types={types}
         filters={filters}
         onFilterChange={handleFilterChange}
       />
@@ -112,129 +189,164 @@ export default function InventoryTable({ products, lastUpdated, productIdsWithDo
       </div>
 
       {/* Desktop table */}
-      <div className="hidden lg:block bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Product</th>
-              <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Format</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Spec</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Origin</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Pack Size</th>
-              <th className="text-right px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantity</th>
-              <th className="text-right px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Weight</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Warehouse</th>
-              <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((p, i) => (
-              <tr
-                key={p.id}
-                className={`border-b border-gray-100 hover:bg-blue-50/50 transition-colors ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}
-              >
-                <td className="px-4 py-3">
-                  <Link href={`/product/${p.id}`} className="text-[#1a2b5f] font-semibold hover:underline">
-                    {p.product}
-                  </Link>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    {p.certifications.map((c) => (
-                      <span key={c} className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">{c}</span>
-                    ))}
-                    {(() => { const lc = p.listings.reduce((s, l) => s + l.lots.length, 0); return lc > 0 ? (
-                      <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">{lc} lot{lc > 1 ? "s" : ""}</span>
-                    ) : null; })()}
-                    {docsSet.has(p.id) && (
-                      <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium" title="Documents available">
-                        Docs
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-3 py-3 text-center">
-                  {p.organic ? (
-                    <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">
-                      <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.5 17a4.5 4.5 0 01-1.44-8.765 4.5 4.5 0 018.302-3.046 3.5 3.5 0 014.504 4.272A4 4 0 0115 17H5.5zm3.75-2.75a.75.75 0 001.5 0V9.66l1.95 2.1a.75.75 0 101.1-1.02l-3.25-3.5a.75.75 0 00-1.1 0l-3.25 3.5a.75.75 0 101.1 1.02l1.95-2.1v4.59z" clipRule="evenodd" /></svg>
-                      Organic
-                    </span>
-                  ) : (
-                    <span className="inline-block bg-gray-100 text-gray-500 text-xs font-medium px-2 py-0.5 rounded">
-                      Conv.
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-3 text-sm text-gray-700">{p.format}</td>
-                <td className="px-3 py-3 text-sm text-gray-700">{p.specification || "—"}</td>
-                <td className="px-3 py-3 text-sm text-gray-700">{getUniqueCOOs(p).join(", ")}</td>
-                <td className="px-3 py-3 text-sm text-gray-700">{p.packSize}</td>
-                <td className="px-3 py-3 text-sm text-gray-700 text-right font-medium">{formatQuantity(getTotalQuantity(p), p.unitType)}</td>
-                <td className="px-3 py-3 text-sm text-gray-700 text-right font-medium">{formatWeight(getTotalWeight(p))}</td>
-                <td className="px-3 py-3 text-sm text-gray-600">
-                  {getUniqueWarehouses(p).map((w, i) => (
-                    <div key={i} className="text-xs leading-tight">{w}</div>
-                  ))}
-                </td>
-                <td className="px-3 py-3 text-center">
-                  <Link
-                    href={`/contact?product=${encodeURIComponent(p.product)}`}
-                    className="inline-block bg-[#1a2b5f] text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-[#4a90c4] transition-colors"
-                  >
-                    Inquire
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="hidden lg:block space-y-4">
+        {groups.map(([format, groupProducts]) => {
+          const isExpanded = !collapsed[format];
+          const groupWeight = groupProducts.reduce((sum, p) => sum + getTotalWeight(p), 0);
+          return (
+            <div key={format}>
+              <GroupHeader
+                format={format}
+                count={groupProducts.length}
+                totalWeight={groupWeight}
+                expanded={isExpanded}
+                onToggle={() => toggleGroup(format)}
+              />
+              {isExpanded && (
+                <div className="bg-white border border-t-0 border-gray-200 rounded-b-lg shadow-sm overflow-hidden">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Product</th>
+                        <th className="text-center px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
+                        <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Spec</th>
+                        <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Origin</th>
+                        <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Pack Size</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantity</th>
+                        <th className="text-right px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Weight</th>
+                        <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Warehouse</th>
+                        <th className="text-center px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {groupProducts.map((p, i) => (
+                        <tr
+                          key={p.id}
+                          className={`border-b border-gray-100 hover:bg-blue-50/50 transition-colors ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}
+                        >
+                          <td className="px-4 py-3">
+                            <Link href={`/product/${p.id}`} className="text-[#1a2b5f] font-semibold hover:underline">
+                              {p.product}
+                            </Link>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {p.certifications.filter((c) => c !== "Organic").map((c) => (
+                                <span key={c} className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">{c}</span>
+                              ))}
+                              {(() => { const lc = p.listings.reduce((s, l) => s + l.lots.length, 0); return lc > 0 ? (
+                                <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">{lc} lot{lc > 1 ? "s" : ""}</span>
+                              ) : null; })()}
+                              {docsSet.has(p.id) && (
+                                <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium" title="Documents available">
+                                  Docs
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            {p.organic ? (
+                              <span className="inline-block bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">
+                                Organic
+                              </span>
+                            ) : (
+                              <span className="inline-block bg-gray-100 text-gray-500 text-xs font-medium px-2 py-0.5 rounded">
+                                Conventional
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-sm text-gray-700">{p.specification || "—"}</td>
+                          <td className="px-3 py-3 text-sm text-gray-700">{getUniqueCOOs(p).join(", ")}</td>
+                          <td className="px-3 py-3 text-sm text-gray-700">{p.packSize}</td>
+                          <td className="px-3 py-3 text-sm text-gray-700 text-right font-medium">{formatQuantity(getTotalQuantity(p), p.unitType)}</td>
+                          <td className="px-3 py-3 text-sm text-gray-700 text-right font-medium">{formatWeight(getTotalWeight(p))}</td>
+                          <td className="px-3 py-3 text-sm text-gray-600">
+                            {getUniqueWarehouses(p).map((w, i) => (
+                              <div key={i} className="text-xs leading-tight">{w}</div>
+                            ))}
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <Link
+                              href={`/contact?product=${encodeURIComponent(p.product)}`}
+                              className="inline-block bg-[#1a2b5f] text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-[#4a90c4] transition-colors"
+                            >
+                              Inquire
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Mobile cards */}
-      <div className="lg:hidden space-y-3">
-        {filtered.map((p) => (
-          <Link
-            key={p.id}
-            href={`/product/${p.id}`}
-            className="block bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md hover:border-[#4a90c4]/30 transition-all"
-          >
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="text-[#1a2b5f] font-semibold text-sm">{p.product}</h3>
-              {p.organic ? (
-                <span className="shrink-0 bg-green-100 text-green-800 text-[10px] font-semibold px-2 py-0.5 rounded">
-                  Organic
-                </span>
-              ) : (
-                <span className="shrink-0 bg-gray-100 text-gray-500 text-[10px] font-medium px-2 py-0.5 rounded">
-                  Conv.
-                </span>
+      <div className="lg:hidden space-y-5">
+        {groups.map(([format, groupProducts]) => {
+          const isExpanded = !collapsed[format];
+          const groupWeight = groupProducts.reduce((sum, p) => sum + getTotalWeight(p), 0);
+          return (
+            <div key={format}>
+              <GroupHeader
+                format={format}
+                count={groupProducts.length}
+                totalWeight={groupWeight}
+                expanded={isExpanded}
+                onToggle={() => toggleGroup(format)}
+              />
+              {isExpanded && (
+                <div className="space-y-3 pt-3">
+                  {groupProducts.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/product/${p.id}`}
+                      className="block bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md hover:border-[#4a90c4]/30 transition-all"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="text-[#1a2b5f] font-semibold text-sm">{p.product}</h3>
+                        {p.organic ? (
+                          <span className="shrink-0 bg-green-100 text-green-800 text-[10px] font-semibold px-2 py-0.5 rounded">
+                            Organic
+                          </span>
+                        ) : (
+                          <span className="shrink-0 bg-gray-100 text-gray-500 text-[10px] font-medium px-2 py-0.5 rounded">
+                            Conventional
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-gray-600">
+                        <div><span className="text-gray-400 text-xs">Origin</span><br/>{getUniqueCOOs(p).join(", ")}</div>
+                        <div><span className="text-gray-400 text-xs">Qty</span><br/>{formatQuantity(getTotalQuantity(p), p.unitType)}</div>
+                        <div><span className="text-gray-400 text-xs">Weight</span><br/>{formatWeight(getTotalWeight(p))}</div>
+                        <div><span className="text-gray-400 text-xs">Warehouse</span><br/>{getUniqueWarehouses(p).join(" | ")}</div>
+                      </div>
+                      {(() => {
+                        const lc = p.listings.reduce((s, l) => s + l.lots.length, 0);
+                        const nonOrganicCerts = p.certifications.filter((c) => c !== "Organic");
+                        const showBadges = nonOrganicCerts.length > 0 || lc > 0 || docsSet.has(p.id);
+                        return showBadges ? (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {nonOrganicCerts.map((c) => (
+                              <span key={c} className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">{c}</span>
+                            ))}
+                            {lc > 0 && (
+                              <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">{lc} lot{lc > 1 ? "s" : ""}</span>
+                            )}
+                            {docsSet.has(p.id) && (
+                              <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">Docs</span>
+                            )}
+                          </div>
+                        ) : null;
+                      })()}
+                    </Link>
+                  ))}
+                </div>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-gray-600">
-              <div><span className="text-gray-400 text-xs">Format</span><br/>{p.format}</div>
-              <div><span className="text-gray-400 text-xs">Origin</span><br/>{getUniqueCOOs(p).join(", ")}</div>
-              <div><span className="text-gray-400 text-xs">Qty</span><br/>{formatQuantity(getTotalQuantity(p), p.unitType)}</div>
-              <div><span className="text-gray-400 text-xs">Weight</span><br/>{formatWeight(getTotalWeight(p))}</div>
-              <div className="col-span-2"><span className="text-gray-400 text-xs">Warehouse</span><br/>{getUniqueWarehouses(p).join(" | ")}</div>
-            </div>
-            {(() => {
-              const lc = p.listings.reduce((s, l) => s + l.lots.length, 0);
-              const showBadges = p.certifications.length > 0 || lc > 0 || docsSet.has(p.id);
-              return showBadges ? (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {p.certifications.map((c) => (
-                    <span key={c} className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">{c}</span>
-                  ))}
-                  {lc > 0 && (
-                    <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">{lc} lot{lc > 1 ? "s" : ""}</span>
-                  )}
-                  {docsSet.has(p.id) && (
-                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">Docs</span>
-                  )}
-                </div>
-              ) : null;
-            })()}
-          </Link>
-        ))}
+          );
+        })}
       </div>
 
       {filtered.length === 0 && (

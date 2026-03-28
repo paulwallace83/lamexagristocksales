@@ -5,6 +5,7 @@ interface FilterBarProps {
   formats: string[];
   origins: string[];
   states: string[];
+  types: string[];
   filters: {
     commodity: string;
     format: string;
@@ -21,6 +22,7 @@ export default function FilterBar({
   formats,
   origins,
   states,
+  types,
   filters,
   onFilterChange,
 }: FilterBarProps) {
@@ -54,7 +56,7 @@ export default function FilterBar({
         <FilterSelect
           label="Type"
           value={filters.type}
-          options={["Organic", "Conventional"]}
+          options={types}
           onChange={(v) => onFilterChange("type", v)}
         />
         <FilterSelect

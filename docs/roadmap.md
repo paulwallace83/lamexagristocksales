@@ -28,21 +28,26 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Lot data seeded from inventory.json with automatic aggregation of duplicate ERP rows.
 - Role-based authorization hardened across QA pages and API endpoints.
 
+### ✅ Inventory UX & QA Dashboard Enhancements (v0.9.0)
+- Public inventory grouped by format (IQF, Juice Concentrate, Puree) with collapsible sections.
+- Cascading filters — each dropdown narrows to available values given the other active filters.
+- QA dashboard filter (All / Missing / Partial / Complete) with counts for quick focus.
+- Partial document status (amber badges and lot pills) distinguishes "some docs" from "no docs".
+- Prominent Lamex reference numbers on QA upload page.
+- Past-BBD dates highlighted with amber label on product detail pages.
+- Security hardening: file upload size/type limits, auth on document GET API, strong AUTH_SECRET.
+
 ## Active Priorities
 ### 1. QA Document Operations
 - Tighten upload workflow around the IQF/frozen product photo rule.
-- Make required-versus-optional document status more obvious in the QA dashboard.
+- Enforce required-versus-optional document status per product type.
 
-### 2. Public Inventory Experience
-- Strengthen filtering and search around buyer-relevant fields.
-- Preserve mobile usability while expanding inventory detail visibility.
-
-### 3. Data Quality (remaining)
+### 2. Data Quality (remaining)
 - Audit current application behavior against CLAUDE.md rules (S002).
 - Validate unit types are correctly identified per product during sync.
 - Flag potential duplicate products with similar names/specs.
 
-### 4. Marketing Email
+### 3. Marketing Email
 - Build HTML email template for weekly inventory broadcast.
 - Highlight new arrivals and featured items.
 - Mobile-responsive design with CTA to hosted inventory page.

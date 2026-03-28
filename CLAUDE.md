@@ -289,6 +289,31 @@ Stored in `public/uploads/{product-id}/contracts/{base-contract}/{category}/`
 Show product photos if: format === "IQF" OR (processType === "Frozen" AND format !== "Juice Concentrate" AND format !== "Puree")
 ```
 
+## Public Inventory Page
+
+- Products are **grouped by format** (IQF, Juice Concentrate, Puree) with collapsible section headers showing product count and total weight.
+- **Cascading filters** — each filter dropdown shows only options available given the other active filters.
+- Type labels display as "Organic" (green) or "Conventional" (gray) — no abbreviations, no icons.
+- The "Organic" certification badge is not shown under product names (redundant with the Type column).
+- Format column is not shown per row (redundant with format group headers).
+
+## QA Dashboard
+
+- `/qa` — Document dashboard with interactive status filter (All / Missing / Partial / Complete).
+- **Status categories:**
+  - **Complete** (green) — all required lot COAs and contract documents uploaded.
+  - **Partial** (amber) — some documents uploaded but not all required docs present.
+  - **Missing** (red) — no documents uploaded at all.
+- Lot pills reflect overall product status: green if product complete, amber if partial, red if lot has no COA.
+- Coverage numbers (e.g., "3/14") use amber when partial (some but not all).
+- Filter is client-side only — does not persist across page loads.
+
+### File Upload Security
+
+- Maximum file size: **50 MB**.
+- Allowed MIME types: PDF, JPEG, PNG, GIF, WebP.
+- All document API endpoints require authentication with QA or reviewer role.
+
 ## Industry Context
 
 - Understand common processed fruit/veg terminology (Brix, mesh size, diced vs sliced vs whole, IQF vs block frozen, single strength vs concentrate)

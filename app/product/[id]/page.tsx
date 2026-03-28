@@ -15,7 +15,6 @@ import {
   getRequiredDocs,
   getCategoryLabel,
   getDocumentUrl,
-  getProductPhotoUrl,
 } from "@/lib/documents";
 import type { DocumentEntry, DocCategory } from "@/lib/documents";
 
@@ -34,8 +33,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const totalQty = getTotalQuantity(product);
   const totalWeight = getTotalWeight(product);
   const documents = getDocumentsForProduct(id);
-  const photoUrl = getProductPhotoUrl(id);
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       {/* Breadcrumb */}
@@ -50,35 +47,20 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-[#1a2b5f] to-[#243f75] px-6 py-6 text-white">
-          <div className="flex items-start gap-5">
-            {photoUrl && (
-              <div className="hidden md:block shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-white/20 bg-white/10">
-                <Image
-                  src={photoUrl}
-                  alt={product.product}
-                  width={80}
-                  height={80}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+          <h1 className="text-2xl md:text-3xl font-bold">{product.product}</h1>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {product.organic ? (
+              <span className="bg-green-500/20 text-green-100 text-xs font-semibold px-2.5 py-1 rounded border border-green-400/30">
+                Organic
+              </span>
+            ) : (
+              <span className="bg-white/10 text-white/80 text-xs font-semibold px-2.5 py-1 rounded border border-white/10">
+                Conventional
+              </span>
             )}
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold">{product.product}</h1>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {product.organic ? (
-                  <span className="bg-green-500/20 text-green-100 text-xs font-semibold px-2.5 py-1 rounded border border-green-400/30">
-                    Organic
-                  </span>
-                ) : (
-                  <span className="bg-white/10 text-white/80 text-xs font-semibold px-2.5 py-1 rounded border border-white/10">
-                    Conventional
-                  </span>
-                )}
-                {product.certifications.map((c) => (
-                  <span key={c} className="bg-white/10 text-white/80 text-xs font-medium px-2.5 py-1 rounded border border-white/10">{c}</span>
-                ))}
-              </div>
-            </div>
+            {product.certifications.map((c) => (
+              <span key={c} className="bg-white/10 text-white/80 text-xs font-medium px-2.5 py-1 rounded border border-white/10">{c}</span>
+            ))}
           </div>
         </div>
 
@@ -283,7 +265,13 @@ function LotRow({ lot, unitType, documents }: { lot: Lot; unitType: string; docu
           {lot.quantity.toLocaleString()} {unitType}
         </span>
         <span>{formatWeight(lot.weightLbs)}</span>
-        <span className="text-gray-400 text-xs">BBD: {lot.bbd}</span>
+        {lot.bbd ? (
+          new Date(lot.bbd) < new Date() ? (
+            <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">BBD: {lot.bbd}</span>
+          ) : (
+            <span className="text-gray-400 text-xs">BBD: {lot.bbd}</span>
+          )
+        ) : null}
       </div>
     </div>
   );

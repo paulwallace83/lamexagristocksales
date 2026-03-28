@@ -70,70 +70,82 @@ export default async function UploadPage({ params }: { params: Promise<{ id: str
               </div>
             ) : (
               <div className="space-y-6">
-                {listingsWithLots.map((listing) => (
-                  <div key={listing.id}>
-                    <h3 className="text-sm font-semibold text-gray-600 mb-3">
-                      {listing.warehouse}, {listing.city}, {listing.state}
-                      <span className="text-gray-400 font-normal"> — {listing.supplier}</span>
-                    </h3>
-
-                    <div className="space-y-4 pl-4 border-l-2 border-gray-200">
-                      {listing.lots.map((lot) => {
-                        const lotDocs = documents.filter(
-                          (d) => d.lotIds.includes(lot.id),
-                        );
-                        const lotCoaDocs = lotDocs.filter((d) => d.category === "coa");
-                        const lotTestDocs = lotDocs.filter((d) => d.category === "test-results");
-
-                        return (
-                          <div key={lot.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                            <div className="flex items-center gap-3 mb-3">
-                              <span className="font-mono font-bold text-sm text-gray-900">
-                                Lot {lot.lotNumber}
+                {listingsWithLots.map((listing) => {
+                  const listingRefs = [...new Set([
+                    ...listing.contracts,
+                    ...listing.lots.flatMap((lot) => lot.contracts),
+                  ])].sort();
+                  return (
+                    <div key={listing.id}>
+                      <div className="mb-3">
+                        <h3 className="text-sm font-semibold text-gray-600">
+                          {listing.warehouse}, {listing.city}, {listing.state}
+                          <span className="text-gray-400 font-normal"> — {listing.supplier}</span>
+                        </h3>
+                        {listingRefs.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Lamex Ref:</span>
+                            {listingRefs.map((ref) => (
+                              <span key={ref} className="font-mono text-xs font-bold bg-[#1a2b5f]/10 text-[#1a2b5f] px-2 py-0.5 rounded">
+                                {ref}
                               </span>
-                              <span className="text-xs text-gray-500">
-                                BBD: {lot.bbd}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {lot.quantity.toLocaleString()} units / {lot.weightLbs.toLocaleString()} lbs
-                              </span>
-                              {lot.contracts.length > 0 && (
-                                <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
-                                  Ref: {lot.contracts.join(", ")}
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="space-y-4">
-                              <LotCOAUpload
-                                productId={id}
-                                primaryLotId={lot.id}
-                                allLots={allLotOptions}
-                                documents={lotCoaDocs.map((d) => ({
-                                  ...d,
-                                  url: getDocumentUrl(d.productId, d.category, d.filename, { lotId: d.lotIds[0] }),
-                                }))}
-                                deleteParams={{ lotId: String(lot.id) }}
-                              />
-
-                              <UploadSection
-                                productId={id}
-                                category="test-results"
-                                label="Test Results"
-                                lotIds={[lot.id]}
-                                documents={lotTestDocs.map((d) => ({
-                                  ...d,
-                                  url: getDocumentUrl(d.productId, d.category, d.filename, { lotId: d.lotIds[0] }),
-                                }))}
-                                deleteParams={{ lotId: String(lot.id) }}
-                              />
-                            </div>
+                            ))}
                           </div>
-                        );
-                      })}
+                        )}
+                      </div>
+                      <div className="space-y-4 pl-4 border-l-2 border-gray-200">
+                        {listing.lots.map((lot) => {
+                          const lotDocs = documents.filter((d) => d.lotIds.includes(lot.id));
+                          const lotCoaDocs = lotDocs.filter((d) => d.category === "coa");
+                          const lotTestDocs = lotDocs.filter((d) => d.category === "test-results");
+                          return (
+                            <div key={lot.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                              <div className="flex flex-wrap items-center gap-3 mb-3">
+                                <span className="font-mono font-bold text-sm text-gray-900">
+                                  Lot {lot.lotNumber}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  BBD: {lot.bbd}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {lot.quantity.toLocaleString()} units / {lot.weightLbs.toLocaleString()} lbs
+                                </span>
+                                {lot.contracts.length > 0 && (
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                                    Ref: {lot.contracts.join(", ")}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="space-y-4">
+                                <LotCOAUpload
+                                  productId={id}
+                                  primaryLotId={lot.id}
+                                  allLots={allLotOptions}
+                                  documents={lotCoaDocs.map((d) => ({
+                                    ...d,
+                                    url: getDocumentUrl(d.productId, d.category, d.filename, { lotId: d.lotIds[0] }),
+                                  }))}
+                                  deleteParams={{ lotId: String(lot.id) }}
+                                />
+                                <UploadSection
+                                  productId={id}
+                                  category="test-results"
+                                  label="Test Results"
+                                  lotIds={[lot.id]}
+                                  documents={lotTestDocs.map((d) => ({
+                                    ...d,
+                                    url: getDocumentUrl(d.productId, d.category, d.filename, { lotId: d.lotIds[0] }),
+                                  }))}
+                                  deleteParams={{ lotId: String(lot.id) }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
