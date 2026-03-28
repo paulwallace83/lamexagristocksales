@@ -1,0 +1,401 @@
+import Anthropic from "@anthropic-ai/sdk";
+import { writeFileSync, unlinkSync, existsSync, readFileSync } from "fs";
+import { join, resolve } from "path";
+import {
+  getProductSummaries,
+  findLotsByNumber,
+  findByContractNumber,
+  searchProducts,
+  getSyncInfo,
+} from "./agent-db";
+import { getProductById } from "./inventory-db";
+import { getDocumentStatus, addDocument, getUploadDir, getDocumentUrl } from "./documents";
+import { getDiscountItems, addDiscountItemsFromLots, restoreToInventory } from "./discount";
+import type { DocCategory } from "./documents";
+import type { DiscountReason, DiscountStatus } from "./discount";
+
+/* ------------------------------------------------------------------ */
+/*  File data type (held in memory during a request)                  */
+/* ------------------------------------------------------------------ */
+
+export interface FileData {
+  buffer: Buffer;
+  mimeType: string;
+  name: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tool definitions                                                  */
+/* ------------------------------------------------------------------ */
+
+export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
+  {
+    name: "list_products",
+    description:
+      "Get a lightweight list of all products currently in inventory with quantity/weight totals and warehouse locations. Use this for a broad overview before doing more specific lookups.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "get_product_details",
+    description:
+      "Get full details for a specific product: all listings, lots, contract references, BBD dates, and supplier info.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        productId: { type: "string", description: "Product ID (e.g. 'apple-jc-organic')" },
+      },
+      required: ["productId"],
+    },
+  },
+  {
+    name: "search_inventory",
+    description:
+      "Search products by name, commodity, or specification. Returns up to 20 matching products.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "Search text" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "get_lot_by_number",
+    description:
+      "Find which product and listing a lot number belongs to. Supports partial matching. Use this to match lot numbers found in COA documents to inventory records.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        lotNumber: { type: "string", description: "Lot number to search for (partial match supported)" },
+      },
+      required: ["lotNumber"],
+    },
+  },
+  {
+    name: "get_contract_info",
+    description:
+      "Find which product and lots are associated with a contract or container reference number (e.g. '124717' or '124717-04').",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        contractNumber: {
+          type: "string",
+          description: "Contract or container reference number",
+        },
+      },
+      required: ["contractNumber"],
+    },
+  },
+  {
+    name: "get_document_status",
+    description:
+      "Check document coverage (COAs, spec sheets, labels, photos) for all products or a specific product. Shows how many lots have COAs and how many contracts have required documents.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        productId: {
+          type: "string",
+          description: "Optional: specific product ID. Omit to return status for all products.",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "get_discount_items",
+    description: "Get Discount & Clearance inventory items.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        status: {
+          type: "string",
+          enum: ["active", "sold", "missing", "all"],
+          description: "Filter by status. Defaults to 'active'.",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "get_import_review",
+    description:
+      "Get items currently pending in the import review queue — soft-excluded items from the last Excel import that need manual approval before sync.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "get_sync_info",
+    description: "Get the timestamp of the last inventory sync.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "upload_document",
+    description:
+      "Upload a document (COA, test results, spec sheet, label photo, or product photo) to the correct product, lot, or contract. ALWAYS confirm the match and intent with the user before calling this tool.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        productId: { type: "string", description: "Product ID to attach the document to" },
+        category: {
+          type: "string",
+          enum: ["coa", "test-results", "specs", "labels", "photos"],
+          description: "Document category",
+        },
+        fileRef: {
+          type: "string",
+          description: "Sanitised filename of the uploaded file (as listed in the file attachments)",
+        },
+        originalName: { type: "string", description: "Original filename for display" },
+        lotIds: {
+          type: "array",
+          items: { type: "number" },
+          description: "Required for coa and test-results: the database lot IDs to associate this document with",
+        },
+        baseContract: {
+          type: "string",
+          description: "Required for specs, labels, and photos: the base contract number (e.g. '124717')",
+        },
+      },
+      required: ["productId", "category", "fileRef", "originalName"],
+    },
+  },
+  {
+    name: "create_discount_item",
+    description:
+      "Move a specific lot from regular inventory to Discount & Clearance. The lot is immediately deducted from regular inventory. ALWAYS confirm the lot, product, reason, and price with the user before calling this tool.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        productId: { type: "string", description: "Product ID" },
+        lotNumber: { type: "string", description: "Exact lot number to move to discount" },
+        reason: {
+          type: "string",
+          enum: ["insurance-claim", "expired", "overstock", "damaged", "other"],
+          description: "Reason for discounting",
+        },
+        notes: { type: "string", description: "Optional notes about the item" },
+        askingPrice: {
+          type: "string",
+          description: "Optional asking price (e.g. '$0.30/lb', 'Make Offer')",
+        },
+      },
+      required: ["productId", "lotNumber", "reason"],
+    },
+  },
+  {
+    name: "restore_discount_item",
+    description:
+      "Permanently delete a discount item and immediately restore its lot back to regular inventory. ALWAYS confirm the item ID and intent with the user before calling this tool.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        discountId: {
+          type: "string",
+          description: "Discount item ID (e.g. 'disc-001')",
+        },
+      },
+      required: ["discountId"],
+    },
+  },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Constants                                                         */
+/* ------------------------------------------------------------------ */
+
+const VALID_CATEGORIES: DocCategory[] = ["coa", "test-results", "specs", "labels", "photos"];
+const LOT_CATEGORIES: DocCategory[] = ["coa", "test-results"];
+const CONTRACT_CATEGORIES: DocCategory[] = ["specs", "labels", "photos"];
+const VALID_REASONS: DiscountReason[] = [
+  "insurance-claim",
+  "expired",
+  "overstock",
+  "damaged",
+  "other",
+];
+
+/* ------------------------------------------------------------------ */
+/*  Tool execution                                                    */
+/* ------------------------------------------------------------------ */
+
+export async function executeTool(
+  toolName: string,
+  input: Record<string, unknown>,
+  fileMap: Map<string, FileData>,
+  uploaderEmail: string,
+): Promise<unknown> {
+  switch (toolName) {
+    /* ── Read-only tools ─────────────────────────────────────────── */
+
+    case "list_products":
+      return getProductSummaries();
+
+    case "get_product_details": {
+      const id = String(input.productId ?? "");
+      const product = getProductById(id);
+      if (!product) return { error: `Product '${id}' not found` };
+      return product;
+    }
+
+    case "search_inventory": {
+      const query = String(input.query ?? "");
+      if (!query) return { error: "query is required" };
+      return searchProducts(query);
+    }
+
+    case "get_lot_by_number": {
+      const lotNumber = String(input.lotNumber ?? "");
+      if (!lotNumber) return { error: "lotNumber is required" };
+      const matches = findLotsByNumber(lotNumber);
+      if (matches.length === 0) return { found: false, message: `No lots found matching '${lotNumber}'` };
+      return { found: true, matches };
+    }
+
+    case "get_contract_info": {
+      const contractNumber = String(input.contractNumber ?? "");
+      if (!contractNumber) return { error: "contractNumber is required" };
+      const matches = findByContractNumber(contractNumber);
+      if (matches.length === 0)
+        return { found: false, message: `No products found for contract '${contractNumber}'` };
+      return { found: true, matches };
+    }
+
+    case "get_document_status": {
+      const productId = input.productId ? String(input.productId) : undefined;
+      const allStatuses = getDocumentStatus();
+      if (productId) {
+        const found = allStatuses.find((s) => s.productId === productId);
+        if (!found) return { error: `Product '${productId}' not found` };
+        return found;
+      }
+      return allStatuses;
+    }
+
+    case "get_discount_items": {
+      const status = (input.status as DiscountStatus | "all" | undefined) ?? "active";
+      return getDiscountItems(status);
+    }
+
+    case "get_import_review": {
+      const reviewPath = join(process.cwd(), "data", "import-review.json");
+      if (!existsSync(reviewPath)) {
+        return { available: false, message: "No import review queue — run npm run import-excel first" };
+      }
+      try {
+        const items = JSON.parse(readFileSync(reviewPath, "utf-8"));
+        return { available: true, count: Array.isArray(items) ? items.length : 0, items };
+      } catch {
+        return { error: "Could not read import-review.json" };
+      }
+    }
+
+    case "get_sync_info":
+      return getSyncInfo();
+
+    /* ── Action tools ────────────────────────────────────────────── */
+
+    case "upload_document": {
+      const productId = String(input.productId ?? "");
+      const category = String(input.category ?? "") as DocCategory;
+      const fileRef = String(input.fileRef ?? "");
+      const originalName = String(input.originalName ?? "");
+      const lotIds = Array.isArray(input.lotIds) ? (input.lotIds as number[]) : [];
+      const baseContract = input.baseContract ? String(input.baseContract) : undefined;
+
+      if (!VALID_CATEGORIES.includes(category)) {
+        return { error: `Invalid category '${category}'` };
+      }
+      if (LOT_CATEGORIES.includes(category) && lotIds.length === 0) {
+        return { error: "lotIds are required for coa and test-results" };
+      }
+      if (CONTRACT_CATEGORIES.includes(category) && !baseContract) {
+        return { error: "baseContract is required for specs, labels, and photos" };
+      }
+
+      const fileData = fileMap.get(fileRef);
+      if (!fileData) {
+        return { error: `File '${fileRef}' not found. Available files: ${[...fileMap.keys()].join(", ") || "none"}` };
+      }
+
+      const safePid = productId.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const timestamp = Date.now();
+      const filename = `${timestamp}-${safeName}`;
+
+      const storageOpts = LOT_CATEGORIES.includes(category)
+        ? { lotId: lotIds[0] }
+        : { baseContract: baseContract!.replace(/[^a-zA-Z0-9._-]/g, "_") };
+
+      let dir: string;
+      try {
+        dir = getUploadDir(safePid, category, storageOpts);
+      } catch {
+        return { error: "Invalid upload path" };
+      }
+
+      const filepath = join(dir, filename);
+      const uploadsRoot = resolve(process.cwd(), "public", "uploads");
+      if (!resolve(filepath).startsWith(uploadsRoot)) {
+        return { error: "Invalid upload path" };
+      }
+
+      writeFileSync(filepath, fileData.buffer);
+
+      const docId = `${productId}-${category}-${timestamp}`;
+      try {
+        addDocument({
+          id: docId,
+          productId,
+          category,
+          filename,
+          originalName,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: uploaderEmail,
+          baseContract: CONTRACT_CATEGORIES.includes(category) ? (baseContract ?? null) : null,
+          lotIds: LOT_CATEGORIES.includes(category) ? lotIds : undefined,
+        });
+      } catch (err) {
+        try { unlinkSync(filepath); } catch { /* best-effort cleanup */ }
+        return { error: err instanceof Error ? err.message : "Database error saving document" };
+      }
+
+      const url = getDocumentUrl(productId, category, filename, storageOpts);
+      return { success: true, documentId: docId, filename, url };
+    }
+
+    case "create_discount_item": {
+      const productId = String(input.productId ?? "");
+      const lotNumber = String(input.lotNumber ?? "");
+      const reason = String(input.reason ?? "") as DiscountReason;
+      const notes = input.notes ? String(input.notes) : null;
+      const askingPrice = input.askingPrice ? String(input.askingPrice) : null;
+
+      if (!VALID_REASONS.includes(reason)) {
+        return { error: `Invalid reason '${reason}'. Must be one of: ${VALID_REASONS.join(", ")}` };
+      }
+      if (!productId || !lotNumber) {
+        return { error: "productId and lotNumber are required" };
+      }
+
+      try {
+        const items = addDiscountItemsFromLots([
+          { productId, lotNumber, reason, notes, askingPrice },
+        ]);
+        return { success: true, item: items[0] };
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : "Failed to create discount item" };
+      }
+    }
+
+    case "restore_discount_item": {
+      const discountId = String(input.discountId ?? "");
+      if (!discountId) return { error: "discountId is required" };
+
+      const success = restoreToInventory(discountId);
+      if (!success) return { error: `Discount item '${discountId}' not found` };
+      return { success: true, message: `Item ${discountId} restored to regular inventory` };
+    }
+
+    default:
+      return { error: `Unknown tool '${toolName}'` };
+  }
+}

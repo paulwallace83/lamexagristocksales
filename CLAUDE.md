@@ -193,7 +193,7 @@ When inventory is pasted from the pivot table, the hierarchical rows break down 
 
 - When lot data is available, each lot has its own BBD. BBD is displayed at the lot level on the product detail page.
 - The listing-level `min_bbd` represents the MINIMUM BBD across all lots for that supplier grouping (legacy field, used when lot data is not yet populated).
-- **Never flag or differentiate items based on BBD.** Do not label items as "expired", "for immediate use", "discounted", etc. Present all inventory uniformly.
+- **Do not label items as "expired", "for immediate use", "discounted", etc. based on BBD.** Past-BBD dates are highlighted with an amber label on product detail pages for buyer awareness, but no status language or removal logic is applied. Present all inventory uniformly in listings and emails.
 
 ### Reference Files
 
@@ -383,6 +383,42 @@ After deduction, the sync validates remaining active discount items:
 - `app/api/discount/batch/route.ts` — Batch lot-to-discount endpoint (auth required)
 - `app/admin/discount/` — Lot picker UI (layout, page, DiscountFormClient)
 - `components/DiscountSection.tsx` — Public display component
+
+## AI Assistant (Internal Agent Portal)
+
+An embedded Claude-powered chat interface for QA and operations staff. Accessible at `/admin/agent` — requires `qa` or `reviewer` role. Completely separated from the public customer view.
+
+### Capabilities
+
+- **Document matching:** Upload a COA, spec sheet, label, or product photo → Claude reads the document, extracts lot numbers / contract numbers / product names, proposes matches against inventory, and uploads after explicit user confirmation.
+- **Inventory queries:** Answer questions about current stock, document coverage, discount items, and import review status.
+- **Discount management:** Move lots to Discount & Clearance or restore them, via conversation.
+- **Import review:** View soft-excluded items from the last Excel import.
+
+### Architecture
+
+- Claude runs server-side via `@anthropic-ai/sdk` with 12 tools (9 read-only, 3 action).
+- Action tools (`upload_document`, `create_discount_item`, `restore_discount_item`) require conversational confirmation from the user before execution — enforced via system prompt.
+- Files are uploaded in-band with the chat message (multipart form data), held in memory during the request, and written to disk only when Claude calls `upload_document`.
+- Responses stream via SSE with tool activity indicators.
+- Requires `ANTHROPIC_API_KEY` in `.env.local`.
+
+### Key Files
+
+- `lib/agent-db.ts` — Agent-specific DB queries (lot lookup, contract lookup, product search, sync info)
+- `lib/agent-tools.ts` — Tool definitions and server-side execution logic
+- `app/api/agent/chat/route.ts` — Streaming SSE endpoint with agentic tool-use loop (max 10 iterations)
+- `app/admin/agent/layout.tsx` — Auth guard (qa OR reviewer role)
+- `app/admin/agent/page.tsx` — Server component shell
+- `app/admin/agent/AgentChat.tsx` — Client chat UI with file attachments and streaming
+
+### Security
+
+- Auth required: `qa` or `reviewer` role (same as existing QA/admin pages)
+- File validation: same 50 MB limit and MIME type checks as `/api/upload`
+- Path traversal protection: same `getUploadDir()` + `resolve().startsWith()` pattern
+- No public routes or links — the agent is invisible to customers
+- Claude system prompt prohibits discussing customer names, pricing, or internal references
 
 ## Industry Context
 

@@ -13,7 +13,8 @@ This guide covers all workflows for operating the Lamex Agri Stock Sales invento
 5. [Discount & Clearance Inventory](#discount--clearance-inventory)
 6. [QA Document Portal](#qa-document-portal)
 7. [Public Inventory Page](#public-inventory-page)
-8. [Admin Reference](#admin-reference)
+8. [AI Assistant](#ai-assistant)
+9. [Admin Reference](#admin-reference)
 
 ---
 
@@ -347,6 +348,51 @@ Click any product name to see full details:
 
 ---
 
+## AI Assistant
+
+**URL:** `/admin/agent` (requires QA or reviewer login)
+
+**Purpose:** A conversational AI interface that lets you upload documents, query inventory, and manage stock using plain language instead of navigating forms manually.
+
+### Getting Started
+
+1. Log in at `/qa/login` with your QA or reviewer credentials
+2. Click **AI Assistant** in the navigation bar
+3. Type a question or attach a file
+
+### What You Can Do
+
+| Task | Example |
+|------|---------|
+| **Upload a COA** | Attach the PDF and say "Upload this COA to the correct lots" — the assistant reads the document, finds matching lot numbers, and proposes the upload |
+| **Upload a spec sheet** | Attach the PDF and say "This is a spec sheet" — the assistant looks for contract numbers and matches to the right product |
+| **Check document coverage** | "What products are missing COAs?" or "Show me document status for Strawberry IQF" |
+| **Query inventory** | "How much mango do we have?" or "What's in the Newark warehouse?" |
+| **Move lots to discount** | "Move lot TN4-25142 from Grapes IQF to discount — expired, asking $0.25/lb" |
+| **Restore discount items** | "Restore disc-001 to regular inventory" |
+| **Check import review** | "Are there any items pending review from the last import?" |
+| **Check sync status** | "When was the last inventory sync?" |
+
+### File Upload
+
+- Click the paperclip icon to attach PDF or image files
+- Multiple files can be attached to a single message
+- Maximum file size: 50 MB per file
+- Supported types: PDF, JPEG, PNG, GIF, WebP
+
+### Confirmation Model
+
+The assistant **always asks for your approval** before taking any action that modifies data (uploading documents, creating discount items, restoring items). It will describe exactly what it intends to do and wait for your explicit "yes" before proceeding.
+
+### Limitations
+
+- The assistant cannot modify code or system configuration
+- It cannot run the weekly sync or seed scripts directly
+- It cannot delete documents or inventory records
+- Conversation history is not saved between page reloads
+
+---
+
 ## Admin Reference
 
 ### npm Scripts
@@ -388,6 +434,7 @@ SQLite database at `lamex.db`. Key tables:
 ### Environment
 
 - `AUTH_SECRET` in `.env.local` — required for NextAuth.js session encryption
+- `ANTHROPIC_API_KEY` in `.env.local` — required for the AI Assistant agent portal
 - Credentials stored in `secrets.md` (gitignored, never committed)
 
 ### Key URLs
@@ -402,3 +449,4 @@ SQLite database at `lamex.db`. Key tables:
 | `/qa/login` | Login page (routes by role) | No |
 | `/review` | Import review portal | Reviewer |
 | `/admin/discount` | Discount inventory admin | Reviewer |
+| `/admin/agent` | AI Assistant chat | QA or Reviewer |

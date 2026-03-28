@@ -45,24 +45,28 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Comprehensive user guide (`docs/user-guide.md`) for wiki publishing.
 - Security hardening: production auth fix (`trustHost`), calendar date validation, upload path boundary check, orphan file cleanup, session maxAge.
 
+### ✅ AI Assistant — Internal Agent Portal (v0.9.3)
+- Claude-powered chat interface at `/admin/agent` for QA and ops staff.
+- 12 tools: inventory queries, lot/contract lookup, document upload, discount management, import review, sync info.
+- File analysis: upload PDFs/images in chat, Claude reads and proposes matches to inventory records.
+- Confirmation model: all action tools require explicit user approval before execution.
+- Streaming SSE responses with tool activity indicators.
+- Auth: QA + reviewer roles only. Zero public exposure.
+
 ## Active Priorities
-### 1. QA Document Operations
-- Tighten upload workflow around the IQF/frozen product photo rule.
-- Enforce required-versus-optional document status per product type.
-
-### 2. Data Quality (remaining)
-- Audit current application behavior against CLAUDE.md rules (S002).
-- Validate unit types are correctly identified per product during sync.
-- Flag potential duplicate products with similar names/specs.
-
-### 3. Marketing Email
+### 1. Marketing Email
 - Build HTML email template for weekly inventory broadcast.
 - Highlight new arrivals and featured items.
 - Mobile-responsive design with CTA to hosted inventory page.
 
+### 2. Data Quality (remaining)
+- Validate unit types are correctly identified per product during sync.
+- Flag potential duplicate products with similar names/specs.
+
 ## Near-Term Candidate Slices
-- S002: Audit current application behavior against CLAUDE.md rules.
 - S007: Marketing email template and generation workflow.
+- S008: Agent UX improvements (markdown rendering, conversation persistence, role-gated tools).
+- S009: Batch document upload via agent (multi-file COA matching in one turn).
 
 ## Planning Notes
 - Prefer slices that produce a visible operational improvement in one pass.

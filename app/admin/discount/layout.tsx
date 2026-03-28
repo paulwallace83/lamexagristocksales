@@ -17,6 +17,7 @@ export default async function DiscountLayout({ children }: { children: React.Rea
     { href: "/qa", label: "Documents" },
     { href: "/review", label: "Import Review" },
     { href: "/admin/discount", label: "Discount" },
+    { href: "/admin/agent", label: "AI Assistant" },
     { href: "/", label: "Public Site" },
   ];
 

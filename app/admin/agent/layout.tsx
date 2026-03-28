@@ -2,11 +2,15 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AdminHeader from "@/components/AdminHeader";
 
-export default async function QALayout({ children }: { children: React.ReactNode }) {
+export default async function AgentLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
   if (!session?.user) {
-    return <>{children}</>;
+    redirect("/qa/login");
+  }
+
+  if (session.user.role !== "qa" && session.user.role !== "reviewer") {
+    redirect("/qa/login");
   }
 
   const isReviewer = session.user.role === "reviewer";
@@ -26,10 +30,10 @@ export default async function QALayout({ children }: { children: React.ReactNode
   return (
     <div className="min-h-screen bg-gray-50">
       <AdminHeader
-        portalName="QA Portal"
-        portalBadgeClass="bg-white/20"
+        portalName="AI Assistant"
+        portalBadgeClass="bg-indigo-500/80"
         navLinks={navLinks}
-        currentPath="/qa"
+        currentPath="/admin/agent"
         userEmail={session.user.email ?? ""}
       />
       <main>{children}</main>
