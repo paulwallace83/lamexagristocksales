@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
-        <header className="bg-white border-b border-gray-200 shadow-sm">
+        <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
             <Link href="/" className="flex items-center">
               <Image
@@ -41,24 +41,49 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="flex-1">{children}</main>
 
         <footer className="bg-[#1a2b5f] text-white mt-12">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-              <div className="flex flex-col items-center md:items-start gap-3">
+          <div className="max-w-7xl mx-auto px-4 py-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Brand */}
+              <div>
                 <Image
                   src="/assets/logo-food-group.png"
                   alt="Lamex Food Group — 60 Years"
                   width={200}
                   height={70}
-                  className="h-14 w-auto brightness-0 invert"
+                  className="h-14 w-auto brightness-0 invert mb-3"
                 />
-                <p className="text-sm text-white/60">
-                  &copy; {new Date().getFullYear()} Lamex Agri Foods. All rights reserved.
+                <p className="text-sm text-white/50 leading-relaxed">
+                  Global sourcing of processed fruits and vegetables. Over 60 years serving the food industry.
                 </p>
               </div>
-              <div className="flex gap-6">
-                <Link href="/" className="text-sm text-white/70 hover:text-white transition-colors">Inventory</Link>
-                <Link href="/contact" className="text-sm text-white/70 hover:text-white transition-colors">Contact</Link>
+
+              {/* Quick links */}
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-3">Quick Links</h3>
+                <div className="space-y-2">
+                  <Link href="/" className="block text-sm text-white/70 hover:text-white transition-colors">Inventory</Link>
+                  <Link href="/contact" className="block text-sm text-white/70 hover:text-white transition-colors">Request a Quote</Link>
+                </div>
               </div>
+
+              {/* Contact */}
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-3">Contact</h3>
+                <div className="space-y-2 text-sm text-white/70">
+                  <p>Lamex Agri Foods</p>
+                  <p>
+                    <a href="mailto:sales@lamexfoods.us" className="hover:text-white transition-colors">
+                      sales@lamexfoods.us
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-white/10 mt-8 pt-6">
+              <p className="text-xs text-white/40 text-center">
+                &copy; {new Date().getFullYear()} Lamex Agri Foods. All rights reserved.
+              </p>
             </div>
           </div>
         </footer>

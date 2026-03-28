@@ -206,15 +206,22 @@ export function removeDocument(productId: string, documentId: string): boolean {
 /*  File storage                                                       */
 /* ------------------------------------------------------------------ */
 
+/** Sanitize a path segment to prevent directory traversal. */
+function safeSeg(segment: string): string {
+  return segment.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
 export function getUploadDir(productId: string, category: string, opts?: { lotId?: number; baseContract?: string }): string {
+  const pid = safeSeg(productId);
+  const cat = safeSeg(category);
   let dir: string;
   if (opts?.lotId != null) {
-    dir = join(process.cwd(), "public", "uploads", productId, "lots", String(opts.lotId), category);
+    dir = join(process.cwd(), "public", "uploads", pid, "lots", String(opts.lotId), cat);
   } else if (opts?.baseContract != null) {
-    dir = join(process.cwd(), "public", "uploads", productId, "contracts", opts.baseContract, category);
+    dir = join(process.cwd(), "public", "uploads", pid, "contracts", safeSeg(opts.baseContract), cat);
   } else {
     // Legacy fallback
-    dir = join(process.cwd(), "public", "uploads", productId, category);
+    dir = join(process.cwd(), "public", "uploads", pid, cat);
   }
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
@@ -222,19 +229,56 @@ export function getUploadDir(productId: string, category: string, opts?: { lotId
   return dir;
 }
 
-/** Build the public URL path for a document. */
+/** Build the public URL path for a document. All segments are sanitized. */
 export function getDocumentUrl(productId: string, category: string, filename: string, opts?: { lotId?: number; baseContract?: string }): string {
+  const pid = encodeURIComponent(safeSeg(productId));
+  const cat = encodeURIComponent(safeSeg(category));
+  const fn = encodeURIComponent(safeSeg(filename));
   if (opts?.lotId != null) {
-    return `/uploads/${productId}/lots/${opts.lotId}/${category}/${filename}`;
+    return `/uploads/${pid}/lots/${opts.lotId}/${cat}/${fn}`;
   } else if (opts?.baseContract != null) {
-    return `/uploads/${productId}/contracts/${opts.baseContract}/${category}/${filename}`;
+    return `/uploads/${pid}/contracts/${encodeURIComponent(safeSeg(opts.baseContract))}/${cat}/${fn}`;
   }
-  return `/uploads/${productId}/${category}/${filename}`;
+  return `/uploads/${pid}/${cat}/${fn}`;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Status / dashboard                                                 */
 /* ------------------------------------------------------------------ */
+
+/** Quick check: does this product have at least one document uploaded? */
+export function productHasDocs(productId: string): boolean {
+  const db = getDb();
+  const row = db.prepare("SELECT 1 FROM documents WHERE product_id = ? LIMIT 1").get(productId);
+  return row != null;
+}
+
+/** Map of productId → boolean for all products with docs. */
+export function getProductDocMap(): Map<string, boolean> {
+  const db = getDb();
+  const rows = db.prepare("SELECT DISTINCT product_id FROM documents").all() as Array<{ product_id: string }>;
+  const map = new Map<string, boolean>();
+  for (const r of rows) {
+    map.set(r.product_id, true);
+  }
+  return map;
+}
+
+/** Get the first product photo URL for a product (if any). */
+export function getProductPhotoUrl(productId: string): string | null {
+  const db = getDb();
+  const row = db.prepare(
+    "SELECT filename, base_contract FROM documents WHERE product_id = ? AND category = 'photos' LIMIT 1",
+  ).get(productId) as { filename: string; base_contract: string | null } | undefined;
+  if (!row) return null;
+  const pid = encodeURIComponent(safeSeg(productId));
+  const fn = encodeURIComponent(safeSeg(row.filename));
+  if (row.base_contract) {
+    const bc = encodeURIComponent(safeSeg(row.base_contract));
+    return `/uploads/${pid}/contracts/${bc}/photos/${fn}`;
+  }
+  return `/uploads/${pid}/photos/${fn}`;
+}
 
 export function getDocumentStatus(): ProductDocStatus[] {
   const { products } = getInventory();

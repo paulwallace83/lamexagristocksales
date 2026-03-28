@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getProductById, getAllProductIds } from "@/lib/inventory-db";
 import {
   getTotalQuantity,
   getTotalWeight,
   formatWeight,
   formatQuantity,
-  extractBaseContract,
   getBaseContracts,
 } from "@/lib/inventory";
 import type { Listing, Lot } from "@/lib/inventory";
@@ -15,6 +15,7 @@ import {
   getRequiredDocs,
   getCategoryLabel,
   getDocumentUrl,
+  getProductPhotoUrl,
 } from "@/lib/documents";
 import type { DocumentEntry, DocCategory } from "@/lib/documents";
 
@@ -33,67 +34,70 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const totalQty = getTotalQuantity(product);
   const totalWeight = getTotalWeight(product);
   const documents = getDocumentsForProduct(id);
-  const hasLots = product.listings.some((l) => l.lots.length > 0);
+  const photoUrl = getProductPhotoUrl(id);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <Link href="/" className="text-sm text-[#4a90c4] hover:underline mb-4 inline-block">
-        &larr; Back to Inventory
-      </Link>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+        <Link href="/" className="hover:text-[#4a90c4] transition-colors">Inventory</Link>
+        <svg className="w-3.5 h-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+        <span className="text-gray-900 font-medium">{product.product}</span>
+      </nav>
 
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="bg-[#1a2b5f] px-6 py-5 text-white">
-          <h1 className="text-2xl font-bold">{product.product}</h1>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {product.organic ? (
-              <span className="bg-[#1a2b5f] text-white text-xs font-semibold px-2.5 py-1 rounded">Organic</span>
-            ) : (
-              <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded">Conventional</span>
+        <div className="bg-gradient-to-r from-[#1a2b5f] to-[#243f75] px-6 py-6 text-white">
+          <div className="flex items-start gap-5">
+            {photoUrl && (
+              <div className="hidden md:block shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 border-white/20 bg-white/10">
+                <Image
+                  src={photoUrl}
+                  alt={product.product}
+                  width={80}
+                  height={80}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             )}
-            {product.certifications.map((c) => (
-              <span key={c} className="bg-white/20 text-white text-xs font-medium px-2.5 py-1 rounded">{c}</span>
-            ))}
+            <div className="flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold">{product.product}</h1>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {product.organic ? (
+                  <span className="bg-green-500/20 text-green-100 text-xs font-semibold px-2.5 py-1 rounded border border-green-400/30">
+                    Organic
+                  </span>
+                ) : (
+                  <span className="bg-white/10 text-white/80 text-xs font-semibold px-2.5 py-1 rounded border border-white/10">
+                    Conventional
+                  </span>
+                )}
+                {product.certifications.map((c) => (
+                  <span key={c} className="bg-white/10 text-white/80 text-xs font-medium px-2.5 py-1 rounded border border-white/10">{c}</span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gray-50 border-b border-gray-200">
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase">Format</p>
-            <p className="text-sm font-medium text-gray-900">{product.format}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase">Process</p>
-            <p className="text-sm font-medium text-gray-900">{product.processType}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase">Specification</p>
-            <p className="text-sm font-medium text-gray-900">{product.specification || "—"}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase">Pack Size</p>
-            <p className="text-sm font-medium text-gray-900">{product.packSize}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase">Total Quantity</p>
-            <p className="text-sm font-medium text-gray-900">{formatQuantity(totalQty, product.unitType)}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase">Total Weight</p>
-            <p className="text-sm font-medium text-gray-900">{formatWeight(totalWeight)}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase">Locations</p>
-            <p className="text-sm font-medium text-gray-900">{product.listings.length} listing{product.listings.length > 1 ? "s" : ""}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase">Price</p>
+        {/* Summary stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-gray-200">
+          <SummaryCell label="Format" value={product.format} />
+          <SummaryCell label="Process" value={product.processType} />
+          <SummaryCell label="Specification" value={product.specification || "—"} />
+          <SummaryCell label="Pack Size" value={product.packSize} />
+          <SummaryCell label="Total Quantity" value={formatQuantity(totalQty, product.unitType)} />
+          <SummaryCell label="Total Weight" value={formatWeight(totalWeight)} />
+          <SummaryCell label="Locations" value={`${product.listings.length} listing${product.listings.length > 1 ? "s" : ""}`} />
+          <div className="bg-white p-4 flex flex-col justify-center">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Price</p>
             <Link
               href={`/contact?product=${encodeURIComponent(product.product)}`}
-              className="inline-block mt-0.5 bg-[#1a2b5f] text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-[#4a90c4] transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 bg-[#1a2b5f] text-white text-sm font-semibold px-4 py-2 rounded-md hover:bg-[#4a90c4] transition-colors"
             >
-              Inquire
+              Request Quote
             </Link>
           </div>
         </div>
@@ -108,7 +112,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 listing={listing}
                 unitType={product.unitType}
                 documents={documents}
-                showLots={hasLots}
+                showLots={listing.lots.length > 0}
               />
             ))}
           </div>
@@ -121,7 +125,26 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           baseContracts={getBaseContracts(product)}
           requiredContractDocs={getRequiredDocs(product).contractLevel}
         />
+
+        {/* Sticky CTA on mobile */}
+        <div className="md:hidden sticky bottom-0 p-4 bg-white border-t border-gray-200 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+          <Link
+            href={`/contact?product=${encodeURIComponent(product.product)}`}
+            className="block w-full text-center bg-[#1a2b5f] text-white font-semibold py-3 rounded-md hover:bg-[#4a90c4] transition-colors"
+          >
+            Request Quote
+          </Link>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function SummaryCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white p-4">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className="text-sm font-medium text-gray-900">{value}</p>
     </div>
   );
 }
@@ -138,58 +161,60 @@ function ListingCard({
   showLots: boolean;
 }) {
   return (
-    <div className="border border-gray-200 rounded-lg p-4">
-      <div className="flex flex-wrap items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-900">
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-gray-50 px-4 py-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-200">
+        <h3 className="font-semibold text-gray-900 text-sm">
           {listing.warehouse}
-          <span className="text-gray-500 font-normal"> — {listing.city}, {listing.state}</span>
+          <span className="text-gray-400 font-normal"> — {listing.city}, {listing.state}</span>
         </h3>
-        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+        <span className="text-xs bg-[#1a2b5f]/10 text-[#1a2b5f] px-2 py-0.5 rounded font-medium">
           {listing.countryOfOrigin}
         </span>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-        <div>
-          <span className="text-gray-500">Supplier:</span>
-          <span className="ml-1 text-gray-900">{listing.supplier}</span>
-        </div>
-        {!showLots && (
-          <>
-            <div>
-              <span className="text-gray-500">Quantity:</span>
-              <span className="ml-1 text-gray-900">
-                {listing.quantity.toLocaleString()} {listing.unitType || unitType}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-500">Weight:</span>
-              <span className="ml-1 text-gray-900">{formatWeight(listing.weightLbs)}</span>
-            </div>
-          </>
-        )}
-        <div>
-          <span className="text-gray-500">Arrived:</span>
-          <span className="ml-1 text-gray-900">{listing.arrived}</span>
-        </div>
-        {listing.packDetail && (
+      <div className="px-4 py-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div>
-            <span className="text-gray-500">Pack:</span>
-            <span className="ml-1 text-gray-900">{listing.packDetail}</span>
+            <span className="text-gray-400 text-xs">Supplier</span>
+            <p className="text-gray-900">{listing.supplier}</p>
+          </div>
+          {!showLots && (
+            <>
+              <div>
+                <span className="text-gray-400 text-xs">Quantity</span>
+                <p className="text-gray-900">
+                  {listing.quantity.toLocaleString()} {listing.unitType || unitType}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-400 text-xs">Weight</span>
+                <p className="text-gray-900">{formatWeight(listing.weightLbs)}</p>
+              </div>
+            </>
+          )}
+          <div>
+            <span className="text-gray-400 text-xs">Arrived</span>
+            <p className="text-gray-900">{listing.arrived}</p>
+          </div>
+          {listing.packDetail && (
+            <div>
+              <span className="text-gray-400 text-xs">Pack</span>
+              <p className="text-gray-900">{listing.packDetail}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Lots */}
+        {listing.lots.length > 0 && (
+          <div className="mt-4 border-t border-gray-100 pt-3">
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Lots</h4>
+            <div className="space-y-2">
+              {listing.lots.map((lot) => (
+                <LotRow key={lot.id} lot={lot} unitType={listing.unitType || unitType} documents={documents} />
+              ))}
+            </div>
           </div>
         )}
       </div>
-
-      {/* Lots */}
-      {listing.lots.length > 0 && (
-        <div className="mt-4 border-t border-gray-100 pt-3">
-          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Lots</h4>
-          <div className="space-y-2">
-            {listing.lots.map((lot) => (
-              <LotRow key={lot.id} lot={lot} unitType={listing.unitType || unitType} documents={documents} />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -198,33 +223,48 @@ function LotRow({ lot, unitType, documents }: { lot: Lot; unitType: string; docu
   const lotDocs = documents.filter((d) => d.lotIds.includes(lot.id));
   const coaDocs = lotDocs.filter((d) => d.category === "coa");
   const testDocs = lotDocs.filter((d) => d.category === "test-results");
+  const hasCOA = coaDocs.length > 0;
 
   return (
-    <div className="bg-gray-50 rounded px-3 py-2">
+    <div className="bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-100">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span className="font-mono font-semibold text-gray-900">Lot {lot.lotNumber}</span>
+        <div className="flex items-center gap-1.5">
+          {hasCOA ? (
+            <svg className="w-4 h-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+            </svg>
+          )}
+          <span className="font-mono font-semibold text-gray-900">Lot {lot.lotNumber}</span>
+        </div>
         {lot.contracts.length > 0 && (
-          <span className="text-xs text-gray-500">Ref: {lot.contracts.join(", ")}</span>
+          <span className="text-xs text-gray-400">Ref: {lot.contracts.join(", ")}</span>
         )}
         <span className="text-gray-600">
           {lot.quantity.toLocaleString()} {unitType}
         </span>
         <span className="text-gray-600">{formatWeight(lot.weightLbs)}</span>
-        <span className="text-gray-500 text-xs">BBD: {lot.bbd}</span>
+        <span className="text-gray-400 text-xs">BBD: {lot.bbd}</span>
       </div>
 
       {/* Lot documents */}
       {(coaDocs.length > 0 || testDocs.length > 0) && (
-        <div className="mt-1 flex flex-wrap gap-3">
+        <div className="mt-1.5 flex flex-wrap gap-3">
           {coaDocs.map((doc) => (
             <a
               key={doc.id}
               href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotId: doc.lotIds[0] })}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-[#4a90c4] hover:underline"
+              className="inline-flex items-center gap-1 text-xs text-[#4a90c4] hover:underline"
             >
-              COA: {doc.originalName}
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              COA
             </a>
           ))}
           {testDocs.map((doc) => (
@@ -233,9 +273,12 @@ function LotRow({ lot, unitType, documents }: { lot: Lot; unitType: string; docu
               href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotId: doc.lotIds[0] })}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-[#4a90c4] hover:underline"
+              className="inline-flex items-center gap-1 text-xs text-[#4a90c4] hover:underline"
             >
-              Tests: {doc.originalName}
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Test Results
             </a>
           ))}
         </div>
@@ -269,35 +312,90 @@ function ContractDocuments({
 
   if (contractDocs.length === 0) return null;
 
+  const isImage = (filename: string) => /\.(jpe?g|png|gif|webp)$/i.test(filename);
+
   return (
     <div className="p-6 border-t border-gray-200">
       <h2 className="text-lg font-bold text-gray-900 mb-4">Contract Documents</h2>
-      <div className="space-y-4">
+      <div className="space-y-6">
         {baseContracts.map((bc) => {
           const docs = contractDocs.filter((d) => d.baseContract === bc);
           if (docs.length === 0) return null;
 
           return (
-            <div key={bc}>
-              <h3 className="text-sm font-semibold text-gray-600 mb-2">Contract {bc}</h3>
-              <div className="space-y-2">
+            <div key={bc} className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700">Contract {bc}</h3>
+              </div>
+              <div className="p-4 space-y-4">
                 {requiredContractDocs.map((cat) => {
                   const catDocs = docs.filter((d) => d.category === cat);
                   if (catDocs.length === 0) return null;
+
+                  const hasImages = catDocs.some((d) => isImage(d.filename));
+
                   return (
                     <div key={cat}>
-                      <p className="text-xs font-semibold text-gray-500 uppercase">{getCategoryLabel(cat)}</p>
-                      {catDocs.map((doc) => (
-                        <a
-                          key={doc.id}
-                          href={getDocumentUrl(doc.productId, doc.category, doc.filename, { baseContract: bc })}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-[#4a90c4] hover:underline"
-                        >
-                          {doc.originalName}
-                        </a>
-                      ))}
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                        {getCategoryLabel(cat)}
+                      </p>
+                      {hasImages ? (
+                        <div className="flex flex-wrap gap-3">
+                          {catDocs.map((doc) => {
+                            const url = getDocumentUrl(doc.productId, doc.category, doc.filename, { baseContract: bc });
+                            if (isImage(doc.filename)) {
+                              return (
+                                <a
+                                  key={doc.id}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group block w-24 h-24 rounded-lg overflow-hidden border border-gray-200 hover:border-[#4a90c4] transition-colors"
+                                >
+                                  <Image
+                                    src={url}
+                                    alt={doc.originalName}
+                                    width={96}
+                                    height={96}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                  />
+                                </a>
+                              );
+                            }
+                            return (
+                              <a
+                                key={doc.id}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-sm text-[#4a90c4] hover:underline"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                {doc.originalName}
+                              </a>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {catDocs.map((doc) => (
+                            <a
+                              key={doc.id}
+                              href={getDocumentUrl(doc.productId, doc.category, doc.filename, { baseContract: bc })}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-sm text-[#4a90c4] hover:underline"
+                            >
+                              <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              {doc.originalName}
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

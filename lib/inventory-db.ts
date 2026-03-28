@@ -223,3 +223,30 @@ export function getAllProductIds(): string[] {
   const rows = db.prepare("SELECT id FROM products").all() as Array<{ id: string }>;
   return rows.map((r) => r.id);
 }
+
+export interface InventoryStats {
+  totalProducts: number;
+  totalWeightLbs: number;
+  uniqueOrigins: number;
+  uniqueWarehouses: number;
+}
+
+export function getInventoryStats(): InventoryStats {
+  const db = getDb();
+  const totals = db.prepare(
+    "SELECT COUNT(DISTINCT product_id) as products, COALESCE(SUM(weight_lbs), 0) as weight FROM listings",
+  ).get() as { products: number; weight: number };
+  const origins = db.prepare(
+    "SELECT COUNT(DISTINCT country_of_origin) as cnt FROM listings",
+  ).get() as { cnt: number };
+  const warehouses = db.prepare(
+    "SELECT COUNT(DISTINCT warehouse) as cnt FROM listings",
+  ).get() as { cnt: number };
+
+  return {
+    totalProducts: totals.products,
+    totalWeightLbs: totals.weight,
+    uniqueOrigins: origins.cnt,
+    uniqueWarehouses: warehouses.cnt,
+  };
+}
