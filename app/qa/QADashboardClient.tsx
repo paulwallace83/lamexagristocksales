@@ -70,6 +70,8 @@ export default function QADashboardClient({ statuses }: { statuses: ProductDocSt
               <tr className="bg-gray-50 border-b-2 border-gray-200">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Product</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Lot COAs</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Heavy Metals</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Pesticide</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Contract Specs</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Contract Labels</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Contract Photos</th>
@@ -83,9 +85,30 @@ export default function QADashboardClient({ statuses }: { statuses: ProductDocSt
                 return (
                   <React.Fragment key={s.productId}>
                     <tr className="border-b border-gray-100 hover:bg-blue-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.product}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                        <span>{s.product}</span>
+                        {s.organic ? (
+                          <span className="ml-2 align-middle inline-block bg-green-100 text-green-700 text-[10px] font-semibold px-1.5 py-0.5 rounded">Organic</span>
+                        ) : (
+                          <span className="ml-2 align-middle inline-block bg-gray-100 text-gray-500 text-[10px] font-semibold px-1.5 py-0.5 rounded">Conventional</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-center">
                         <CoverageBadge have={s.lotsWithCOA} total={s.lotCount} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {s.expectedTest === "heavy-metals" ? (
+                          <CoverageBadge have={s.lotsWithTestResults} total={s.lotCount} />
+                        ) : (
+                          <span className="text-gray-300 text-sm">N/A</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {s.expectedTest === "pesticide" ? (
+                          <CoverageBadge have={s.lotsWithTestResults} total={s.lotCount} />
+                        ) : (
+                          <span className="text-gray-300 text-sm">N/A</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <CoverageBadge have={s.contractsWithSpecs} total={s.contractCount} />
@@ -120,7 +143,7 @@ export default function QADashboardClient({ statuses }: { statuses: ProductDocSt
                     </tr>
                     {s.lots.length > 0 && (
                       <tr className="border-b border-gray-200">
-                        <td colSpan={7} className="px-4 py-2 bg-gray-50/60">
+                        <td colSpan={9} className="px-4 py-2 bg-gray-50/60">
                           <div className="flex flex-wrap gap-1.5">
                             {s.lots.map((lot) => {
                               const pillColor = !lot.hasCOA

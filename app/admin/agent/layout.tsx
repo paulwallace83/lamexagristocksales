@@ -28,15 +28,15 @@ export default async function AgentLayout({ children }: { children: React.ReactN
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="fixed inset-0 bg-gray-50 flex flex-col z-[60]">
       <AdminHeader
-        portalName="AI Assistant"
+        portalName="TDPAIB"
         portalBadgeClass="bg-indigo-500/80"
         navLinks={navLinks}
         currentPath="/admin/agent"
         userEmail={session.user.email ?? ""}
       />
-      <main>{children}</main>
+      <main className="flex-1 min-h-0">{children}</main>
     </div>
   );
 }

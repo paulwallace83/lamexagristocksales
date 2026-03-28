@@ -53,6 +53,21 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Streaming SSE responses with tool activity indicators.
 - Auth: QA + reviewer roles only. Zero public exposure.
 
+### ✅ Agent UX & Test-Result Tracking (v0.9.4 — S008)
+- Branded as "Top Dog Paul's AI Brain" (TDPAIB) with custom avatar.
+- Markdown rendering for agent responses (tables, bold, headers, lists, blockquotes).
+- True streaming via `anthropic.messages.stream()` for token-by-token delivery.
+- Drag-and-drop file upload support.
+- File persistence across conversation turns (per-user temp directory, 30 min TTL).
+- Max iterations warning when 10-step tool-use limit is reached.
+- Full-viewport chat layout (fixed positioning, no footer bleed).
+- Test-result recognition: COA vs test-result distinction based on issuer (supplier vs third-party lab).
+- QA dashboard: organic/conventional labels, separate Heavy Metals and Pesticide columns.
+- `list_products` includes active discount items alongside regular inventory.
+- Fixed SQL join bug that inflated product weight totals (38M → 3.5M lbs).
+- Zero-stock products (moved to discount) filtered from product list.
+- Security hardening: per-user file isolation, error message sanitization, product existence validation, link URL scheme validation.
+
 ## Active Priorities
 ### 1. Marketing Email
 - Build HTML email template for weekly inventory broadcast.
@@ -65,8 +80,10 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 
 ## Near-Term Candidate Slices
 - S007: Marketing email template and generation workflow.
-- S008: Agent UX improvements (markdown rendering, conversation persistence, role-gated tools).
 - S009: Batch document upload via agent (multi-file COA matching in one turn).
+- S010: Conversation persistence (save/resume agent chat sessions).
+- S011: Agent-powered weekly sync assistant (paste pivot data in agent, auto-parse and sync).
+- S012: Customer inquiry portal (public-facing quote request with agent-assisted follow-up).
 
 ## Planning Notes
 - Prefer slices that produce a visible operational improvement in one pass.

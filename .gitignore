@@ -10,3 +10,4 @@ lamex.db-shm
 secrets.md
 data/snapshots/*.json
 public/uploads/
+.agent-uploads/

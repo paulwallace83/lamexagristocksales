@@ -1,13 +1,18 @@
 import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, statSync, unlinkSync } from "fs";
+import { join, resolve } from "path";
 import { auth } from "@/lib/auth";
 import { TOOL_DEFINITIONS, executeTool, type FileData } from "@/lib/agent-tools";
 
 export const dynamic = "force-dynamic";
 
+const AGENT_TEMP_DIR = join(process.cwd(), ".agent-uploads");
+const TEMP_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM_PROMPT = `You are an internal operations assistant for Lamex Agri Stock Sales. You help QA and operations staff manage inventory documentation and stock records. You are accessed only by authorised Lamex staff.
+const SYSTEM_PROMPT = `You are Top Dog Paul's AI Brain (TDPAIB) — an internal operations assistant for Lamex Agri Stock Sales. You help QA and operations staff manage inventory documentation and stock records. You are accessed only by authorised Lamex staff.
 
 You have access to the inventory system and can:
 - Search and query current inventory (products, lots, contracts, document status)
@@ -20,10 +25,11 @@ RULES — follow these exactly:
 1. Always confirm before any action. Describe exactly what you are about to do and wait for explicit approval ("yes", "go ahead", "do it") before calling upload_document, create_discount_item, or restore_discount_item.
 2. When a file is uploaded, read it carefully. State your confidence and reasoning before proposing any action.
 3. COA matching: extract all lot numbers from the document. Search each using get_lot_by_number. List every match found. Propose uploading to all matched lots. Wait for confirmation.
-4. Spec sheet / label matching: look for a contract number in the document, then use get_contract_info. If no contract number is visible, search by product name. List candidates with confidence. Wait for confirmation.
-5. Product photo matching: IQF and frozen products only. Politely decline photo uploads for Juice Concentrate or Puree products and explain the rule.
-6. Do not discuss customer names (none exist in this system), regular inventory pricing, or internal ERP references.
-7. You cannot modify code or system configuration. Refer code questions to the developer.`;
+4. Test result recognition: The key distinction is WHO issued the document. A COA comes from the supplier/manufacturer. A test result comes from an independent third-party laboratory (SGS, Eurofins, GFL, Bureau Veritas, etc.). Even if the filename says "COA", if the document is issued by a third-party lab, it is a "test-results" document. Match test results to lots the same way as COAs (extract lot numbers, search, confirm). Category must be "test-results" when uploading. EXCEPTION: If a supplier's COA itself contains heavy metal or pesticide results within it, upload it as "coa" (it's still the supplier's certificate) and note to the user that the test data is included on the COA. Expected test results per product type: every Juice Concentrate lot should have a heavy metal test, and every Organic product lot should have a pesticide test.
+5. Spec sheet / label matching: look for a contract number in the document, then use get_contract_info. If no contract number is visible, search by product name. List candidates with confidence. Wait for confirmation.
+6. Product photo matching: IQF and frozen products only. Politely decline photo uploads for Juice Concentrate or Puree products and explain the rule.
+7. Do not discuss customer names (none exist in this system), regular inventory pricing, or internal ERP references.
+8. You cannot modify code or system configuration. Refer code questions to the developer.`;
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_MIME_TYPES = new Set([
@@ -72,6 +78,21 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Per-user temp directory for file persistence across conversation turns
+  const userHash = (session.user!.email || "anon").replace(/[^a-zA-Z0-9]/g, "_");
+  const userTempDir = join(AGENT_TEMP_DIR, userHash);
+  mkdirSync(userTempDir, { recursive: true });
+
+  // Clean stale files (>30 min old)
+  try {
+    for (const f of readdirSync(userTempDir)) {
+      const fp = join(userTempDir, f);
+      try {
+        if (Date.now() - statSync(fp).mtimeMs > TEMP_MAX_AGE_MS) unlinkSync(fp);
+      } catch { /* ignore */ }
+    }
+  } catch { /* ignore */ }
+
   // Process uploaded files — build file map and content blocks
   const fileMap = new Map<string, FileData>();
   const fileContentBlocks: Anthropic.ContentBlockParam[] = [];
@@ -83,6 +104,14 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     fileMap.set(safeName, { buffer, mimeType: file.type, name: file.name });
+
+    // Persist to user-scoped temp so the file survives across conversation turns
+    const metaPath = join(userTempDir, `${safeName}.json`);
+    const dataPath = join(userTempDir, safeName);
+    if (resolve(dataPath).startsWith(resolve(userTempDir))) {
+      writeFileSync(dataPath, buffer);
+      writeFileSync(metaPath, JSON.stringify({ mimeType: file.type, name: file.name }));
+    }
 
     const base64 = buffer.toString("base64");
 
@@ -102,6 +131,25 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+
+  // Load previously uploaded files from user's temp dir (for follow-up turns)
+  try {
+    for (const f of readdirSync(userTempDir)) {
+      if (f.endsWith(".json")) continue;
+      const safeName = f;
+      if (fileMap.has(safeName)) continue;
+      const metaPath = join(userTempDir, `${safeName}.json`);
+      const dataPath = join(userTempDir, safeName);
+      if (existsSync(metaPath) && existsSync(dataPath)) {
+        const meta = JSON.parse(readFileSync(metaPath, "utf-8"));
+        fileMap.set(safeName, {
+          buffer: readFileSync(dataPath),
+          mimeType: meta.mimeType,
+          name: meta.name,
+        });
+      }
+    }
+  } catch { /* ignore */ }
 
   // Attach file content blocks to the last user message of this turn
   if (fileContentBlocks.length > 0 && apiMessages.length > 0) {
@@ -126,9 +174,10 @@ export async function POST(req: NextRequest) {
 
       try {
         let messages = [...apiMessages];
+        let iteration = 0;
 
-        for (let i = 0; i < MAX_ITERATIONS; i++) {
-          const response = await anthropic.messages.create({
+        for (; iteration < MAX_ITERATIONS; iteration++) {
+          const apiStream = anthropic.messages.stream({
             model: "claude-sonnet-4-6",
             max_tokens: 4096,
             system: SYSTEM_PROMPT,
@@ -136,12 +185,12 @@ export async function POST(req: NextRequest) {
             messages,
           });
 
-          // Emit text blocks
-          for (const block of response.content) {
-            if (block.type === "text" && block.text) {
-              send({ type: "text", text: block.text });
-            }
-          }
+          // Stream text deltas to client as they arrive
+          apiStream.on("text", (textDelta) => {
+            send({ type: "text", text: textDelta });
+          });
+
+          const response = await apiStream.finalMessage();
 
           // Collect tool use blocks
           const toolUseBlocks = response.content.filter(
@@ -187,10 +236,18 @@ export async function POST(req: NextRequest) {
           ];
         }
 
+        if (iteration >= MAX_ITERATIONS) {
+          send({
+            type: "warning",
+            message:
+              "I reached the maximum number of steps for this request. The response may be incomplete — send a follow-up message to continue.",
+          });
+        }
+
         send({ type: "done" });
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : "Unknown error";
-        send({ type: "error", message: errorMsg });
+        console.error("[agent] Stream error:", err);
+        send({ type: "error", message: "Something went wrong processing your request. Please try again." });
       } finally {
         controller.close();
       }

@@ -35,15 +35,20 @@ export interface RequiredDocs {
 export interface ProductDocStatus {
   productId: string;
   product: string;
+  format: string;
+  organic: boolean;
   requiredDocs: RequiredDocs;
   lotCount: number;
   lotsWithCOA: number;
+  lotsWithTestResults: number;
+  expectedTest: "heavy-metals" | "pesticide" | null;
   lots: Array<{
     id: number;
     lotNumber: string;
     contracts: string[];
     supplier: string;
     hasCOA: boolean;
+    hasTestResult: boolean;
   }>;
   contractCount: number;
   contractsWithSpecs: number;
@@ -312,13 +317,23 @@ export function getDocumentStatus(): ProductDocStatus[] {
 
     // Count lots that have at least one COA
     const lotIdsWithCOA = new Set<number>();
+    const lotIdsWithTestResult = new Set<number>();
     for (const doc of productDocs) {
       if (doc.category === "coa") {
-        for (const lotId of doc.lotIds) {
-          lotIdsWithCOA.add(lotId);
-        }
+        for (const lotId of doc.lotIds) lotIdsWithCOA.add(lotId);
+      }
+      if (doc.category === "test-results") {
+        for (const lotId of doc.lotIds) lotIdsWithTestResult.add(lotId);
       }
     }
+
+    // Determine expected test type
+    const isJC = p.format === "Juice Concentrate";
+    const expectedTest: "heavy-metals" | "pesticide" | null = isJC
+      ? "heavy-metals"
+      : p.organic
+        ? "pesticide"
+        : null;
 
     // Count contracts with docs
     const contractsWithSpecs = new Set(
@@ -341,15 +356,20 @@ export function getDocumentStatus(): ProductDocStatus[] {
     return {
       productId: p.id,
       product: p.product,
+      format: p.format,
+      organic: p.organic,
       requiredDocs: required,
       lotCount: lots.length,
       lotsWithCOA: lotIdsWithCOA.size,
+      lotsWithTestResults: lotIdsWithTestResult.size,
+      expectedTest,
       lots: lots.map((lot) => ({
         id: lot.id,
         lotNumber: lot.lotNumber,
         contracts: lot.contracts,
         supplier: lotSupplier.get(lot.id) || "",
         hasCOA: lotIdsWithCOA.has(lot.id),
+        hasTestResult: lotIdsWithTestResult.has(lot.id),
       })),
       contractCount: baseContracts.length,
       contractsWithSpecs,

@@ -7,6 +7,7 @@ import {
   findByContractNumber,
   searchProducts,
   getSyncInfo,
+  getTestResultCoverage,
 } from "./agent-db";
 import { getProductById } from "./inventory-db";
 import { getDocumentStatus, addDocument, getUploadDir, getDocumentUrl } from "./documents";
@@ -32,7 +33,7 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
   {
     name: "list_products",
     description:
-      "Get a lightweight list of all products currently in inventory with quantity/weight totals and warehouse locations. Use this for a broad overview before doing more specific lookups.",
+      "Get a lightweight list of all products currently in regular inventory with quantity/weight totals and warehouse locations, plus any active Discount & Clearance items. Use this for a broad overview before doing more specific lookups.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
@@ -89,7 +90,7 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
   {
     name: "get_document_status",
     description:
-      "Check document coverage (COAs, spec sheets, labels, photos) for all products or a specific product. Shows how many lots have COAs and how many contracts have required documents.",
+      "Check document coverage (COAs, test results, spec sheets, labels, photos) for all products or a specific product. Shows how many lots have COAs and test results, flags lots expected to have test results (heavy metals for Juice Concentrate, pesticide for Organic), and how many contracts have required documents.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -226,8 +227,11 @@ export async function executeTool(
   switch (toolName) {
     /* ── Read-only tools ─────────────────────────────────────────── */
 
-    case "list_products":
-      return getProductSummaries();
+    case "list_products": {
+      const products = getProductSummaries();
+      const discountItems = getDiscountItems("active");
+      return { products, discountItems };
+    }
 
     case "get_product_details": {
       const id = String(input.productId ?? "");
@@ -262,12 +266,21 @@ export async function executeTool(
     case "get_document_status": {
       const productId = input.productId ? String(input.productId) : undefined;
       const allStatuses = getDocumentStatus();
+      const testCoverage = getTestResultCoverage();
+      const testMap = new Map(testCoverage.map((t) => [t.productId, t]));
+
+      // Enrich with missingTestLots (specific lot IDs the agent needs for matching)
+      const enriched = allStatuses.map((s) => ({
+        ...s,
+        missingTestLots: testMap.get(s.productId)?.missingTestLots ?? [],
+      }));
+
       if (productId) {
-        const found = allStatuses.find((s) => s.productId === productId);
+        const found = enriched.find((s) => s.productId === productId);
         if (!found) return { error: `Product '${productId}' not found` };
         return found;
       }
-      return allStatuses;
+      return enriched;
     }
 
     case "get_discount_items": {
@@ -298,8 +311,14 @@ export async function executeTool(
       const category = String(input.category ?? "") as DocCategory;
       const fileRef = String(input.fileRef ?? "");
       const originalName = String(input.originalName ?? "");
-      const lotIds = Array.isArray(input.lotIds) ? (input.lotIds as number[]) : [];
+      const lotIds = Array.isArray(input.lotIds)
+        ? (input.lotIds as unknown[]).filter((id): id is number => typeof id === "number" && Number.isInteger(id))
+        : [];
       const baseContract = input.baseContract ? String(input.baseContract) : undefined;
+
+      if (!productId) return { error: "productId is required" };
+      const productExists = getProductById(productId);
+      if (!productExists) return { error: `Product '${productId}' not found` };
 
       if (!VALID_CATEGORIES.includes(category)) {
         return { error: `Invalid category '${category}'` };
@@ -313,7 +332,7 @@ export async function executeTool(
 
       const fileData = fileMap.get(fileRef);
       if (!fileData) {
-        return { error: `File '${fileRef}' not found. Available files: ${[...fileMap.keys()].join(", ") || "none"}` };
+        return { error: `File '${fileRef}' not found. The file may have expired — please re-upload it.` };
       }
 
       const safePid = productId.replace(/[^a-zA-Z0-9._-]/g, "_");

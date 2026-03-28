@@ -300,10 +300,14 @@ Show product photos if: format === "IQF" OR (processType === "Frozen" AND format
 ## QA Dashboard
 
 - `/qa` — Document dashboard with interactive status filter (All / Missing / Partial / Complete).
+- **Organic/Conventional labels** shown inline next to each product name (green for Organic, gray for Conventional).
 - **Status categories:**
   - **Complete** (green) — all required lot COAs and contract documents uploaded.
   - **Partial** (amber) — some documents uploaded but not all required docs present.
   - **Missing** (red) — no documents uploaded at all.
+- **Columns:** Product, Lot COAs, Heavy Metals, Pesticide, Contract Specs, Contract Labels, Contract Photos, Status, Action.
+- **Heavy Metals column** — shows lot coverage for Juice Concentrate products (expected: heavy metal test per lot). Shows "N/A" for other product types.
+- **Pesticide column** — shows lot coverage for Organic products (expected: pesticide test per lot). Shows "N/A" for non-organic products. Juice Concentrate products show heavy metals instead (even if organic).
 - Lot pills reflect overall product status: green if product complete, amber if partial, red if lot has no COA.
 - Coverage numbers (e.g., "3/14") use amber when partial (some but not all).
 - Filter is client-side only — does not persist across page loads.
@@ -384,39 +388,54 @@ After deduction, the sync validates remaining active discount items:
 - `app/admin/discount/` — Lot picker UI (layout, page, DiscountFormClient)
 - `components/DiscountSection.tsx` — Public display component
 
-## AI Assistant (Internal Agent Portal)
+## AI Assistant — Top Dog Paul's AI Brain (TDPAIB)
 
-An embedded Claude-powered chat interface for QA and operations staff. Accessible at `/admin/agent` — requires `qa` or `reviewer` role. Completely separated from the public customer view.
+An embedded Claude-powered chat interface for QA and operations staff. Branded as "TDPAIB" (hover reveals full name). Accessible at `/admin/agent` — requires `qa` or `reviewer` role. Completely separated from the public customer view.
 
 ### Capabilities
 
-- **Document matching:** Upload a COA, spec sheet, label, or product photo → Claude reads the document, extracts lot numbers / contract numbers / product names, proposes matches against inventory, and uploads after explicit user confirmation.
-- **Inventory queries:** Answer questions about current stock, document coverage, discount items, and import review status.
+- **Document matching:** Upload a COA, spec sheet, label, or product photo via drag-and-drop or file picker → Claude reads the document, extracts lot numbers / contract numbers / product names, proposes matches against inventory, and uploads after explicit user confirmation.
+- **Test result recognition:** Third-party lab reports (SGS, Eurofins, GFL, etc.) are automatically categorized as `test-results`, not `coa`, regardless of filename. If a supplier's COA contains HM/pesticide data, it stays as `coa` and the agent notes the test data is included.
+- **Inventory queries:** Answer questions about current stock (including discount items in overview), document coverage (COA + test result gaps), and import review status.
 - **Discount management:** Move lots to Discount & Clearance or restore them, via conversation.
 - **Import review:** View soft-excluded items from the last Excel import.
+- **Markdown responses:** Agent output renders with full markdown support (tables, bold, headers, lists, blockquotes).
+- **True streaming:** Responses stream token-by-token via the Anthropic streaming API.
+
+### Test Result Rules
+
+- Every **Juice Concentrate** lot should have a **heavy metal** test result.
+- Every **Organic** product lot should have a **pesticide** test result.
+- The QA dashboard shows separate **Heavy Metals** and **Pesticide** columns with per-lot coverage.
+- The agent's `get_document_status` tool includes `expectedTest` and `missingTestLots` per product.
 
 ### Architecture
 
-- Claude runs server-side via `@anthropic-ai/sdk` with 12 tools (9 read-only, 3 action).
+- Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 12 tools (9 read-only, 3 action).
 - Action tools (`upload_document`, `create_discount_item`, `restore_discount_item`) require conversational confirmation from the user before execution — enforced via system prompt.
-- Files are uploaded in-band with the chat message (multipart form data), held in memory during the request, and written to disk only when Claude calls `upload_document`.
-- Responses stream via SSE with tool activity indicators.
+- Files are uploaded in-band with the chat message (multipart form data) and persisted to a per-user temp directory (`.agent-uploads/{user}/`) so they survive across conversation turns (auto-cleaned after 30 min).
+- Responses stream via SSE with tool activity indicators. Max 10 tool-use iterations per request with a user-visible warning if the limit is reached.
 - Requires `ANTHROPIC_API_KEY` in `.env.local`.
 
 ### Key Files
 
-- `lib/agent-db.ts` — Agent-specific DB queries (lot lookup, contract lookup, product search, sync info)
+- `lib/agent-db.ts` — Agent-specific DB queries (lot lookup, contract lookup, product search, sync info, test-result coverage)
 - `lib/agent-tools.ts` — Tool definitions and server-side execution logic
 - `app/api/agent/chat/route.ts` — Streaming SSE endpoint with agentic tool-use loop (max 10 iterations)
-- `app/admin/agent/layout.tsx` — Auth guard (qa OR reviewer role)
+- `app/admin/agent/layout.tsx` — Auth guard (qa OR reviewer role), full-viewport fixed layout
 - `app/admin/agent/page.tsx` — Server component shell
-- `app/admin/agent/AgentChat.tsx` — Client chat UI with file attachments and streaming
+- `app/admin/agent/AgentChat.tsx` — Client chat UI with file attachments, drag-and-drop, and streaming
+- `app/admin/agent/MarkdownMessage.tsx` — Markdown renderer for assistant messages
 
 ### Security
 
 - Auth required: `qa` or `reviewer` role (same as existing QA/admin pages)
 - File validation: same 50 MB limit and MIME type checks as `/api/upload`
 - Path traversal protection: same `getUploadDir()` + `resolve().startsWith()` pattern
+- Per-user temp file isolation: uploaded files scoped by user email, auto-expire after 30 min
+- Product existence validated before document upload
+- Error messages sanitized — internal errors logged server-side, generic messages sent to client
+- Link URL validation — only `http://` and `https://` URLs rendered as clickable links in markdown
 - No public routes or links — the agent is invisible to customers
 - Claude system prompt prohibits discussing customer names, pricing, or internal references
 

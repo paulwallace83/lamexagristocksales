@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
+import MarkdownMessage from "./MarkdownMessage";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -71,8 +73,10 @@ export default function AgentChat() {
   const [input, setInput] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragCounterRef = useRef(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -87,6 +91,39 @@ export default function AgentChat() {
     ta.style.height = "auto";
     ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
   }, [input]);
+
+  const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (dragCounterRef.current === 1) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    if (isLoading) return;
+    const droppedFiles = Array.from(e.dataTransfer.files).filter((f) => ALLOWED_TYPES.has(f.type));
+    if (droppedFiles.length > 0) {
+      setPendingFiles((prev) => [...prev, ...droppedFiles]);
+    }
+  };
 
   const handleSend = async () => {
     const text = input.trim();
@@ -104,7 +141,7 @@ export default function AgentChat() {
 
     const newHistory: ApiMessage[] = [
       ...apiHistory,
-      { role: "user", content: text },
+      { role: "user", content: text || "(attached file)" },
     ];
 
     setMessages((prev) => [...prev, userMsg]);
@@ -219,6 +256,13 @@ export default function AgentChat() {
                 return { ...m, toolEvents: updated.reverse() };
               }),
             );
+          } else if (event.type === "warning") {
+            fullText += `\n\n---\n> **Note:** ${event.message ?? "The response may be incomplete."}`;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId ? { ...m, text: fullText } : m,
+              ),
+            );
           } else if (event.type === "error") {
             const errText = `Sorry, something went wrong: ${event.message ?? "unknown error"}`;
             fullText = errText;
@@ -267,7 +311,26 @@ export default function AgentChat() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 flex flex-col" style={{ height: "calc(100vh - 56px)" }}>
+    <div
+      className="max-w-3xl mx-auto px-4 flex flex-col h-full relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Drop overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 bg-indigo-50/90 border-2 border-dashed border-indigo-400 rounded-2xl flex items-center justify-center pointer-events-none">
+          <div className="text-center">
+            <svg className="w-10 h-10 text-indigo-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16v-8m0 0l-3 3m3-3l3 3M3 16.5V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18v-1.5m-18 0V7.875c0-.621.504-1.125 1.125-1.125h3.026a1.125 1.125 0 01.79.327l1.697 1.697a1.125 1.125 0 00.79.327h5.597c.621 0 1.125.504 1.125 1.125V16.5" />
+            </svg>
+            <p className="text-sm font-medium text-indigo-600">Drop files here</p>
+            <p className="text-xs text-indigo-400 mt-0.5">PDF or image files</p>
+          </div>
+        </div>
+      )}
+
       {/* Clear button */}
       {messages.length > 0 && (
         <div className="flex justify-end pt-3 pb-1">
@@ -284,13 +347,18 @@ export default function AgentChat() {
       <div className="flex-1 overflow-y-auto py-4 space-y-5">
         {messages.length === 0 && (
           <div className="text-center py-14">
-            <div className="w-12 h-12 rounded-2xl bg-[#1a2b5f]/10 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-[#1a2b5f]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714a2.25 2.25 0 00.659 1.591L19.5 14.5M14.25 3.104c.251.023.501.05.75.082M19.5 14.5l-1.409 1.409a2.25 2.25 0 01-3.182 0l-4.5-4.5a2.25 2.25 0 010-3.182L12 6.75" />
-              </svg>
-            </div>
-            <p className="text-base font-semibold text-gray-700">Lamex AI Assistant</p>
+            <Image
+              src="/assets/top-dog-avatar.png"
+              alt="Top Dog Paul's AI Brain"
+              width={80}
+              height={80}
+              className="rounded-2xl mx-auto mb-4 shadow-md"
+            />
+            <p className="text-base font-semibold text-gray-700">
+              <abbr title="Top Dog Paul's AI Brain" className="no-underline cursor-default">
+                TDPAIB
+              </abbr>
+            </p>
             <p className="text-sm text-gray-400 mt-1">
               Upload documents, query inventory, manage stock — all in plain language.
             </p>
@@ -314,15 +382,19 @@ export default function AgentChat() {
             className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
           >
             {/* Avatar */}
-            <div
-              className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold mt-0.5 ${
-                msg.role === "user"
-                  ? "bg-[#1a2b5f] text-white"
-                  : "bg-indigo-100 text-indigo-700"
-              }`}
-            >
-              {msg.role === "user" ? "Y" : "AI"}
-            </div>
+            {msg.role === "user" ? (
+              <div className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold mt-0.5 bg-[#1a2b5f] text-white">
+                P
+              </div>
+            ) : (
+              <Image
+                src="/assets/top-dog-avatar.png"
+                alt="TDPAIB"
+                width={28}
+                height={28}
+                className="shrink-0 w-7 h-7 rounded-full mt-0.5 object-cover"
+              />
+            )}
 
             <div className="flex-1 min-w-0 max-w-[85%]">
               {/* Tool activity (above assistant bubble) */}
@@ -358,6 +430,8 @@ export default function AgentChat() {
                       <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
                       <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                     </span>
+                  ) : msg.role === "assistant" ? (
+                    <MarkdownMessage content={msg.text} />
                   ) : (
                     <div className="whitespace-pre-wrap break-words">{msg.text}</div>
                   )}
@@ -477,7 +551,7 @@ export default function AgentChat() {
           </div>
         </div>
         <p className="text-center text-xs text-gray-400 mt-2">
-          Internal use only · Never share access with customers
+          <abbr title="Top Dog Paul's AI Brain" className="no-underline cursor-default">TDPAIB</abbr> · Internal use only
         </p>
       </div>
     </div>

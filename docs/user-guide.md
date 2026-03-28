@@ -348,26 +348,27 @@ Click any product name to see full details:
 
 ---
 
-## AI Assistant
+## AI Assistant (TDPAIB)
 
 **URL:** `/admin/agent` (requires QA or reviewer login)
 
-**Purpose:** A conversational AI interface that lets you upload documents, query inventory, and manage stock using plain language instead of navigating forms manually.
+**Purpose:** Top Dog Paul's AI Brain (TDPAIB) — a conversational AI interface that lets you upload documents, query inventory, and manage stock using plain language instead of navigating forms manually.
 
 ### Getting Started
 
 1. Log in at `/qa/login` with your QA or reviewer credentials
 2. Click **AI Assistant** in the navigation bar
-3. Type a question or attach a file
+3. Type a question or drag-and-drop a file into the chat window
 
 ### What You Can Do
 
 | Task | Example |
 |------|---------|
-| **Upload a COA** | Attach the PDF and say "Upload this COA to the correct lots" — the assistant reads the document, finds matching lot numbers, and proposes the upload |
+| **Upload a COA** | Drag in the PDF and say "Upload this COA to the correct lots" — the assistant reads the document, finds matching lot numbers, and proposes the upload |
+| **Upload a test result** | Drag in a third-party lab report (SGS, Eurofins, GFL) — the assistant recognizes it as a test result (not a COA) and matches to the correct lots |
 | **Upload a spec sheet** | Attach the PDF and say "This is a spec sheet" — the assistant looks for contract numbers and matches to the right product |
-| **Check document coverage** | "What products are missing COAs?" or "Show me document status for Strawberry IQF" |
-| **Query inventory** | "How much mango do we have?" or "What's in the Newark warehouse?" |
+| **Check document coverage** | "What products are missing COAs?" or "Which products are missing test results?" |
+| **Query inventory** | "List all products" (includes discount items) or "How much mango do we have?" |
 | **Move lots to discount** | "Move lot TN4-25142 from Grapes IQF to discount — expired, asking $0.25/lb" |
 | **Restore discount items** | "Restore disc-001 to regular inventory" |
 | **Check import review** | "Are there any items pending review from the last import?" |
@@ -375,10 +376,19 @@ Click any product name to see full details:
 
 ### File Upload
 
-- Click the paperclip icon to attach PDF or image files
+- **Drag-and-drop** files directly into the chat window, or click the paperclip icon
 - Multiple files can be attached to a single message
+- Files persist across conversation turns (30 min expiry) — you can upload a file, discuss it, and confirm the upload in a follow-up message
 - Maximum file size: 50 MB per file
 - Supported types: PDF, JPEG, PNG, GIF, WebP
+
+### COA vs Test Result
+
+The assistant automatically distinguishes COAs from test results:
+- **COA** = issued by the supplier/manufacturer
+- **Test result** = issued by a third-party lab (SGS, Eurofins, GFL, Bureau Veritas, etc.)
+- Even if a file is named "COA", if it's from a third-party lab, the assistant categorizes it as a test result
+- If a supplier's COA contains heavy metal or pesticide data within it, it stays as a COA and the assistant notes the test data is included
 
 ### Confirmation Model
 

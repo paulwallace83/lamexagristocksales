@@ -46,31 +46,39 @@ export function getProductSummaries(): ProductSummary[] {
 
   const rows = db.prepare(`
     SELECT p.id, p.product, p.commodity, p.format, p.organic,
-           COALESCE(SUM(li.quantity), 0)   AS total_quantity,
-           COALESCE(SUM(li.weight_lbs), 0) AS total_weight,
-           GROUP_CONCAT(DISTINCT li.warehouse) AS warehouses,
-           COUNT(DISTINCT lo.id) AS lot_count
+           COALESCE(agg.total_quantity, 0)   AS total_quantity,
+           COALESCE(agg.total_weight, 0)     AS total_weight,
+           agg.warehouses,
+           COALESCE(agg.lot_count, 0)        AS lot_count
     FROM products p
-    LEFT JOIN listings li ON li.product_id = p.id
-    LEFT JOIN lots lo     ON lo.listing_id  = li.id
-    GROUP BY p.id
+    LEFT JOIN (
+      SELECT li.product_id,
+             SUM(li.quantity)   AS total_quantity,
+             SUM(li.weight_lbs) AS total_weight,
+             GROUP_CONCAT(DISTINCT li.warehouse) AS warehouses,
+             (SELECT COUNT(*) FROM lots lo2 JOIN listings li2 ON lo2.listing_id = li2.id WHERE li2.product_id = li.product_id) AS lot_count
+      FROM listings li
+      GROUP BY li.product_id
+    ) agg ON agg.product_id = p.id
     ORDER BY p.commodity, p.product
   `).all() as Array<{
     id: string; product: string; commodity: string; format: string; organic: number;
     total_quantity: number; total_weight: number; warehouses: string | null; lot_count: number;
   }>;
 
-  return rows.map((r) => ({
-    id: r.id,
-    product: r.product,
-    commodity: r.commodity,
-    format: r.format,
-    organic: r.organic === 1,
-    totalQuantity: r.total_quantity,
-    totalWeightLbs: Math.round(r.total_weight),
-    warehouses: r.warehouses ? r.warehouses.split(",") : [],
-    lotCount: r.lot_count,
-  }));
+  return rows
+    .filter((r) => r.total_quantity > 0 || r.total_weight > 0)
+    .map((r) => ({
+      id: r.id,
+      product: r.product,
+      commodity: r.commodity,
+      format: r.format,
+      organic: r.organic === 1,
+      totalQuantity: r.total_quantity,
+      totalWeightLbs: Math.round(r.total_weight),
+      warehouses: r.warehouses ? r.warehouses.split(",") : [],
+      lotCount: r.lot_count,
+    }));
 }
 
 /** Find lots by number — partial, case-insensitive. Returns all matches. */
@@ -148,8 +156,9 @@ export function findByContractNumber(contractRef: string): ContractMatch[] {
     product_id: string; product: string; commodity: string; format: string;
   }>;
 
-  // Group by product
+  // Group by product, dedup lots
   const byProduct = new Map<string, ContractMatch>();
+  const seenLots = new Set<number>();
   for (const r of rows) {
     const base = r.contract.split("-")[0];
     if (!byProduct.has(r.product_id)) {
@@ -159,13 +168,16 @@ export function findByContractNumber(contractRef: string): ContractMatch[] {
         lots: [],
       });
     }
-    byProduct.get(r.product_id)!.lots.push({
-      id: r.lot_id,
-      lotNumber: r.lot_number,
-      quantity: r.quantity,
-      weightLbs: r.weight_lbs,
-      bbd: r.bbd,
-    });
+    if (!seenLots.has(r.lot_id)) {
+      seenLots.add(r.lot_id);
+      byProduct.get(r.product_id)!.lots.push({
+        id: r.lot_id,
+        lotNumber: r.lot_number,
+        quantity: r.quantity,
+        weightLbs: r.weight_lbs,
+        bbd: r.bbd,
+      });
+    }
   }
 
   return Array.from(byProduct.values());
@@ -204,4 +216,77 @@ export function searchProducts(query: string): ProductSearchResult[] {
     format: r.format,
     organic: r.organic === 1,
   }));
+}
+
+/* ------------------------------------------------------------------ */
+/*  Test-result coverage                                               */
+/* ------------------------------------------------------------------ */
+
+export interface TestResultCoverage {
+  productId: string;
+  product: string;
+  format: string;
+  organic: boolean;
+  lotCount: number;
+  lotsWithTestResults: number;
+  lotsWithCOA: number;
+  expectedTest: string | null; // "heavy-metals" | "pesticide" | null
+  missingTestLots: Array<{ id: number; lotNumber: string }>;
+}
+
+/** Get test-result coverage per product, flagging lots that are expected to have tests. */
+export function getTestResultCoverage(): TestResultCoverage[] {
+  const db = getDb();
+
+  const products = db.prepare(`
+    SELECT id, product, format, organic FROM products
+    ORDER BY commodity, product
+  `).all() as Array<{ id: string; product: string; format: string; organic: number }>;
+
+  return products.map((p) => {
+    const lots = db.prepare(`
+      SELECT lo.id, lo.lot_number
+      FROM lots lo
+      JOIN listings li ON lo.listing_id = li.id
+      WHERE li.product_id = ?
+    `).all(p.id) as Array<{ id: number; lot_number: string }>;
+
+    const lotsWithTestResults = new Set(
+      (db.prepare(`
+        SELECT DISTINCT dl.lot_id
+        FROM document_lots dl
+        JOIN documents d ON dl.document_id = d.id
+        WHERE d.product_id = ? AND d.category = 'test-results'
+      `).all(p.id) as Array<{ lot_id: number }>).map((r) => r.lot_id),
+    );
+
+    const lotsWithCOA = new Set(
+      (db.prepare(`
+        SELECT DISTINCT dl.lot_id
+        FROM document_lots dl
+        JOIN documents d ON dl.document_id = d.id
+        WHERE d.product_id = ? AND d.category = 'coa'
+      `).all(p.id) as Array<{ lot_id: number }>).map((r) => r.lot_id),
+    );
+
+    const isJC = p.format === "Juice Concentrate";
+    const isOrganic = p.organic === 1;
+    const expectedTest = isJC ? "heavy-metals" : isOrganic ? "pesticide" : null;
+
+    const missingTestLots = expectedTest
+      ? lots.filter((l) => !lotsWithTestResults.has(l.id)).map((l) => ({ id: l.id, lotNumber: l.lot_number }))
+      : [];
+
+    return {
+      productId: p.id,
+      product: p.product,
+      format: p.format,
+      organic: isOrganic,
+      lotCount: lots.length,
+      lotsWithTestResults: lotsWithTestResults.size,
+      lotsWithCOA: lotsWithCOA.size,
+      expectedTest,
+      missingTestLots,
+    };
+  }).filter((p) => p.lotCount > 0);
 }
