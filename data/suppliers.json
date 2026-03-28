@@ -108,6 +108,20 @@
       "countryOfOrigin": "Turkey",
       "products": ["Pomegranate JC"],
       "tradingCompany": false
+    },
+    {
+      "id": "frigodar",
+      "name": "Frigodar SARL",
+      "countryOfOrigin": "Morocco",
+      "products": ["Strawberry IQF"],
+      "tradingCompany": false
+    },
+    {
+      "id": "alterra",
+      "name": "Alterra SA",
+      "countryOfOrigin": "Greece",
+      "products": ["Peach IQF"],
+      "tradingCompany": false
     }
   ]
 }

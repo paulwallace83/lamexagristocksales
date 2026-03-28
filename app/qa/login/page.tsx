@@ -25,7 +25,8 @@ export default function QALoginPage() {
       setError("Invalid email or password");
       setLoading(false);
     } else {
-      window.location.href = "/qa";
+      // Redirect via server-side role check
+      window.location.href = "/api/auth/redirect";
     }
   };
 
@@ -40,8 +41,8 @@ export default function QALoginPage() {
             height={60}
             className="h-12 w-auto mx-auto mb-4"
           />
-          <h1 className="text-xl font-bold text-[#1a2b5f]">QA Document Portal</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to manage product documents</p>
+          <h1 className="text-xl font-bold text-[#1a2b5f]">Lamex Agri Portal</h1>
+          <p className="text-sm text-gray-500 mt-1">Sign in to continue</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 space-y-4">

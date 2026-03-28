@@ -5,6 +5,50 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.7.0] — 2026-03-27
+
+### Added
+- **Excel import pipeline** — `npm run import-excel -- <path>` ingests raw ERP Excel exports (63-column format), applies configurable exclusion rules, writes `inventory-proposed.json` and `import-review.json`
+- **`lib/excel-import.ts`** — Excel parser, product description parser, warehouse/supplier fuzzy normalizer, exclusion engine
+- **`scripts/import-excel.ts`** — CLI wrapper with reconciliation report printed to console
+- **`data/exclusion-rules.json`** — Configurable hard/soft exclusion rules (customer blocklist, branded-product patterns, non-inventory patterns, direct-customer keywords)
+- **Import Review Portal** (`/review`) — interactive web UI for approving soft-excluded inventory items before sync
+  - `app/review/page.tsx` — server component groups items by customer/product/warehouse
+  - `app/review/ReviewClient.tsx` — client component with checkboxes, Select All / Direct Only / Clear buttons, live running totals (units + lbs), and submit
+  - `app/review/layout.tsx` — auth guard (reviewer role only); redirects others to `/qa/login`
+  - `app/api/review/apply/route.ts` — POST endpoint merges approved items into `inventory-proposed.json`, deletes `import-review.json`
+  - `app/api/auth/redirect/route.ts` — role-based post-login redirect (`reviewer` → `/review`, `qa` → `/qa`)
+- **Role-based authentication** — `users` table gains `role TEXT NOT NULL DEFAULT 'qa'`; roles included in JWT session token
+  - `reviewer` role: access to import review portal
+  - `qa` role: access to QA document portal
+- **`xlsx` npm package** — Excel parsing dependency (CJS, loaded via `createRequire` workaround for ESM project)
+
+### Changed
+- **`lib/auth.ts`** — JWT and session callbacks extended to include `role`; TypeScript module augmentation for `Session` and `JWT` types
+- **`lib/db.ts`** — `users` table schema includes `role` column; migration guard (`ALTER TABLE … ADD COLUMN IF NOT EXISTS`) for existing databases
+- **`scripts/seed.ts`** — `INSERT INTO users` now includes `role` column
+- **`app/qa/login/page.tsx`** — post-login redirect now goes to `/api/auth/redirect` for role-based routing; title updated to "Lamex Agri Portal"
+- **`data/users.json`** — added `role` field to QA user; added reviewer user (`paul@lamexfoods.us`)
+- **`data/warehouses.json`** — added Kres Coldstore (Vineland, NJ, Frozen)
+- **`data/suppliers.json`** — added Frigodar SARL (Morocco, Strawberry IQF) and Alterra SA (Greece, Peach IQF)
+- **`package.json`** — added `xlsx` dependency and `import-excel` npm script
+- **`CLAUDE.md`** — documented Excel import workflow, exclusion rules, column mapping (`Qty_Weight_Net_Bal` as canonical weight), reconciliation target, non-inventory patterns, and review portal
+
+### Fixed
+- **ERP weight reconciliation** — switched weight field from `Qty_Weight` to `Qty_Weight_Net_Bal`; removed status filter so included + review + hard-excluded weights equal ERP total exactly
+- **Pear JC duplicate products** — `normalizeSpec()` now normalises `70 Bx` → `70 Brix` so product IDs are stable across spec variants
+- **Blackberry Puree ID** — comma-separated parser now handles compound format+spec tokens (e.g., `"Puree Seedless"`)
+- **Treko double-space** — supplier name normalisation collapses multiple spaces before fuzzy-matching
+
+### Security
+- **File-based lock** (`data/.review-lock`) prevents concurrent `/api/review/apply` submissions; stale lock (>30 s) auto-cleared
+- **Atomic write** — `inventory-proposed.json` written to `.tmp` then `renameSync`'d to prevent partial-write corruption
+- **Input validation** — `body.include` array values validated as non-negative integers; NaN/float rejected
+- **NaN propagation fix** — `Number()` coercion with `|| 0` fallback in both `excel-import.ts` and `apply/route.ts`
+- **Null safety** — `parseDescription()` guards against empty `desc`/`specField` with early return
+
+---
+
 ## [0.6.0] — 2026-03-27
 
 ### Added

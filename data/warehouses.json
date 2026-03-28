@@ -55,6 +55,13 @@
       "city": "Cranberry",
       "state": "NJ",
       "storageType": "Ambient/Dry"
+    },
+    {
+      "id": "kres-vineland",
+      "name": "Kres Coldstore",
+      "city": "Vineland",
+      "state": "NJ",
+      "storageType": "Frozen"
     }
   ]
 }

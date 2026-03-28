@@ -8,7 +8,8 @@
     "build": "tsx scripts/seed.ts && next build",
     "start": "next start",
     "seed": "tsx scripts/seed.ts",
-    "sync": "tsx scripts/sync-inventory.ts"
+    "sync": "tsx scripts/sync-inventory.ts",
+    "import-excel": "tsx scripts/import-excel.ts"
   },
   "repository": {
     "type": "git",
@@ -35,7 +36,8 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

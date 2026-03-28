@@ -111,7 +111,8 @@ CREATE TABLE IF NOT EXISTS users (
   id       TEXT PRIMARY KEY,
   email    TEXT NOT NULL UNIQUE,
   name     TEXT NOT NULL,
-  password TEXT NOT NULL
+  password TEXT NOT NULL,
+  role     TEXT NOT NULL DEFAULT 'qa'
 );
 `;
 
@@ -124,6 +125,13 @@ function migrate(db: Database.Database): void {
   if (docInfo.length > 0 && !hasBaseContract) {
     // Old schema exists without base_contract — recreate (safe since documents is empty)
     db.exec("DROP TABLE IF EXISTS documents");
+  }
+
+  // Migrate users table: add role column
+  const userInfo = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+  const hasRole = userInfo.some((col) => col.name === "role");
+  if (userInfo.length > 0 && !hasRole) {
+    db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'qa'");
   }
 }
 

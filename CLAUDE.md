@@ -24,9 +24,71 @@ Each week, the user pastes raw pivot table data in chat. Claude processes it thr
 
 ### Key files:
 - `lib/sync.ts` — Diff engine, business rule validation, report formatting, reconciliation
+- `lib/excel-import.ts` — Excel import parser, exclusion engine, warehouse/supplier normalization
 - `scripts/sync-inventory.ts` — Apply script (snapshot → overwrite → doc-preserving seed → regen reference files)
+- `scripts/import-excel.ts` — CLI script for importing raw ERP Excel exports
 - `scripts/seed.ts` — Full destructive seed for fresh installs only (clears documents + users)
+- `data/exclusion-rules.json` — Configurable hard/soft exclusion rules for Excel import filtering
 - `data/snapshots/` — Timestamped backups of previous `inventory.json` (gitignored)
+
+## Excel Import (Alternative to Paste)
+
+Instead of pasting pivot table data, the user can provide a raw Excel export from the ERP system.
+
+### Usage:
+```
+npm run import-excel -- <path-to-xlsx>
+```
+
+### Workflow:
+1. User provides raw ERP Excel export (all stock data, 63 columns)
+2. `npm run import-excel` parses it, applies exclusion rules, writes `data/inventory-proposed.json`
+3. Script prints reconciliation report — user verifies totals against their ERP
+4. Soft-excluded items written to `data/import-review.json` for user review
+5. User tells Claude which review items to include/exclude
+6. Existing sync workflow takes over: `computeDiff()` → review → `npm run sync`
+
+### Exclusion Rules (`data/exclusion-rules.json`):
+
+**Hard exclusions** (always filtered, never public):
+- Trader Joe's stock — customer contains "TRADER JOES"
+- Sam's Club stock — customer contains "SAM'S WEST"
+- Scoopable Acai for PFG — product "Scoopable Acai" + customer "PERFORMANCE FOOD GROUP"
+- Branded/private-label products — description contains "Trader Joe's -", "Member's Mark -", etc.
+- Zero/negative weight rows
+
+**Soft exclusions** (presented to user for case-by-case review):
+- Direct-customer stock — named customers (Kraft, Zentis, etc.) not tagged "SOLD TO BULK STOCK"
+- Reserved stock
+
+**Sensitive fields** (NEVER included in any output):
+- All pricing, costs, finance columns
+- Customer names, trader codes, logistics contacts, internal refs
+
+### Column Mapping (Excel → Inventory JSON):
+
+| Excel Column | Maps To |
+|---|---|
+| `Stock_Description` | Parsed into product name, commodity, format, specification |
+| `Stock_Specification` | Additional spec + organic indicators |
+| `Stock_Contract` | `listing.contracts[]` |
+| `Stock_Contract_Supplier` | `listing.supplier` (with trading company rule) |
+| `Stock_Cold_Store` | `listing.warehouse` (normalized to `warehouses.json`) |
+| `Stock_Origin_Country` | `listing.countryOfOrigin` (normalized) |
+| `Stock_ArrivalDate` | `listing.arrived` (Excel serial → ISO date) |
+| `Stock_BestBefore` | `listing.minBBD` |
+| `Qty_Cases` | `listing.quantity` |
+| `Qty_Weight_Net_Bal` | `listing.weightLbs` — **canonical weight field**; matches ERP total across all statuses |
+| `SML_LotNumber` | `lot.lotNumber` |
+
+### Reconciliation Target
+
+The ERP reconciliation figure is the sum of `Qty_Weight_Net_Bal` across **all rows** (all statuses, all customers). The import script prints a breakdown of included + review + hard-excluded weights that must add up to this total.
+
+### Non-Inventory Patterns
+
+Rows with descriptions matching `nonInventoryPatterns` in `exclusion-rules.json` are silently dropped (zero weight, not counted in any reconciliation bucket). Current patterns:
+- `"DFRM "` — prepayment/finance rows from Teno Norte, not true stock
 
 ## Weekly Workflow
 
@@ -144,6 +206,42 @@ When inventory is pasted from the pivot table, the hierarchical rows break down 
 
 - **Unitrade International (HK)** and **Pacific Jade International Inc** are trading companies that source from multiple manufacturers in China. When displaying inventory, list the **Supplier as "Various"** (not the trading company name). COO remains "China".
 
+## Import Review Portal
+
+After running `npm run import-excel`, soft-excluded items (direct-customer stock, reserved stock) are written to `data/import-review.json`. The review portal lets authorised traders approve or reject these items interactively before the sync workflow runs.
+
+- **`/review`** — Interactive review dashboard (requires `reviewer` role)
+- **`/qa/login`** — Shared login page; redirects to `/review` for reviewer role, `/qa` for qa role
+- **`/api/review/apply`** — POST endpoint that merges approved items into `inventory-proposed.json` and deletes `import-review.json`
+- Credentials in `secrets.md` (gitignored)
+
+### Auth Roles
+
+| Role | Login | Redirects To | Access |
+|---|---|---|---|
+| `qa` | `/qa/login` | `/qa` | Document upload portal |
+| `reviewer` | `/qa/login` | `/review` | Import review portal |
+
+Roles are stored in the `users` table (`role TEXT NOT NULL DEFAULT 'qa'`) and included in the JWT session token via `lib/auth.ts`.
+
+### Review Workflow
+
+1. Run `npm run import-excel -- <path>` — writes `data/import-review.json`
+2. Open `/review` (login with reviewer credentials)
+3. Check/uncheck items — running totals (units + lbs) update live
+4. Click **Apply Selected** — approved items merged into `inventory-proposed.json`, review file cleared
+5. Continue with normal sync: `computeDiff()` → review → `npm run sync`
+
+### Key Files
+
+- `app/review/page.tsx` — Server component reads `import-review.json`, groups by customer
+- `app/review/ReviewClient.tsx` — Client component with checkbox UI and submit
+- `app/review/layout.tsx` — Auth guard (reviewer role only)
+- `app/api/review/apply/route.ts` — Merge logic with file lock, atomic write, input validation
+- `app/api/auth/redirect/route.ts` — Role-based post-login redirect
+
+---
+
 ## QA Document Portal
 
 - **`/qa`** — Protected dashboard showing lot-level and contract-level document coverage per product
@@ -238,4 +336,5 @@ Key tables in `lamex.db` (full DDL in `lib/db.ts`):
 | `npm run build` | Seed database + build Next.js for production |
 | `npm run seed` | Full destructive seed — clears ALL tables (including documents/users) and reloads from JSON. Use for fresh installs only. |
 | `npm run sync` | Weekly inventory sync — preserves documents + users, snapshots previous state, re-seeds from updated JSON. |
+| `npm run import-excel -- <path>` | Import raw ERP Excel export → `inventory-proposed.json` (included items) + `import-review.json` (soft-excluded for manual review). Feeds into existing sync workflow. |
 | `npm start` | Start production server |

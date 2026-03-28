@@ -123,10 +123,10 @@ const seed = db.transaction(() => {
 
   // Users
   const insertUser = db.prepare(
-    "INSERT INTO users (id, email, name, password) VALUES (?, ?, ?, ?)"
+    "INSERT INTO users (id, email, name, password, role) VALUES (?, ?, ?, ?, ?)"
   );
   for (const u of users.users) {
-    insertUser.run(u.id, u.email, u.name, u.password);
+    insertUser.run(u.id, u.email, u.name, u.password, u.role || "qa");
   }
 
   console.log(`Seeded:`);

@@ -1,0 +1,14 @@
+{
+  "hardExclusions": {
+    "customers": ["TRADER JOES", "SAM'S WEST"],
+    "customerProductCombos": [
+      { "customer": "PERFORMANCE FOOD GROUP", "productContains": "Scoopable Acai" }
+    ],
+    "brandedProductPatterns": ["Trader Joe's -", "Member's Mark -"],
+    "nonInventoryPatterns": ["DFRM "]
+  },
+  "softExclusions": {
+    "directCustomerKeywords": ["SOLD TO BULK STOCK"],
+    "treatAsAvailable": ["SOLD TO BULK STOCK", "CUSTOMER TO BE DETERMINED", "RP ACCOUNT"]
+  }
+}
