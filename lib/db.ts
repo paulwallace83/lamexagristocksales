@@ -115,6 +115,14 @@ CREATE TABLE IF NOT EXISTS users (
   role     TEXT NOT NULL DEFAULT 'qa'
 );
 
+CREATE TABLE IF NOT EXISTS product_flags (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id TEXT NOT NULL,
+  flag       TEXT NOT NULL CHECK(flag IN ('new_arrival','featured')),
+  set_at     TEXT NOT NULL,
+  set_by     TEXT
+);
+
 CREATE TABLE IF NOT EXISTS discount_items (
   id                TEXT PRIMARY KEY,
   product_id        TEXT,

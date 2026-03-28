@@ -21,6 +21,7 @@ export default async function AgentLayout({ children }: { children: React.ReactN
       ? [
           { href: "/review", label: "Import Review" },
           { href: "/admin/discount", label: "Discount" },
+          { href: "/admin/email", label: "Email" },
         ]
       : []),
     { href: "/admin/agent", label: "AI Assistant" },

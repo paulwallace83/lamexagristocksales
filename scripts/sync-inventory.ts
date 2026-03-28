@@ -293,6 +293,31 @@ try {
   db.exec("PRAGMA foreign_keys = ON");
 }
 
+// ─── Step 3b: Auto-detect new arrivals ──────────────────────────
+
+import { setNewArrivals } from "../lib/product-flags";
+
+try {
+  const snapshot = readJson(snapshotPath);
+  const previousIds = new Set<string>(
+    (snapshot.products || []).map((p: { id: string }) => p.id),
+  );
+  const newProductIds = inventory.products
+    .map((p: { id: string }) => p.id)
+    .filter((id: string) => !previousIds.has(id));
+
+  const count = setNewArrivals(newProductIds);
+  if (count > 0) {
+    console.log(`\n🆕 ${count} new arrival(s) flagged for marketing email`);
+  } else {
+    console.log("\n🆕 No new arrivals detected (all products existed previously)");
+  }
+} catch (err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  console.log(`\n⚠️  Could not detect new arrivals: ${msg}`);
+  // Non-fatal — sync continues without new arrival flags
+}
+
 // ─── Step 4: Regenerate reference markdown files ─────────────────
 
 function regenerateSuppliersMd() {

@@ -14,7 +14,8 @@ This guide covers all workflows for operating the Lamex Agri Stock Sales invento
 6. [QA Document Portal](#qa-document-portal)
 7. [Public Inventory Page](#public-inventory-page)
 8. [AI Assistant](#ai-assistant)
-9. [Admin Reference](#admin-reference)
+9. [Marketing Email](#marketing-email)
+10. [Admin Reference](#admin-reference)
 
 ---
 
@@ -403,6 +404,45 @@ The assistant **always asks for your approval** before taking any action that mo
 
 ---
 
+## Marketing Email
+
+The marketing email composer generates and sends weekly inventory update emails to your buyer list.
+
+### Accessing the Composer
+
+Navigate to `/admin/email` (requires Reviewer role). The "Email" link appears in the admin navigation bar.
+
+### Workflow
+
+1. **Review product badges.** The Compose tab shows all products grouped by format. Each product has two toggle badges:
+   - **New** (green) — auto-set by the weekly sync when a product appears for the first time. Cleared and recalculated on each sync.
+   - **Featured** (blue) — manually toggled by you. Persists across syncs.
+
+2. **Preview the email.** Click the Preview tab to see a live rendering of the email as recipients will see it. The preview updates automatically when you toggle badges. New Arrivals and Featured Items sections only appear when products have those badges.
+
+3. **Enter recipients.** In the Send panel, type or paste email addresses separated by commas or newlines. Duplicates are automatically removed.
+
+4. **Send.** Click "Send Email" to dispatch via Resend. The subject line is editable (defaults to "Lamex Agri Foods — Weekly Inventory Update"). A success or error message appears after sending.
+
+### Email Content
+
+The email includes:
+- Navy header with company logo
+- Stats bar (product count, total weight, origins, warehouses)
+- New Arrivals section (green, only if flagged products exist)
+- Featured Items section (blue, only if flagged products exist)
+- Inventory by Category table (IQF, Juice Concentrate, Puree with counts and weights)
+- "View Full Inventory" button linking to the public site
+- Footer with company info and contact details
+
+### Requirements
+
+- `RESEND_API_KEY` must be set in `.env.local`
+- The sending domain (`lamexfoods.us`) must be verified in the Resend dashboard
+- `NEXT_PUBLIC_SITE_URL` should be set to the production URL for correct CTA links and logo display
+
+---
+
 ## Admin Reference
 
 ### npm Scripts
@@ -438,6 +478,7 @@ SQLite database at `lamex.db`. Key tables:
 - `products`, `listings`, `lots` — inventory hierarchy
 - `documents`, `document_lots` — uploaded files and lot associations
 - `discount_items` — discount/clearance inventory (preserved during sync)
+- `product_flags` — marketing flags (new_arrival, featured) per product (preserved during sync)
 - `users` — authentication accounts (preserved during sync)
 - `suppliers`, `warehouses` — reference data (rebuilt during sync)
 
@@ -445,6 +486,8 @@ SQLite database at `lamex.db`. Key tables:
 
 - `AUTH_SECRET` in `.env.local` — required for NextAuth.js session encryption
 - `ANTHROPIC_API_KEY` in `.env.local` — required for the AI Assistant agent portal
+- `RESEND_API_KEY` in `.env.local` — required for sending marketing emails
+- `NEXT_PUBLIC_SITE_URL` in `.env.local` — public site URL for email CTA links and logo (defaults to `https://inventory.lamexfoods.us`)
 - Credentials stored in `secrets.md` (gitignored, never committed)
 
 ### Key URLs
@@ -459,4 +502,5 @@ SQLite database at `lamex.db`. Key tables:
 | `/qa/login` | Login page (routes by role) | No |
 | `/review` | Import review portal | Reviewer |
 | `/admin/discount` | Discount inventory admin | Reviewer |
+| `/admin/email` | Marketing email composer | Reviewer |
 | `/admin/agent` | AI Assistant chat | QA or Reviewer |

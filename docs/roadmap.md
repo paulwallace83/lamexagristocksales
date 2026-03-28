@@ -68,18 +68,23 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Zero-stock products (moved to discount) filtered from product list.
 - Security hardening: per-user file isolation, error message sanitization, product existence validation, link URL scheme validation.
 
-## Active Priorities
-### 1. Marketing Email
-- Build HTML email template for weekly inventory broadcast.
-- Highlight new arrivals and featured items.
-- Mobile-responsive design with CTA to hosted inventory page.
+### ✅ Marketing Email (v0.9.5 — S007)
+- Weekly marketing email composer at `/admin/email` (reviewer role).
+- Resend integration for programmatic email sending.
+- Auto-detect new arrivals from sync diffs (`product_flags` table, auto-set by sync script).
+- Manual "Featured" flag toggle per product (persists across syncs).
+- Self-contained HTML email template with inline CSS, table layout, Outlook compatibility.
+- Sections: navy header, stats bar, new arrivals (green), featured (blue), category summary, CTA button.
+- Live preview in iframe, manual recipient input (comma/newline separated).
+- Product flags API for toggling new_arrival/featured badges.
+- Security hardening: HTML escaping in email template, atomic flag toggle, recipient dedup, input size limits, error sanitization, productId validation.
 
-### 2. Data Quality (remaining)
+## Active Priorities
+### 1. Data Quality (remaining)
 - Validate unit types are correctly identified per product during sync.
 - Flag potential duplicate products with similar names/specs.
 
 ## Near-Term Candidate Slices
-- S007: Marketing email template and generation workflow.
 - S009: Batch document upload via agent (multi-file COA matching in one turn).
 - S010: Conversation persistence (save/resume agent chat sessions).
 - S011: Agent-powered weekly sync assistant (paste pivot data in agent, auto-parse and sync).
