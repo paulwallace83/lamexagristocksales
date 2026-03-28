@@ -21,15 +21,19 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - New warehouses auto-detected, city/state inferred from listing data.
 - Reference files (`suppliers.md`, `warehouses.md`) auto-regenerated after each sync.
 
+### ✅ Lot Segregation & Visibility (v0.8.0)
+- QA dashboard shows per-lot COA status pills with lot numbers, contract refs, and supplier names.
+- Product detail page restyled with navy accent borders, two-line lot layout, and lot count headers.
+- Inventory table shows lot count badges on desktop and mobile.
+- Lot data seeded from inventory.json with automatic aggregation of duplicate ERP rows.
+- Role-based authorization hardened across QA pages and API endpoints.
+
 ## Active Priorities
 ### 1. QA Document Operations
-- Improve visibility into missing required documents by product.
-- Make required-versus-optional document status obvious in the QA dashboard.
 - Tighten upload workflow around the IQF/frozen product photo rule.
-- Populate lot-level data so COA uploads can be properly linked.
+- Make required-versus-optional document status more obvious in the QA dashboard.
 
 ### 2. Public Inventory Experience
-- Improve discoverability of product details and documents.
 - Strengthen filtering and search around buyer-relevant fields.
 - Preserve mobile usability while expanding inventory detail visibility.
 
@@ -45,8 +49,6 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 
 ## Near-Term Candidate Slices
 - S002: Audit current application behavior against CLAUDE.md rules.
-- S004: Add QA dashboard status indicators for required document gaps.
-- S006: Lot-level data population from pivot table data.
 - S007: Marketing email template and generation workflow.
 
 ## Planning Notes

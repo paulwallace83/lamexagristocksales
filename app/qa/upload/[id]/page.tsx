@@ -18,6 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function UploadPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) redirect("/qa/login");
+  if (session.user.role !== "qa" && session.user.role !== "reviewer") redirect("/qa/login");
 
   const { id } = await params;
   const product = getProductById(id);

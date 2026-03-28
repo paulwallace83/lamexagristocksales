@@ -48,21 +48,11 @@ export interface InventoryData {
 }
 
 export function getTotalQuantity(product: Product): number {
-  return product.listings.reduce((sum, l) => {
-    if (l.lots.length > 0) {
-      return sum + l.lots.reduce((s, lot) => s + lot.quantity, 0);
-    }
-    return sum + l.quantity;
-  }, 0);
+  return product.listings.reduce((sum, l) => sum + l.quantity, 0);
 }
 
 export function getTotalWeight(product: Product): number {
-  return product.listings.reduce((sum, l) => {
-    if (l.lots.length > 0) {
-      return sum + l.lots.reduce((s, lot) => s + lot.weightLbs, 0);
-    }
-    return sum + l.weightLbs;
-  }, 0);
+  return product.listings.reduce((sum, l) => sum + l.weightLbs, 0);
 }
 
 /** Extract base contract number (e.g., "124717" from "124717-04"). Bare numbers returned as-is. */

@@ -1,3 +1,4 @@
+import React from "react";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function QADashboard() {
   const session = await auth();
   if (!session?.user) redirect("/qa/login");
+  if (session.user.role !== "qa" && session.user.role !== "reviewer") redirect("/qa/login");
 
   const statuses = getDocumentStatus();
   const complete = statuses.filter((s) => s.complete).length;
@@ -36,40 +38,69 @@ export default async function QADashboard() {
           </thead>
           <tbody>
             {statuses.map((s) => (
-              <tr key={s.productId} className="border-b border-gray-100 hover:bg-blue-50">
-                <td className="px-4 py-3 font-medium text-gray-900">{s.product}</td>
-                <td className="px-4 py-3 text-center">
-                  <CoverageBadge have={s.lotsWithCOA} total={s.lotCount} />
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <CoverageBadge have={s.contractsWithSpecs} total={s.contractCount} />
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <CoverageBadge have={s.contractsWithLabels} total={s.contractCount} />
-                </td>
-                <td className="px-4 py-3 text-center">
-                  {s.requiredDocs.contractLevel.includes("photos") ? (
-                    <CoverageBadge have={s.contractsWithPhotos} total={s.contractCount} />
-                  ) : (
-                    <span className="text-gray-300 text-sm">N/A</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  {s.complete ? (
-                    <span className="inline-block bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">Complete</span>
-                  ) : (
-                    <span className="inline-block bg-red-100 text-red-800 text-xs font-semibold px-2 py-0.5 rounded">Missing</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <Link
-                    href={`/qa/upload/${s.productId}`}
-                    className="inline-block bg-[#1a2b5f] text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-[#4a90c4] transition-colors"
-                  >
-                    Upload
-                  </Link>
-                </td>
-              </tr>
+              <React.Fragment key={s.productId}>
+                <tr className="border-b border-gray-100 hover:bg-blue-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{s.product}</td>
+                  <td className="px-4 py-3 text-center">
+                    <CoverageBadge have={s.lotsWithCOA} total={s.lotCount} />
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <CoverageBadge have={s.contractsWithSpecs} total={s.contractCount} />
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <CoverageBadge have={s.contractsWithLabels} total={s.contractCount} />
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {s.requiredDocs.contractLevel.includes("photos") ? (
+                      <CoverageBadge have={s.contractsWithPhotos} total={s.contractCount} />
+                    ) : (
+                      <span className="text-gray-300 text-sm">N/A</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {s.complete ? (
+                      <span className="inline-block bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">Complete</span>
+                    ) : (
+                      <span className="inline-block bg-red-100 text-red-800 text-xs font-semibold px-2 py-0.5 rounded">Missing</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <Link
+                      href={`/qa/upload/${s.productId}`}
+                      className="inline-block bg-[#1a2b5f] text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-[#4a90c4] transition-colors"
+                    >
+                      Upload
+                    </Link>
+                  </td>
+                </tr>
+                {s.lots.length > 0 && (
+                  <tr className="border-b border-gray-200">
+                    <td colSpan={7} className="px-4 py-2 bg-gray-50/60">
+                      <div className="flex flex-wrap gap-1.5">
+                        {s.lots.map((lot) => (
+                          <span
+                            key={lot.id}
+                            className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+                              lot.hasCOA
+                                ? "bg-green-50 text-green-700 border border-green-200"
+                                : "bg-red-50 text-red-700 border border-red-200"
+                            }`}
+                          >
+                            <span className="font-mono">{lot.lotNumber}</span>
+                            {lot.contracts.length > 0 && (
+                              <span className="text-[10px] opacity-60">({lot.contracts.join(", ")})</span>
+                            )}
+                            {lot.supplier && (
+                              <span className="text-[10px] opacity-40">{lot.supplier}</span>
+                            )}
+                            {lot.hasCOA ? " \u2713" : " \u2717"}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

@@ -5,6 +5,29 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.8.0] — 2026-03-27
+
+### Added
+- **Lot segregation on QA dashboard** — per-lot pills beneath each product row showing lot number, contract references, supplier name, and COA status (green checkmark / red X)
+- **Lot segregation on product detail page** — restyled lot cards with navy left accent border, bold lot numbers, two-line layout (lot info + quantities), and "Lots (N)" section headers
+- **Lot count badges on inventory table** — small "N lots" badge on both desktop table and mobile card views
+- **Lot seeding in `scripts/seed.ts`** — lots and lot_contracts now populated from inventory.json with automatic aggregation of duplicate lot numbers (same lot across multiple ERP contract lines)
+
+### Changed
+- **`getTotalQuantity()` / `getTotalWeight()`** — now always use listing-level totals (authoritative). Lot-level data is for detail display, not aggregate calculations. Fixes weight discrepancy where lot subtotals didn't match listing totals.
+- **`ProductDocStatus` interface** — extended with per-lot detail array (id, lotNumber, contracts, supplier, hasCOA) for QA dashboard rendering
+
+### Fixed
+- **Lot weight aggregation** — seed script now aggregates quantity and weight for duplicate lot numbers within the same listing (ERP data has one row per contract line). Previously only the first row was inserted, losing most inventory.
+- **Pre-existing TypeScript error** in `lib/excel-import.ts` — generic type argument on untyped XLSX function
+
+### Security
+- **Role-based authorization** added to QA dashboard (`/qa`), upload page (`/qa/upload/[id]`), upload API (`/api/upload`), and document API (`/api/documents/[id]`) — now require `qa` or `reviewer` role, not just authentication
+- **Path traversal hardening** — `getUploadDir()` now validates resolved path stays within `public/uploads/` root directory
+- **Seed script** — added comment documenting that passwords in `users.json` must be pre-hashed with bcrypt
+
+---
+
 ## [0.7.1] — 2026-03-27
 
 ### Fixed

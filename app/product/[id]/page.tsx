@@ -206,8 +206,10 @@ function ListingCard({
         {/* Lots */}
         {listing.lots.length > 0 && (
           <div className="mt-4 border-t border-gray-100 pt-3">
-            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Lots</h4>
-            <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Lots ({listing.lots.length})
+            </h4>
+            <div className="space-y-3">
               {listing.lots.map((lot) => (
                 <LotRow key={lot.id} lot={lot} unitType={listing.unitType || unitType} documents={documents} />
               ))}
@@ -226,63 +228,63 @@ function LotRow({ lot, unitType, documents }: { lot: Lot; unitType: string; docu
   const hasCOA = coaDocs.length > 0;
 
   return (
-    <div className="bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-100">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+    <div className="bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-100 border-l-4 border-l-[#1a2b5f]">
+      {/* Line 1: Lot number + contract refs + COA status */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <div className="flex items-center gap-1.5">
           {hasCOA ? (
-            <svg className="w-4 h-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="w-4 h-4 text-emerald-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
             </svg>
           ) : (
-            <svg className="w-4 h-4 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="w-4 h-4 text-gray-300 shrink-0" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
             </svg>
           )}
-          <span className="font-mono font-semibold text-gray-900">Lot {lot.lotNumber}</span>
+          <span className="font-mono font-bold text-sm text-[#1a2b5f]">Lot {lot.lotNumber}</span>
         </div>
         {lot.contracts.length > 0 && (
           <span className="text-xs text-gray-400">Ref: {lot.contracts.join(", ")}</span>
         )}
-        <span className="text-gray-600">
-          {lot.quantity.toLocaleString()} {unitType}
-        </span>
-        <span className="text-gray-600">{formatWeight(lot.weightLbs)}</span>
-        <span className="text-gray-400 text-xs">BBD: {lot.bbd}</span>
+        {/* Lot documents inline */}
+        {coaDocs.map((doc) => (
+          <a
+            key={doc.id}
+            href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotId: doc.lotIds[0] })}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-[#4a90c4] hover:underline"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            COA
+          </a>
+        ))}
+        {testDocs.map((doc) => (
+          <a
+            key={doc.id}
+            href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotId: doc.lotIds[0] })}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-[#4a90c4] hover:underline"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Test Results
+          </a>
+        ))}
       </div>
 
-      {/* Lot documents */}
-      {(coaDocs.length > 0 || testDocs.length > 0) && (
-        <div className="mt-1.5 flex flex-wrap gap-3">
-          {coaDocs.map((doc) => (
-            <a
-              key={doc.id}
-              href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotId: doc.lotIds[0] })}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-[#4a90c4] hover:underline"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              COA
-            </a>
-          ))}
-          {testDocs.map((doc) => (
-            <a
-              key={doc.id}
-              href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotId: doc.lotIds[0] })}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-[#4a90c4] hover:underline"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Test Results
-            </a>
-          ))}
-        </div>
-      )}
+      {/* Line 2: Quantity, weight, BBD */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-600">
+        <span>
+          {lot.quantity.toLocaleString()} {unitType}
+        </span>
+        <span>{formatWeight(lot.weightLbs)}</span>
+        <span className="text-gray-400 text-xs">BBD: {lot.bbd}</span>
+      </div>
     </div>
   );
 }

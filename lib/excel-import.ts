@@ -607,7 +607,7 @@ export function importExcel(
   // Read Excel
   const wb = XLSX.readFile(excelPath);
   const sheetName = wb.SheetNames[0];
-  const allRows = XLSX.utils.sheet_to_json<ExcelRow>(wb.Sheets[sheetName]);
+  const allRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]) as ExcelRow[];
 
   const excluded: ExcludedRow[] = [];
   const review: ExcludedRow[] = [];

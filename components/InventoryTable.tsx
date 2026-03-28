@@ -142,6 +142,9 @@ export default function InventoryTable({ products, lastUpdated, productIdsWithDo
                     {p.certifications.map((c) => (
                       <span key={c} className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">{c}</span>
                     ))}
+                    {(() => { const lc = p.listings.reduce((s, l) => s + l.lots.length, 0); return lc > 0 ? (
+                      <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">{lc} lot{lc > 1 ? "s" : ""}</span>
+                    ) : null; })()}
                     {docsSet.has(p.id) && (
                       <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium" title="Documents available">
                         Docs
@@ -213,16 +216,23 @@ export default function InventoryTable({ products, lastUpdated, productIdsWithDo
               <div><span className="text-gray-400 text-xs">Weight</span><br/>{formatWeight(getTotalWeight(p))}</div>
               <div className="col-span-2"><span className="text-gray-400 text-xs">Warehouse</span><br/>{getUniqueWarehouses(p).join(" | ")}</div>
             </div>
-            {(p.certifications.length > 0 || docsSet.has(p.id)) && (
-              <div className="flex gap-1.5 mt-2">
-                {p.certifications.map((c) => (
-                  <span key={c} className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">{c}</span>
-                ))}
-                {docsSet.has(p.id) && (
-                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">Docs</span>
-                )}
-              </div>
-            )}
+            {(() => {
+              const lc = p.listings.reduce((s, l) => s + l.lots.length, 0);
+              const showBadges = p.certifications.length > 0 || lc > 0 || docsSet.has(p.id);
+              return showBadges ? (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {p.certifications.map((c) => (
+                    <span key={c} className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">{c}</span>
+                  ))}
+                  {lc > 0 && (
+                    <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">{lc} lot{lc > 1 ? "s" : ""}</span>
+                  )}
+                  {docsSet.has(p.id) && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">Docs</span>
+                  )}
+                </div>
+              ) : null;
+            })()}
           </Link>
         ))}
       </div>

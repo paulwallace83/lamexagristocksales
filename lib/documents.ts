@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync } from "fs";
-import { join } from "path";
+import { join, resolve } from "path";
 import { getDb } from "./db";
 import { getInventory } from "./inventory-db";
 import type { Product } from "./inventory";
@@ -38,6 +38,13 @@ export interface ProductDocStatus {
   requiredDocs: RequiredDocs;
   lotCount: number;
   lotsWithCOA: number;
+  lots: Array<{
+    id: number;
+    lotNumber: string;
+    contracts: string[];
+    supplier: string;
+    hasCOA: boolean;
+  }>;
   contractCount: number;
   contractsWithSpecs: number;
   contractsWithLabels: number;
@@ -223,6 +230,11 @@ export function getUploadDir(productId: string, category: string, opts?: { lotId
     // Legacy fallback
     dir = join(process.cwd(), "public", "uploads", pid, cat);
   }
+  // Verify resolved path stays within uploads root to prevent path traversal
+  const uploadsRoot = resolve(process.cwd(), "public", "uploads");
+  if (!resolve(dir).startsWith(uploadsRoot)) {
+    throw new Error("Invalid upload path");
+  }
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
@@ -290,6 +302,14 @@ export function getDocumentStatus(): ProductDocStatus[] {
     const lots = getAllLots(p);
     const baseContracts = getBaseContracts(p);
 
+    // Map lot IDs to their parent listing's supplier (real name, not "Various")
+    const lotSupplier = new Map<number, string>();
+    for (const listing of p.listings) {
+      for (const lot of listing.lots) {
+        lotSupplier.set(lot.id, listing.supplier);
+      }
+    }
+
     // Count lots that have at least one COA
     const lotIdsWithCOA = new Set<number>();
     for (const doc of productDocs) {
@@ -324,6 +344,13 @@ export function getDocumentStatus(): ProductDocStatus[] {
       requiredDocs: required,
       lotCount: lots.length,
       lotsWithCOA: lotIdsWithCOA.size,
+      lots: lots.map((lot) => ({
+        id: lot.id,
+        lotNumber: lot.lotNumber,
+        contracts: lot.contracts,
+        supplier: lotSupplier.get(lot.id) || "",
+        hasCOA: lotIdsWithCOA.has(lot.id),
+      })),
       contractCount: baseContracts.length,
       contractsWithSpecs,
       contractsWithLabels,

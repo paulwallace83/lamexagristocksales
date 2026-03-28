@@ -32,7 +32,7 @@ export async function DELETE(
   { params }: { params: Promise<{ productId: string }> }
 ) {
   const session = await auth();
-  if (!session?.user) {
+  if (!session?.user || (session.user.role !== "qa" && session.user.role !== "reviewer")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

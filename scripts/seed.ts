@@ -82,9 +82,22 @@ const seed = db.transaction(() => {
   const insertContract = db.prepare(
     "INSERT INTO listing_contracts (listing_id, contract) VALUES (?, ?)"
   );
+  const insertLot = db.prepare(
+    "INSERT INTO lots (listing_id, lot_number, quantity, weight_lbs, bbd) VALUES (?, ?, ?, ?, ?)"
+  );
+  const updateLot = db.prepare(
+    "UPDATE lots SET quantity = quantity + ?, weight_lbs = weight_lbs + ? WHERE id = ?"
+  );
+  const insertLotContract = db.prepare(
+    "INSERT OR IGNORE INTO lot_contracts (lot_id, contract) VALUES (?, ?)"
+  );
+  const findLot = db.prepare(
+    "SELECT id FROM lots WHERE listing_id = ? AND lot_number = ?"
+  );
 
   let totalListings = 0;
   let totalContracts = 0;
+  let totalLots = 0;
 
   for (const p of inventory.products) {
     insertProduct.run(
@@ -103,11 +116,31 @@ const seed = db.transaction(() => {
         l.quantity, l.weightLbs, l.arrived, l.minBBD,
         l.unitType ?? null, l.packDetail ?? null
       );
+      const listingId = Number(result.lastInsertRowid);
       totalListings++;
 
       for (const c of l.contracts) {
-        insertContract.run(Number(result.lastInsertRowid), c);
+        insertContract.run(listingId, c);
         totalContracts++;
+      }
+
+      for (const lot of l.lots || []) {
+        const existing = findLot.get(listingId, lot.lotNumber) as { id: number } | undefined;
+        let lotId: number;
+        if (existing) {
+          // Aggregate quantity and weight into existing lot row
+          lotId = existing.id;
+          updateLot.run(lot.quantity, lot.weightLbs, lotId);
+        } else {
+          const lotResult = insertLot.run(
+            listingId, lot.lotNumber, lot.quantity, lot.weightLbs, lot.bbd ?? null
+          );
+          lotId = Number(lotResult.lastInsertRowid);
+          totalLots++;
+        }
+        for (const c of lot.contracts || []) {
+          insertLotContract.run(lotId, c);
+        }
       }
     }
   }
@@ -121,7 +154,7 @@ const seed = db.transaction(() => {
     insertDoc.run(d.id, d.productId, d.category, d.filename, d.originalName, d.uploadedAt, d.uploadedBy, d.baseContract ?? null);
   }
 
-  // Users
+  // Users — passwords in users.json MUST be pre-hashed with bcrypt
   const insertUser = db.prepare(
     "INSERT INTO users (id, email, name, password, role) VALUES (?, ?, ?, ?, ?)"
   );
@@ -132,6 +165,7 @@ const seed = db.transaction(() => {
   console.log(`Seeded:`);
   console.log(`  ${inventory.products.length} products`);
   console.log(`  ${totalListings} listings`);
+  console.log(`  ${totalLots} lots`);
   console.log(`  ${totalContracts} contracts`);
   console.log(`  ${warehouses.warehouses.length} warehouses`);
   console.log(`  ${suppliers.suppliers.length} suppliers`);
