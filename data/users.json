@@ -4,14 +4,14 @@
       "id": "1",
       "email": "coa@lamexfoods.us",
       "name": "QA Team",
-      "password": "$2b$10$RiLMvaF3H0.t9mK2dh2up.se6FgJ666m/XYy9hzcSVESx/3d3ZfuW",
+      "password": "$2b$10$/sURn/v/8WASEbcm6o7kzezKtueg8lWnVc5PhJZ9qNtcvXeSHlL8q",
       "role": "qa"
     },
     {
       "id": "2",
       "email": "paul@lamexfoods.us",
       "name": "Paul Wallace",
-      "password": "$2b$10$Ks0JVMkCfN7/Ce6ySumSceGX3u1xB2/LN5KHuFCbyRBY3u5j.JZYK",
+      "password": "$2b$10$6ImiBvUE4DJq.X5VTHG.BujpoCWhRHyKsRpi8ubq8fKT9t0oZc686",
       "role": "reviewer"
     }
   ]

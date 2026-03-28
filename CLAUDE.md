@@ -328,6 +328,19 @@ Key tables in `lamex.db` (full DDL in `lib/db.ts`):
 - Credentials and secrets in `secrets.md` (gitignored, never committed)
 - Environment variables in `.env.local` (gitignored)
 
+## Test Credentials (Development Only)
+
+> **TODO (PRE-LAUNCH): Replace test passwords with strong credentials and remove this section before production deployment.**
+
+Both accounts use password: `lamex2026`
+
+| Role | Email | Password |
+|------|-------|----------|
+| QA | `coa@lamexfoods.us` | `lamex2026` |
+| Reviewer | `paul@lamexfoods.us` | `lamex2026` |
+
+`AUTH_SECRET` must be set in `.env.local` — use any random string for dev, generate a strong secret for production.
+
 ## npm Scripts
 
 | Command | Purpose |
