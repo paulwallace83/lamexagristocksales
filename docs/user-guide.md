@@ -325,7 +325,7 @@ Use the status filter (All / Missing / Partial / Complete) to focus on products 
 1. **Hero section** — title and description
 2. **Stats bar** — total products, total weight, origin countries, warehouse locations
 3. **Filters** — search, commodity, type (Organic/Conventional), format, origin, warehouse state
-4. **Inventory table** — grouped by format (IQF, Juice Concentrate, Puree) with collapsible sections
+4. **Inventory table** — grouped by format (IQF, Juice Concentrate, Puree) with collapsible sections. Country of origin columns display flag emojis alongside country names.
 5. **Discount section** — collapsible amber section for clearance items (below main inventory)
 
 ### Filters
@@ -335,7 +335,7 @@ Filters are **cascading** — each dropdown only shows options that are availabl
 ### Product Detail Pages
 
 Click any product name to see full details:
-- All listings (warehouse locations) with supplier and COO
+- All listings (warehouse locations) with supplier and COO (with country flag emoji)
 - Per-lot data: lot number, quantity, weight, BBD, contract references
 - Downloadable documents: COAs, test results, spec sheets
 - Past-BBD dates are highlighted in amber

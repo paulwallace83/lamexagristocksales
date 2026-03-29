@@ -17,6 +17,7 @@ import {
   getDocumentUrl,
 } from "@/lib/documents";
 import type { DocumentEntry, DocCategory } from "@/lib/documents";
+import { countryFlag } from "@/lib/country-flags";
 
 export const dynamic = "force-dynamic";
 
@@ -120,77 +121,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       </div>
     </div>
   );
-}
-
-/** Convert a country name to its flag emoji (returns empty string if unknown) */
-function countryFlag(country: string): string {
-  const flags: Record<string, string> = {
-    "Argentina": "🇦🇷",
-    "Australia": "🇦🇺",
-    "Austria": "🇦🇹",
-    "Belgium": "🇧🇪",
-    "Bolivia": "🇧🇴",
-    "Brazil": "🇧🇷",
-    "Bulgaria": "🇧🇬",
-    "Cambodia": "🇰🇭",
-    "Canada": "🇨🇦",
-    "Chile": "🇨🇱",
-    "China": "🇨🇳",
-    "Colombia": "🇨🇴",
-    "Costa Rica": "🇨🇷",
-    "Croatia": "🇭🇷",
-    "Czech Republic": "🇨🇿",
-    "Ecuador": "🇪🇨",
-    "Egypt": "🇪🇬",
-    "El Salvador": "🇸🇻",
-    "France": "🇫🇷",
-    "Germany": "🇩🇪",
-    "Greece": "🇬🇷",
-    "Guatemala": "🇬🇹",
-    "Honduras": "🇭🇳",
-    "Hungary": "🇭🇺",
-    "India": "🇮🇳",
-    "Indonesia": "🇮🇩",
-    "Iran": "🇮🇷",
-    "Israel": "🇮🇱",
-    "Italy": "🇮🇹",
-    "Japan": "🇯🇵",
-    "Jordan": "🇯🇴",
-    "Kazakhstan": "🇰🇿",
-    "Kenya": "🇰🇪",
-    "Macedonia": "🇲🇰",
-    "Malaysia": "🇲🇾",
-    "Mexico": "🇲🇽",
-    "Morocco": "🇲🇦",
-    "Netherlands": "🇳🇱",
-    "Nicaragua": "🇳🇮",
-    "North Macedonia": "🇲🇰",
-    "Pakistan": "🇵🇰",
-    "Panama": "🇵🇦",
-    "Paraguay": "🇵🇾",
-    "Peru": "🇵🇪",
-    "Philippines": "🇵🇭",
-    "Poland": "🇵🇱",
-    "Portugal": "🇵🇹",
-    "Romania": "🇷🇴",
-    "Serbia": "🇷🇸",
-    "South Africa": "🇿🇦",
-    "South Korea": "🇰🇷",
-    "Spain": "🇪🇸",
-    "Sri Lanka": "🇱🇰",
-    "Taiwan": "🇹🇼",
-    "Thailand": "🇹🇭",
-    "Turkey": "🇹🇷",
-    "Türkiye": "🇹🇷",
-    "Ukraine": "🇺🇦",
-    "United States": "🇺🇸",
-    "USA": "🇺🇸",
-    "Uruguay": "🇺🇾",
-    "Uzbekistan": "🇺🇿",
-    "Vietnam": "🇻🇳",
-    "Zambia": "🇿🇲",
-  };
-  return flags[country] ?? "";
 }
 
 function SummaryCell({ label, value }: { label: string; value: string }) {

@@ -12,6 +12,7 @@ import {
   formatWeight,
   formatQuantity,
 } from "@/lib/inventory";
+import { countryWithFlag } from "@/lib/country-flags";
 
 interface InventoryTableProps {
   products: Product[];
@@ -254,7 +255,7 @@ export default function InventoryTable({ products, lastUpdated, productIdsWithDo
                             )}
                           </td>
                           <td className="px-3 py-3 text-sm text-gray-700">{p.specification || "—"}</td>
-                          <td className="px-3 py-3 text-sm text-gray-700">{getUniqueCOOs(p).join(", ")}</td>
+                          <td className="px-3 py-3 text-sm text-gray-700">{getUniqueCOOs(p).map(countryWithFlag).join(", ")}</td>
                           <td className="px-3 py-3 text-sm text-gray-700">{p.packSize}</td>
                           <td className="px-3 py-3 text-sm text-gray-700 text-right font-medium">{formatQuantity(getTotalQuantity(p), p.unitType)}</td>
                           <td className="px-3 py-3 text-sm text-gray-700 text-right font-medium">{formatWeight(getTotalWeight(p))}</td>
@@ -317,7 +318,7 @@ export default function InventoryTable({ products, lastUpdated, productIdsWithDo
                         )}
                       </div>
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-gray-600">
-                        <div><span className="text-gray-400 text-xs">Origin</span><br/>{getUniqueCOOs(p).join(", ")}</div>
+                        <div><span className="text-gray-400 text-xs">Origin</span><br/>{getUniqueCOOs(p).map(countryWithFlag).join(", ")}</div>
                         <div><span className="text-gray-400 text-xs">Qty</span><br/>{formatQuantity(getTotalQuantity(p), p.unitType)}</div>
                         <div><span className="text-gray-400 text-xs">Weight</span><br/>{formatWeight(getTotalWeight(p))}</div>
                         <div><span className="text-gray-400 text-xs">Warehouse</span><br/>{getUniqueWarehouses(p).join(" | ")}</div>

@@ -255,7 +255,7 @@ Roles are stored in the `users` table (`role TEXT NOT NULL DEFAULT 'qa'`) and in
 Documents are associated at two distinct levels:
 
 #### Lot-Level Documents
-Stored in `public/uploads/{product-id}/lots/{lot-id}/{category}/`
+Stored in `public/uploads/{product-id}/lots/{lot-number}/{category}/`
 
 1. **COA** (Certificate of Analysis) — per lot. One COA can cover multiple lots (uploaded once, tagged to multiple lots via `document_lots` junction table).
 2. **Pesticide / Test Results** — per lot. Optional — some lots may not have separate test results.
@@ -438,6 +438,7 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 - Link URL validation — only `http://` and `https://` URLs rendered as clickable links in markdown
 - No public routes or links — the agent is invisible to customers
 - Claude system prompt prohibits discussing customer names, pricing, or internal references
+- Claude system prompt rule 9: must report tool errors to user (never silently claim success after a failed tool call)
 
 ## Marketing Email
 
@@ -482,6 +483,29 @@ Weekly HTML marketing emails sent to buyers via Resend, highlighting current inv
 - `app/api/email/preview/route.ts` — GET rendered email HTML
 - `app/api/email/send/route.ts` — POST send via Resend
 
+## Security Hardening
+
+### HTTP Security Headers
+
+Configured in `next.config.ts` via the `headers()` function:
+- `X-Frame-Options: DENY` — prevents clickjacking
+- `X-Content-Type-Options: nosniff` — prevents MIME-type sniffing
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy` — disables camera, microphone, geolocation
+- `Strict-Transport-Security` — forces HTTPS (1 year, includeSubDomains)
+- `Content-Security-Policy` — restricts resource loading to same origin; `frame-ancestors 'none'`
+
+### CSRF Protection
+
+`middleware.ts` validates the `Origin` header on all non-GET requests to `/api/*`. If the Origin host doesn't match the request Host, the request is rejected with 403. Requests without an Origin header (server-to-server, curl) pass through since they can't carry SameSite=Lax cookies.
+
+### Key Files
+
+- `middleware.ts` — CSRF origin validation middleware
+- `next.config.ts` — Security headers configuration
+- `lib/country-flags.ts` — Country name → flag emoji mapping (shared by inventory table and product detail page)
+- `scripts/migrate-lot-dirs.ts` — One-time migration: renames upload directories from lot-ID to lot-number format, backfills `lot_numbers` column
+
 ## Industry Context
 
 - Understand common processed fruit/veg terminology (Brix, mesh size, diced vs sliced vs whole, IQF vs block frozen, single strength vs concentrate)
@@ -499,8 +523,8 @@ Key tables in `lamex.db` (full DDL in `lib/db.ts`):
 - **`lots`** — Per-lot detail within a listing (listing_id FK, lot_number, quantity, weight_lbs, bbd)
 - **`lot_contracts`** — Many-to-many between lots and contract-container references
 - **`listing_contracts`** — Many-to-many between listings and contract-container references
-- **`documents`** — Uploaded documents (product_id FK, category, filename, base_contract). **Preserved during weekly sync.**
-- **`document_lots`** — Many-to-many between documents and lots (for COAs covering multiple lots). **Cleared during sync** (lot IDs change); documents remain, associations are re-linked when lots are re-populated.
+- **`documents`** — Uploaded documents (product_id FK, category, filename, base_contract, lot_numbers JSON). **Preserved during weekly sync.** The `lot_numbers` column stores stable lot number strings so documents can be re-linked after re-seed.
+- **`document_lots`** — Many-to-many between documents and lots (for COAs covering multiple lots). **Re-linked during sync/seed** via `relinkDocumentLots()` — lot IDs change on each seed, but lot numbers (stored in `documents.lot_numbers`) are matched to fresh IDs.
 - **`suppliers`** — Supplier master data with COO and trading company flag
 - **`supplier_products`** — Many-to-many linking suppliers to product labels
 - **`warehouses`** — Warehouse master data with city, state, storage type
@@ -516,7 +540,7 @@ Key tables in `lamex.db` (full DDL in `lib/db.ts`):
 - Use semantic HTML and accessible markup
 - Mobile-first responsive design
 - Inventory source data (JSON) in `/data` directory; runtime data in SQLite (`lamex.db`)
-- Document uploads in `public/uploads/{product-id}/lots/` and `public/uploads/{product-id}/contracts/`
+- Document uploads in `public/uploads/{product-id}/lots/{lot-number}/` and `public/uploads/{product-id}/contracts/{base-contract}/`
 - All path segments from user input must be sanitized before use in filesystem operations
 - Email templates in `/emails` directory
 - Weekly sync snapshots in `data/snapshots/` (gitignored)

@@ -79,6 +79,17 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Product flags API for toggling new_arrival/featured badges.
 - Security hardening: HTML escaping in email template, atomic flag toggle, recipient dedup, input size limits, error sanitization, productId validation.
 
+### ✅ Security Hardening & UX Polish (v0.9.6)
+- CSRF origin validation middleware for all state-changing API routes.
+- HTTP security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.
+- Country flag emojis on public inventory table and product detail pages (shared `lib/country-flags.ts` utility).
+- Transactional document insert (`addDocument`) to prevent orphaned files on partial failures.
+- Agent system prompt rule 9: tool errors must be reported to the user immediately.
+- Discount API endpoints hardened to require `reviewer` role on all methods.
+- Email send error sanitization (whitelist-based safe messages, no internal details leaked).
+- Email validation tightened to RFC 5321 simplified pattern.
+- Silent catch blocks in `lib/discount.ts` now log errors.
+
 ## Active Priorities
 ### 1. Data Quality (remaining)
 - Validate unit types are correctly identified per product during sync.
