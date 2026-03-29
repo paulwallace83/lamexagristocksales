@@ -289,6 +289,15 @@ Stored in `public/uploads/{product-id}/contracts/{base-contract}/{category}/`
 Show product photos if: format === "IQF" OR (processType === "Frozen" AND format !== "Juice Concentrate" AND format !== "Puree")
 ```
 
+### Key Files
+
+- `lib/documents.ts` — Document types, CRUD, status queries, upload directory resolution
+- `lib/inventory.ts` — Core inventory types (Product, Listing, Lot, InventoryData)
+- `lib/inventory-db.ts` — Query layer that reads products/listings/lots from SQLite
+- `app/api/documents/[productId]/route.ts` — GET/DELETE document endpoints (auth required)
+- `app/qa/page.tsx` — QA dashboard server component
+- `app/qa/upload/[id]/page.tsx` — Per-product upload page
+
 ## Public Inventory Page
 
 - Products are **grouped by format** (IQF, Juice Concentrate, Puree) with collapsible section headers showing product count and total weight.
@@ -417,14 +426,32 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 - Responses stream via SSE with tool activity indicators. Max 10 tool-use iterations per request with a user-visible warning if the limit is reached.
 - Requires `ANTHROPIC_API_KEY` in `.env.local`.
 
+### Conversation Persistence
+
+Agent chat sessions are saved to SQLite and survive page reloads.
+
+- **Auto-save:** After each assistant response completes, the conversation is saved (fire-and-forget).
+- **Conversation list:** Dropdown in the header bar shows recent conversations (up to 20) with relative timestamps.
+- **Resume:** Click a conversation to reload the full message history and continue where you left off.
+- **New chat:** "+" button clears state and shows starter prompts.
+- **Delete:** Per-conversation delete from the history dropdown.
+- **Storage:** Only `apiHistory` (plain `{role, content}` pairs) is persisted — tool events are transient.
+- **File names:** Stored for display (file chips on user messages), but actual files use the 30-min temp system.
+- **Ownership:** Conversations are scoped by user email — users can only see/modify their own.
+- **Preserved during weekly sync** (`npm run sync`). **Cleared during full seed** (`npm run seed`).
+
 ### Key Files
 
 - `lib/agent-db.ts` — Agent-specific DB queries (lot lookup, contract lookup, product search, sync info, test-result coverage)
 - `lib/agent-tools.ts` — Tool definitions and server-side execution logic
+- `lib/conversations.ts` — Conversation persistence CRUD (create, list, load, save messages, delete)
 - `app/api/agent/chat/route.ts` — Streaming SSE endpoint with agentic tool-use loop (max 10 iterations)
+- `app/api/agent/conversations/route.ts` — List + create conversation endpoints
+- `app/api/agent/conversations/[id]/route.ts` — Get + delete conversation endpoints
+- `app/api/agent/conversations/[id]/messages/route.ts` — Save messages endpoint
 - `app/admin/agent/layout.tsx` — Auth guard (qa OR reviewer role), full-viewport fixed layout
 - `app/admin/agent/page.tsx` — Server component shell
-- `app/admin/agent/AgentChat.tsx` — Client chat UI with file attachments, drag-and-drop, and streaming
+- `app/admin/agent/AgentChat.tsx` — Client chat UI with file attachments, drag-and-drop, streaming, and conversation persistence
 - `app/admin/agent/MarkdownMessage.tsx` — Markdown renderer for assistant messages
 
 ### Security
@@ -439,6 +466,26 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 - No public routes or links — the agent is invisible to customers
 - Claude system prompt prohibits discussing customer names, pricing, or internal references
 - Claude system prompt rule 9: must report tool errors to user (never silently claim success after a failed tool call)
+- Fuzzy file matching in `upload_document`: when Claude invents a filename that doesn't match the `fileMap` key, the tool falls back to substring and lot-number matching. Path traversal is still enforced via `resolve().startsWith()` on the final filepath.
+- Conversation message validation: role must be "user" or "assistant", content capped at 500KB, max 200 messages per save
+
+### API Usage Tracking
+
+Tracks per-request token usage and cost for the agent chat.
+
+- **Token capture:** After each Anthropic API call in the tool loop, `input_tokens`, `output_tokens`, and cache tokens are accumulated. One `api_usage` row is recorded per user request (summing all iterations).
+- **Cost calculation:** Server-side, using rates from `data/api-pricing.json`.
+- **Stats bar:** Compact bar above the chat area showing daily/monthly/yearly call count and cost. Refreshes automatically after each response.
+- **Pricing updates:** Run `npm run update-pricing` to fetch current rates from the Anthropic pricing docs page. Falls back gracefully if the page structure changes.
+- **Preserved during weekly sync.** Cleared during full seed.
+
+#### Key Files
+
+- `data/api-pricing.json` — Per-model token rates (manually or script-updated)
+- `scripts/update-pricing.ts` — Fetches and parses Anthropic pricing page
+- `lib/api-usage.ts` — Record usage, calculate cost, query stats
+- `app/api/agent/usage/route.ts` — GET stats endpoint
+- `app/admin/agent/UsageStatsBar.tsx` — Stats bar component
 
 ## Marketing Email
 
@@ -533,6 +580,9 @@ Key tables in `lamex.db` (full DDL in `lib/db.ts`):
 - **`discount_items`** — Discount/clearance inventory (insurance claims, expired, overstock). **Preserved during weekly sync.**
 - **`product_flags`** — Marketing flags per product (new_arrival, featured). **Preserved during weekly sync.** `new_arrival` flags auto-reset each sync.
 - **`metadata`** — System metadata (lastUpdated timestamp)
+- **`conversations`** — Agent chat session headers (user_email, title, timestamps). **Preserved during weekly sync.**
+- **`conversation_messages`** — Agent chat messages (role, content, file_names). CASCADE deletes with parent conversation. **Preserved during weekly sync.**
+- **`api_usage`** — Per-request token usage and cost (model, input/output/cache tokens, iterations, cost_usd). **Preserved during weekly sync.**
 
 ## Code Conventions
 
@@ -569,4 +619,5 @@ Both accounts use password: `lamex2026`
 | `npm run seed` | Full destructive seed — clears ALL tables (including documents/users) and reloads from JSON. Use for fresh installs only. |
 | `npm run sync` | Weekly inventory sync — preserves documents + users, snapshots previous state, re-seeds from updated JSON. |
 | `npm run import-excel -- <path>` | Import raw ERP Excel export → `inventory-proposed.json` (included items) + `import-review.json` (soft-excluded for manual review). Feeds into existing sync workflow. |
+| `npm run update-pricing` | Fetch current Anthropic pricing and update `data/api-pricing.json` |
 | `npm start` | Start production server |

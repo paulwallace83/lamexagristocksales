@@ -9,7 +9,8 @@
     "start": "next start",
     "seed": "tsx scripts/seed.ts",
     "sync": "tsx scripts/sync-inventory.ts",
-    "import-excel": "tsx scripts/import-excel.ts"
+    "import-excel": "tsx scripts/import-excel.ts",
+    "update-pricing": "tsx scripts/update-pricing.ts"
   },
   "repository": {
     "type": "git",

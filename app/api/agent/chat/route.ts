@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, statSy
 import { join, resolve } from "path";
 import { auth } from "@/lib/auth";
 import { TOOL_DEFINITIONS, executeTool, type FileData } from "@/lib/agent-tools";
+import { recordUsage, calculateCost } from "@/lib/api-usage";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +72,12 @@ export async function POST(req: NextRequest) {
   try {
     const parsed = JSON.parse(messagesRaw || "[]");
     if (!Array.isArray(parsed)) throw new Error("messages must be an array");
-    apiMessages = parsed;
+    // Strip any extra fields (e.g. fileNames from conversation persistence)
+    // that would cause Anthropic API validation errors
+    apiMessages = parsed.map((m: Record<string, unknown>) => ({
+      role: m.role,
+      content: m.content,
+    })) as Anthropic.MessageParam[];
   } catch {
     return new Response(JSON.stringify({ error: "Invalid messages format" }), {
       status: 400,
@@ -177,6 +183,12 @@ export async function POST(req: NextRequest) {
         let messages = [...apiMessages];
         let iteration = 0;
 
+        // Token usage accumulators (summed across all tool-loop iterations)
+        let totalInputTokens = 0;
+        let totalOutputTokens = 0;
+        let totalCacheCreation = 0;
+        let totalCacheRead = 0;
+
         for (; iteration < MAX_ITERATIONS; iteration++) {
           const apiStream = anthropic.messages.stream({
             model: "claude-sonnet-4-6",
@@ -192,6 +204,15 @@ export async function POST(req: NextRequest) {
           });
 
           const response = await apiStream.finalMessage();
+
+          // Accumulate token usage from this iteration
+          if (response.usage) {
+            totalInputTokens += response.usage.input_tokens ?? 0;
+            totalOutputTokens += response.usage.output_tokens ?? 0;
+            const usage = response.usage as unknown as Record<string, number | null>;
+            totalCacheCreation += usage.cache_creation_input_tokens ?? 0;
+            totalCacheRead += usage.cache_read_input_tokens ?? 0;
+          }
 
           // Collect tool use blocks
           const toolUseBlocks = response.content.filter(
@@ -244,6 +265,37 @@ export async function POST(req: NextRequest) {
               "I reached the maximum number of steps for this request. The response may be incomplete — send a follow-up message to continue.",
           });
         }
+
+        // Record usage to database and send to client
+        const iterationCount = iteration + 1;
+        const cost = calculateCost({
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          cacheCreationTokens: totalCacheCreation,
+          cacheReadTokens: totalCacheRead,
+        });
+
+        try {
+          recordUsage({
+            userEmail: session.user!.email || "unknown",
+            model: "claude-sonnet-4-6",
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            cacheCreationTokens: totalCacheCreation,
+            cacheReadTokens: totalCacheRead,
+            iterations: iterationCount,
+          });
+        } catch (err) {
+          console.error("[agent] Failed to record usage:", err);
+        }
+
+        send({
+          type: "usage",
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          iterations: iterationCount,
+          cost,
+        });
 
         send({ type: "done" });
       } catch (err) {

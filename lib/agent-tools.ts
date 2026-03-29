@@ -331,9 +331,32 @@ export async function executeTool(
         return { error: "baseContract is required for specs, labels, and photos" };
       }
 
-      const fileData = fileMap.get(fileRef);
+      let fileData = fileMap.get(fileRef);
+      // Fuzzy match: Claude may invent a fileRef that doesn't match the sanitized
+      // original filename. Try matching by substring (lot number or partial name).
       if (!fileData) {
-        return { error: `File '${fileRef}' not found. The file may have expired — please re-upload it.` };
+        const refLower = fileRef.toLowerCase();
+        for (const [key, data] of fileMap) {
+          if (
+            key.toLowerCase().includes(refLower) ||
+            refLower.includes(key.toLowerCase()) ||
+            // Match by lot/batch number embedded in both names
+            (() => {
+              const refDigits = refLower.match(/\d{5,}/g);
+              const keyDigits = key.toLowerCase().match(/\d{5,}/g);
+              return refDigits && keyDigits && refDigits.some((d) => keyDigits.includes(d));
+            })()
+          ) {
+            fileData = data;
+            break;
+          }
+        }
+      }
+      if (!fileData) {
+        const available = Array.from(fileMap.keys()).join(", ");
+        return {
+          error: `File '${fileRef}' not found. Available files: ${available || "none — please re-upload"}.`,
+        };
       }
 
       const safePid = productId.replace(/[^a-zA-Z0-9._-]/g, "_");

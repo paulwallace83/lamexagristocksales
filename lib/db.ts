@@ -151,6 +151,43 @@ CREATE TABLE IF NOT EXISTS discount_items (
   added_date        TEXT NOT NULL,
   last_validated    TEXT
 );
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id         TEXT PRIMARY KEY,
+  user_email TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  role            TEXT NOT NULL CHECK(role IN ('user','assistant')),
+  content         TEXT NOT NULL,
+  file_names      TEXT,
+  created_at      TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_conv_messages_conv_id ON conversation_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_email);
+
+CREATE TABLE IF NOT EXISTS api_usage (
+  id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id       TEXT,
+  user_email            TEXT NOT NULL,
+  model                 TEXT NOT NULL,
+  input_tokens          INTEGER NOT NULL,
+  output_tokens         INTEGER NOT NULL,
+  cache_creation_tokens INTEGER NOT NULL DEFAULT 0,
+  cache_read_tokens     INTEGER NOT NULL DEFAULT 0,
+  iterations            INTEGER NOT NULL DEFAULT 1,
+  cost_usd              REAL NOT NULL,
+  created_at            TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_usage_created ON api_usage(created_at);
+CREATE INDEX IF NOT EXISTS idx_api_usage_user ON api_usage(user_email);
 `;
 
 let _db: Database.Database | null = null;

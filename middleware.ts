@@ -11,7 +11,8 @@ import { NextRequest, NextResponse } from "next/server";
  * since they can't carry session cookies set with SameSite=Lax.
  */
 export function middleware(req: NextRequest) {
-  const { pathname, method } = req.nextUrl;
+  const { pathname } = req.nextUrl;
+  const method = req.method;
 
   // Only apply to API routes with state-changing methods
   if (

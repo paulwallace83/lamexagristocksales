@@ -19,6 +19,9 @@ const db = getDb();
 
 // Clear all tables (order matters for FK references — children before parents)
 db.exec(`
+  DELETE FROM api_usage;
+  DELETE FROM conversation_messages;
+  DELETE FROM conversations;
   DELETE FROM document_lots;
   DELETE FROM documents;
   DELETE FROM lot_contracts;
