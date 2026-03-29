@@ -3,6 +3,7 @@ import { writeFileSync, unlinkSync } from "fs";
 import { join, resolve } from "path";
 import { auth } from "@/lib/auth";
 import { addDocument, getUploadDir, getDocumentUrl } from "@/lib/documents";
+import { getDb } from "@/lib/db";
 import type { DocCategory } from "@/lib/documents";
 
 const VALID_CATEGORIES: DocCategory[] = ["coa", "test-results", "specs", "labels", "photos"];
@@ -70,9 +71,20 @@ export async function POST(req: NextRequest) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const filename = `${timestamp}-${safeName}`;
 
+  // Resolve lot number for stable storage path (lot IDs change on re-seed)
+  let lotNumber: string | undefined;
+  if (LOT_CATEGORIES.includes(cat) && lotIds.length > 0) {
+    const db = getDb();
+    const lotRow = db.prepare("SELECT lot_number FROM lots WHERE id = ?").get(lotIds[0]) as { lot_number: string } | undefined;
+    if (!lotRow) {
+      return NextResponse.json({ error: `Lot ID ${lotIds[0]} not found` }, { status: 400 });
+    }
+    lotNumber = lotRow.lot_number;
+  }
+
   // Determine storage path (sanitize all user-provided segments)
   const storageOpts = LOT_CATEGORIES.includes(cat)
-    ? { lotId: lotIds[0] }
+    ? { lotNumber: lotNumber! }
     : { baseContract: safePath(baseContract!) };
 
   const dir = getUploadDir(safeProductId, category, storageOpts);

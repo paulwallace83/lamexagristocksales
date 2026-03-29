@@ -8,7 +8,10 @@
       "originalName": "Blackberry_COA_PO_123223-05(DOLE_.pdf",
       "uploadedAt": "2026-03-28T03:52:24.930Z",
       "uploadedBy": "coa@lamexfoods.us",
-      "baseContract": null
+      "baseContract": null,
+      "lotNumbers": [
+        "TN8-25060"
+      ]
     },
     {
       "id": "d093a2d6-de04-46d3-8c45-1cea6de494cd",
@@ -28,7 +31,10 @@
       "originalName": "Pages_from_129640_MVD2026000000007_Lamex.pdf",
       "uploadedAt": "2026-03-28T04:05:05.540Z",
       "uploadedBy": "coa@lamexfoods.us",
-      "baseContract": null
+      "baseContract": null,
+      "lotNumbers": [
+        "24024050"
+      ]
     },
     {
       "id": "381ad91c-5636-4624-9d7c-096e46dd3c42",
@@ -38,7 +44,10 @@
       "originalName": "MICRO_TENO_124717_4.pdf",
       "uploadedAt": "2026-03-28T04:20:38.735Z",
       "uploadedBy": "coa@lamexfoods.us",
-      "baseContract": null
+      "baseContract": null,
+      "lotNumbers": [
+        "TN4-25142"
+      ]
     },
     {
       "id": "6a512ec6-95b9-4fa1-a3c5-dd02748e6272",
@@ -58,7 +67,10 @@
       "originalName": "COA-Packing_List_124717-04.pdf",
       "uploadedAt": "2026-03-28T04:22:22.675Z",
       "uploadedBy": "coa@lamexfoods.us",
-      "baseContract": null
+      "baseContract": null,
+      "lotNumbers": [
+        "TN4-25142"
+      ]
     },
     {
       "id": "56d710d5-0372-4b46-8f65-4eb14ea892af",
@@ -88,7 +100,10 @@
       "originalName": "0000748642.pdf",
       "uploadedAt": "2026-03-28T04:26:15.988Z",
       "uploadedBy": "coa@lamexfoods.us",
-      "baseContract": null
+      "baseContract": null,
+      "lotNumbers": [
+        "0000748642"
+      ]
     },
     {
       "id": "e418da3d-b036-4258-bb62-b9fb15cbac4c",
@@ -108,7 +123,10 @@
       "originalName": "0000748642_LAMEX_AGRIFOODS_INC._po_121707-03(004_.pdf",
       "uploadedAt": "2026-03-28T04:26:49.483Z",
       "uploadedBy": "coa@lamexfoods.us",
-      "baseContract": null
+      "baseContract": null,
+      "lotNumbers": [
+        "0000748642"
+      ]
     },
     {
       "id": "362a958a-57fa-4929-a301-36a1c9ea9135",

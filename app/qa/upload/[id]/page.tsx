@@ -123,7 +123,7 @@ export default async function UploadPage({ params }: { params: Promise<{ id: str
                                   allLots={allLotOptions}
                                   documents={lotCoaDocs.map((d) => ({
                                     ...d,
-                                    url: getDocumentUrl(d.productId, d.category, d.filename, { lotId: d.lotIds[0] }),
+                                    url: getDocumentUrl(d.productId, d.category, d.filename, { lotNumber: d.lotNumbers[0] }),
                                   }))}
                                   deleteParams={{ lotId: String(lot.id) }}
                                 />
@@ -134,7 +134,7 @@ export default async function UploadPage({ params }: { params: Promise<{ id: str
                                   lotIds={[lot.id]}
                                   documents={lotTestDocs.map((d) => ({
                                     ...d,
-                                    url: getDocumentUrl(d.productId, d.category, d.filename, { lotId: d.lotIds[0] }),
+                                    url: getDocumentUrl(d.productId, d.category, d.filename, { lotNumber: d.lotNumbers[0] }),
                                   }))}
                                   deleteParams={{ lotId: String(lot.id) }}
                                 />

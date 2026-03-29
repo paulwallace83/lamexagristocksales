@@ -21,6 +21,7 @@ export interface DocumentEntry {
   uploadedBy: string;
   baseContract: string | null;
   lotIds: number[];
+  lotNumbers: string[];
 }
 
 export interface DocumentsData {
@@ -102,9 +103,14 @@ function toDocumentEntry(
     id: string; product_id: string; category: string;
     filename: string; original_name: string; uploaded_at: string;
     uploaded_by: string; base_contract: string | null;
+    lot_numbers?: string | null;
   },
   lotIds: number[] = [],
 ): DocumentEntry {
+  let lotNumbers: string[] = [];
+  if (row.lot_numbers) {
+    try { lotNumbers = JSON.parse(row.lot_numbers); } catch { /* ignore */ }
+  }
   return {
     id: row.id,
     productId: row.product_id,
@@ -115,6 +121,7 @@ function toDocumentEntry(
     uploadedBy: row.uploaded_by,
     baseContract: row.base_contract,
     lotIds,
+    lotNumbers,
   };
 }
 
@@ -122,6 +129,7 @@ type DocRow = {
   id: string; product_id: string; category: string;
   filename: string; original_name: string; uploaded_at: string;
   uploaded_by: string; base_contract: string | null;
+  lot_numbers: string | null;
 };
 
 function attachLotIds(docs: DocRow[]): DocumentEntry[] {
@@ -189,13 +197,27 @@ export function addDocument(entry: {
   lotIds?: number[];
 }): void {
   const db = getDb();
+
+  // Resolve lot IDs → lot numbers so we can re-link after sync/seed
+  let lotNumbersJson: string | null = null;
+  if (entry.lotIds && entry.lotIds.length > 0) {
+    const placeholders = entry.lotIds.map(() => "?").join(",");
+    const rows = db.prepare(
+      `SELECT lot_number FROM lots WHERE id IN (${placeholders})`,
+    ).all(...entry.lotIds) as Array<{ lot_number: string }>;
+    if (rows.length > 0) {
+      lotNumbersJson = JSON.stringify(rows.map((r) => r.lot_number));
+    }
+  }
+
   db.prepare(`
-    INSERT INTO documents (id, product_id, category, filename, original_name, uploaded_at, uploaded_by, base_contract)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO documents (id, product_id, category, filename, original_name, uploaded_at, uploaded_by, base_contract, lot_numbers)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     entry.id, entry.productId, entry.category, entry.filename,
     entry.originalName, entry.uploadedAt, entry.uploadedBy,
     entry.baseContract ?? null,
+    lotNumbersJson,
   );
 
   if (entry.lotIds && entry.lotIds.length > 0) {
@@ -204,6 +226,51 @@ export function addDocument(entry: {
       insert.run(entry.id, lotId);
     }
   }
+}
+
+/**
+ * Re-link document_lots after lots have been re-seeded (lot IDs change each seed/sync).
+ * Reads lot_numbers JSON from each document and resolves to current lot IDs.
+ * Returns count of associations created.
+ */
+export function relinkDocumentLots(): { linked: number; orphaned: number } {
+  const db = getDb();
+  let linked = 0;
+  let orphaned = 0;
+
+  const docs = db.prepare(
+    "SELECT id, product_id, lot_numbers FROM documents WHERE lot_numbers IS NOT NULL AND lot_numbers != '[]'",
+  ).all() as Array<{ id: string; product_id: string; lot_numbers: string }>;
+
+  const insertLink = db.prepare("INSERT OR IGNORE INTO document_lots (document_id, lot_id) VALUES (?, ?)");
+
+  for (const doc of docs) {
+    let lotNumbers: string[];
+    try {
+      lotNumbers = JSON.parse(doc.lot_numbers);
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(lotNumbers) || lotNumbers.length === 0) continue;
+
+    // Find lots by number within this product's listings
+    for (const lotNum of lotNumbers) {
+      const lot = db.prepare(`
+        SELECT lo.id FROM lots lo
+        JOIN listings li ON lo.listing_id = li.id
+        WHERE li.product_id = ? AND lo.lot_number = ?
+      `).get(doc.product_id, lotNum) as { id: number } | undefined;
+
+      if (lot) {
+        insertLink.run(doc.id, lot.id);
+        linked++;
+      } else {
+        orphaned++;
+      }
+    }
+  }
+
+  return { linked, orphaned };
 }
 
 export function removeDocument(productId: string, documentId: string): boolean {
@@ -223,11 +290,15 @@ function safeSeg(segment: string): string {
   return segment.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
-export function getUploadDir(productId: string, category: string, opts?: { lotId?: number; baseContract?: string }): string {
+export function getUploadDir(productId: string, category: string, opts?: { lotId?: number; lotNumber?: string; baseContract?: string }): string {
   const pid = safeSeg(productId);
   const cat = safeSeg(category);
   let dir: string;
-  if (opts?.lotId != null) {
+  if (opts?.lotNumber != null) {
+    // Preferred: use lot number (stable across re-seeds)
+    dir = join(process.cwd(), "public", "uploads", pid, "lots", safeSeg(opts.lotNumber), cat);
+  } else if (opts?.lotId != null) {
+    // Legacy fallback: use lot ID (unstable — changes on re-seed)
     dir = join(process.cwd(), "public", "uploads", pid, "lots", String(opts.lotId), cat);
   } else if (opts?.baseContract != null) {
     dir = join(process.cwd(), "public", "uploads", pid, "contracts", safeSeg(opts.baseContract), cat);
@@ -247,11 +318,13 @@ export function getUploadDir(productId: string, category: string, opts?: { lotId
 }
 
 /** Build the public URL path for a document. All segments are sanitized. */
-export function getDocumentUrl(productId: string, category: string, filename: string, opts?: { lotId?: number; baseContract?: string }): string {
+export function getDocumentUrl(productId: string, category: string, filename: string, opts?: { lotId?: number; lotNumber?: string; baseContract?: string }): string {
   const pid = encodeURIComponent(safeSeg(productId));
   const cat = encodeURIComponent(safeSeg(category));
   const fn = encodeURIComponent(safeSeg(filename));
-  if (opts?.lotId != null) {
+  if (opts?.lotNumber != null) {
+    return `/uploads/${pid}/lots/${encodeURIComponent(safeSeg(opts.lotNumber))}/${cat}/${fn}`;
+  } else if (opts?.lotId != null) {
     return `/uploads/${pid}/lots/${opts.lotId}/${cat}/${fn}`;
   } else if (opts?.baseContract != null) {
     return `/uploads/${pid}/contracts/${encodeURIComponent(safeSeg(opts.baseContract))}/${cat}/${fn}`;

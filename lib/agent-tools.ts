@@ -10,6 +10,7 @@ import {
   getTestResultCoverage,
 } from "./agent-db";
 import { getProductById } from "./inventory-db";
+import { getDb } from "./db";
 import { getDocumentStatus, addDocument, getUploadDir, getDocumentUrl } from "./documents";
 import { getDiscountItems, addDiscountItemsFromLots, restoreToInventory } from "./discount";
 import type { DocCategory } from "./documents";
@@ -340,8 +341,16 @@ export async function executeTool(
       const timestamp = Date.now();
       const filename = `${timestamp}-${safeName}`;
 
+      // Resolve lot number for stable storage path (lot IDs change on re-seed)
+      let lotNumber: string | undefined;
+      if (LOT_CATEGORIES.includes(category) && lotIds.length > 0) {
+        const lotRow = getDb().prepare("SELECT lot_number FROM lots WHERE id = ?").get(lotIds[0]) as { lot_number: string } | undefined;
+        if (!lotRow) return { error: `Lot ID ${lotIds[0]} not found in database` };
+        lotNumber = lotRow.lot_number;
+      }
+
       const storageOpts = LOT_CATEGORIES.includes(category)
-        ? { lotId: lotIds[0] }
+        ? { lotNumber: lotNumber! }
         : { baseContract: baseContract!.replace(/[^a-zA-Z0-9._-]/g, "_") };
 
       let dir: string;

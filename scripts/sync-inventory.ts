@@ -293,6 +293,23 @@ try {
   db.exec("PRAGMA foreign_keys = ON");
 }
 
+// ─── Step 3a: Re-link document ↔ lot associations ───────────────
+
+import { relinkDocumentLots } from "../lib/documents";
+
+const relinkReport = relinkDocumentLots();
+if (relinkReport.linked > 0 || relinkReport.orphaned > 0) {
+  console.log(`\n📎 Document-lot re-linking:`);
+  if (relinkReport.linked > 0) {
+    console.log(`   ✅ ${relinkReport.linked} association(s) restored`);
+  }
+  if (relinkReport.orphaned > 0) {
+    console.log(`   ⚠️  ${relinkReport.orphaned} lot number(s) not found (lot may have been removed)`);
+  }
+} else {
+  console.log("\n📎 No document-lot associations to re-link.");
+}
+
 // ─── Step 3b: Auto-detect new arrivals ──────────────────────────
 
 import { setNewArrivals } from "../lib/product-flags";

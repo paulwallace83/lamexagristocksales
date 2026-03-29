@@ -98,7 +98,8 @@ CREATE TABLE IF NOT EXISTS documents (
   original_name TEXT NOT NULL,
   uploaded_at   TEXT NOT NULL,
   uploaded_by   TEXT NOT NULL,
-  base_contract TEXT
+  base_contract TEXT,
+  lot_numbers   TEXT
 );
 
 CREATE TABLE IF NOT EXISTS document_lots (
@@ -161,6 +162,12 @@ function migrate(db: Database.Database): void {
   if (docInfo.length > 0 && !hasBaseContract) {
     // Old schema exists without base_contract — recreate (safe since documents is empty)
     db.exec("DROP TABLE IF EXISTS documents");
+  }
+
+  // Migrate documents table: add lot_numbers column
+  const hasLotNumbers = docInfo.some((col) => col.name === "lot_numbers");
+  if (docInfo.length > 0 && hasBaseContract && !hasLotNumbers) {
+    db.exec("ALTER TABLE documents ADD COLUMN lot_numbers TEXT");
   }
 
   // Migrate users table: add role column

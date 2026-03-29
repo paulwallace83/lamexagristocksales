@@ -148,11 +148,12 @@ const seed = db.transaction(() => {
 
   // Documents
   const insertDoc = db.prepare(`
-    INSERT INTO documents (id, product_id, category, filename, original_name, uploaded_at, uploaded_by, base_contract)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO documents (id, product_id, category, filename, original_name, uploaded_at, uploaded_by, base_contract, lot_numbers)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   for (const d of documents.documents) {
-    insertDoc.run(d.id, d.productId, d.category, d.filename, d.originalName, d.uploadedAt, d.uploadedBy, d.baseContract ?? null);
+    const lotNumbers = Array.isArray(d.lotNumbers) ? JSON.stringify(d.lotNumbers) : (d.lotNumbers ?? null);
+    insertDoc.run(d.id, d.productId, d.category, d.filename, d.originalName, d.uploadedAt, d.uploadedBy, d.baseContract ?? null, lotNumbers);
   }
 
   // Users — passwords in users.json MUST be pre-hashed with bcrypt
@@ -175,6 +176,16 @@ const seed = db.transaction(() => {
 });
 
 seed();
+
+// Re-link document ↔ lot associations (lot IDs change each seed)
+import { relinkDocumentLots } from "../lib/documents";
+const relinkReport = relinkDocumentLots();
+if (relinkReport.linked > 0) {
+  console.log(`  ${relinkReport.linked} document-lot association(s) re-linked`);
+}
+if (relinkReport.orphaned > 0) {
+  console.log(`  ⚠️  ${relinkReport.orphaned} document lot number(s) not found in current inventory`);
+}
 
 // Load discount inventory (if any)
 import { loadDiscountFromJson, deductDiscountLots } from "../lib/discount";

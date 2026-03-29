@@ -232,7 +232,7 @@ function LotRow({ lot, unitType, documents }: { lot: Lot; unitType: string; docu
         {coaDocs.map((doc) => (
           <a
             key={doc.id}
-            href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotId: doc.lotIds[0] })}
+            href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotNumber: doc.lotNumbers[0] })}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs font-medium text-[#4a90c4] hover:underline"
@@ -246,7 +246,7 @@ function LotRow({ lot, unitType, documents }: { lot: Lot; unitType: string; docu
         {testDocs.map((doc) => (
           <a
             key={doc.id}
-            href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotId: doc.lotIds[0] })}
+            href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotNumber: doc.lotNumbers[0] })}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs font-medium text-[#4a90c4] hover:underline"
