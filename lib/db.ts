@@ -223,10 +223,15 @@ export function getDb(): Database.Database {
     migrate(_db);
     _db.exec(SCHEMA_SQL);
     // Auto-seed if database is empty (first deploy / fresh install)
-    const count = _db.prepare("SELECT COUNT(*) AS n FROM products").get() as { n: number };
-    if (count.n === 0) {
-      console.log("[db] Empty database detected — auto-seeding from JSON...");
-      autoSeed(_db);
+    // Skip during build — volume isn't mounted, so seeding would go to a throwaway DB
+    const isBuild = process.env.NEXT_PHASE === "phase-production-build"
+      || (process.env.RAILWAY_VOLUME_PATH && !require("fs").existsSync(process.env.RAILWAY_VOLUME_PATH));
+    if (!isBuild) {
+      const count = _db.prepare("SELECT COUNT(*) AS n FROM products").get() as { n: number };
+      if (count.n === 0) {
+        console.log("[db] Empty database detected — auto-seeding from JSON...");
+        autoSeed(_db);
+      }
     }
   }
   return _db;
