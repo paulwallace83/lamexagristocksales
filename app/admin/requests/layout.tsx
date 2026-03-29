@@ -2,14 +2,14 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AdminHeader from "@/components/AdminHeader";
 
-export default async function DiscountLayout({ children }: { children: React.ReactNode }) {
+export default async function RequestsLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
   if (!session?.user) {
     redirect("/qa/login");
   }
 
-  if (session.user.role !== "reviewer") {
+  if (!session.user.role || !["qa", "reviewer"].includes(session.user.role)) {
     redirect("/qa");
   }
 
@@ -26,10 +26,10 @@ export default async function DiscountLayout({ children }: { children: React.Rea
   return (
     <div className="min-h-screen bg-gray-50">
       <AdminHeader
-        portalName="Discount Inventory"
-        portalBadgeClass="bg-amber-500/80"
+        portalName="Document Requests"
+        portalBadgeClass="bg-emerald-500/80"
         navLinks={navLinks}
-        currentPath="/admin/discount"
+        currentPath="/admin/requests"
         userEmail={session.user.email ?? ""}
       />
       <main>{children}</main>

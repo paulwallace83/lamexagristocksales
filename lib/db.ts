@@ -188,6 +188,26 @@ CREATE TABLE IF NOT EXISTS api_usage (
 
 CREATE INDEX IF NOT EXISTS idx_api_usage_created ON api_usage(created_at);
 CREATE INDEX IF NOT EXISTS idx_api_usage_user ON api_usage(user_email);
+
+CREATE TABLE IF NOT EXISTS document_requests (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id      TEXT NOT NULL,
+  requester_name  TEXT NOT NULL,
+  requester_company TEXT NOT NULL,
+  requester_email TEXT NOT NULL,
+  requester_phone TEXT,
+  message         TEXT,
+  requested_docs  TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'pending'
+    CHECK(status IN ('pending','approved','rejected','sent')),
+  created_at      TEXT NOT NULL,
+  reviewed_at     TEXT,
+  reviewed_by     TEXT,
+  notes           TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_doc_requests_status ON document_requests(status);
+CREATE INDEX IF NOT EXISTS idx_doc_requests_product ON document_requests(product_id);
 `;
 
 let _db: Database.Database | null = null;

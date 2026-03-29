@@ -101,7 +101,26 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        {/* Contract Documents */}
+        {/* Request Documents CTA */}
+        {documents.some((d) => d.category === "coa" || d.category === "test-results" || d.category === "specs") && (
+          <div className="mx-6 mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-emerald-800">Certificates, Test Results &amp; Specification Sheets</p>
+              <p className="text-xs text-emerald-600 mt-0.5">Available upon request. We will review and send the documents to you by email.</p>
+            </div>
+            <Link
+              href={`/contact?type=documents&productId=${encodeURIComponent(id)}&product=${encodeURIComponent(product.product)}`}
+              className="shrink-0 inline-flex items-center gap-1.5 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Request Documents
+            </Link>
+          </div>
+        )}
+
+        {/* Contract Documents (labels + photos only — specs are restricted) */}
         <ContractDocuments
           productId={id}
           documents={documents}
@@ -234,35 +253,23 @@ function LotRow({ lot, unitType, documents }: { lot: Lot; unitType: string; docu
         {lot.contracts.length > 0 && (
           <span className="text-xs text-gray-400">Ref: {lot.contracts.join(", ")}</span>
         )}
-        {/* Lot documents inline */}
-        {coaDocs.map((doc) => (
-          <a
-            key={doc.id}
-            href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotNumber: doc.lotNumbers[0] })}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-medium text-[#4a90c4] hover:underline"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        {/* Availability badges (restricted docs — not downloadable) */}
+        {hasCOA && (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
             </svg>
             COA
-          </a>
-        ))}
-        {testDocs.map((doc) => (
-          <a
-            key={doc.id}
-            href={getDocumentUrl(doc.productId, doc.category, doc.filename, { lotNumber: doc.lotNumbers[0] })}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-medium text-[#4a90c4] hover:underline"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </span>
+        )}
+        {testDocs.length > 0 && (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
             </svg>
             Test Results
-          </a>
-        ))}
+          </span>
+        )}
       </div>
 
       {/* Line 2: Quantity, weight, BBD */}
@@ -294,18 +301,12 @@ function ContractDocuments({
   baseContracts: string[];
   requiredContractDocs: DocCategory[];
 }) {
-  const contractDocs = documents.filter((d) => d.baseContract != null);
-  if (contractDocs.length === 0 && baseContracts.length === 0) {
-    return (
-      <div className="p-6 border-t border-gray-200 bg-gray-50">
-        <h2 className="text-lg font-bold text-gray-900 mb-2">Documents</h2>
-        <p className="text-sm text-gray-500">
-          Documents are being prepared for this product. Contact us for specifications, COAs, or product photos.
-        </p>
-      </div>
-    );
-  }
+  // Only show public contract-level categories (labels + photos); specs are restricted
+  const PUBLIC_CONTRACT_CATEGORIES = new Set(["labels", "photos"]);
+  const contractDocs = documents.filter((d) => d.baseContract != null && PUBLIC_CONTRACT_CATEGORIES.has(d.category));
+  const publicContractDocs = requiredContractDocs.filter((c) => PUBLIC_CONTRACT_CATEGORIES.has(c));
 
+  if (contractDocs.length === 0 && baseContracts.length === 0) return null;
   if (contractDocs.length === 0) return null;
 
   const isImage = (filename: string) => /\.(jpe?g|png|gif|webp)$/i.test(filename);
@@ -316,15 +317,24 @@ function ContractDocuments({
       <div className="space-y-6">
         {baseContracts.map((bc) => {
           const docs = contractDocs.filter((d) => d.baseContract === bc);
-          if (docs.length === 0) return null;
+          const hasSpecs = documents.some((d) => d.baseContract === bc && d.category === "specs");
+          if (docs.length === 0 && !hasSpecs) return null;
 
           return (
             <div key={bc} className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200">
+              <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-gray-700">Contract {bc}</h3>
+                {hasSpecs && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                    </svg>
+                    Spec Sheet
+                  </span>
+                )}
               </div>
               <div className="p-4 space-y-4">
-                {requiredContractDocs.map((cat) => {
+                {publicContractDocs.map((cat) => {
                   const catDocs = docs.filter((d) => d.category === cat);
                   if (catDocs.length === 0) return null;
 

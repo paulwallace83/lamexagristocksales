@@ -97,3 +97,57 @@ export async function sendMarketingEmail(
     return { success: false, error: msg, recipientCount: 0 };
   }
 }
+
+/**
+ * Send an email with file attachments via Resend.
+ *
+ * @param to - Recipient email addresses
+ * @param subject - Email subject
+ * @param html - Rendered HTML body
+ * @param attachments - Array of {filename, content: Buffer}
+ */
+export async function sendEmailWithAttachments(
+  to: string[],
+  subject: string,
+  html: string,
+  attachments: Array<{ filename: string; content: Buffer }>,
+): Promise<SendResult> {
+  if (to.length === 0) {
+    return { success: false, error: "No recipients provided", recipientCount: 0 };
+  }
+
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  const invalid = to.filter((e) => !emailRegex.test(e));
+  if (invalid.length > 0) {
+    return { success: false, error: `Invalid email: ${invalid[0]}`, recipientCount: 0 };
+  }
+
+  // Total attachment size check (40 MB Resend limit)
+  const totalSize = attachments.reduce((sum, a) => sum + a.content.length, 0);
+  if (totalSize > 40 * 1024 * 1024) {
+    return { success: false, error: "Attachments exceed 40 MB limit", recipientCount: 0 };
+  }
+
+  try {
+    const resend = getResend();
+    const { data, error } = await resend.emails.send({
+      from: EMAIL_CONFIG.from,
+      to,
+      subject,
+      html,
+      attachments: attachments.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+      })),
+    });
+
+    if (error) {
+      return { success: false, error: error.message, recipientCount: 0 };
+    }
+
+    return { success: true, id: data?.id, recipientCount: to.length };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: msg, recipientCount: 0 };
+  }
+}

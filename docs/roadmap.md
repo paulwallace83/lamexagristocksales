@@ -117,6 +117,18 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Full cross-document audit: npm scripts, conversation persistence, site URL, upload paths, stale references corrected.
 - Railway deployment support: `lib/paths.ts` volume routing, auto-seed on empty DB, `force-dynamic` pages, API-based file serving.
 
+### Document Request Workflow (v0.10.0 — S013)
+- COA, test results, and spec sheets restricted from public download — replaced with availability badges.
+- "Request Documents" CTA on product pages links to document request form.
+- Customer selects lots/documents, fills contact info, submits request.
+- QA notification email sent to `coa@lamexfoods.us` via Resend on each new request.
+- Admin review queue (`/admin/requests`) with status filter tabs (All/Pending/Approved/Rejected/Sent).
+- Approve action gathers files from disk and emails them to customer as Resend attachments.
+- File serving restriction on `/api/files/` — COA/test-results/specs return 404 to unauthenticated users.
+- Rate limiting: 5 requests per email per hour.
+- `document_requests` SQLite table preserved during weekly sync.
+- Nav link added to all admin layouts.
+
 ## Active Priorities
 ### 1. Data Quality (remaining)
 - Validate unit types are correctly identified per product during sync.

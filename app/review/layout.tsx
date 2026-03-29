@@ -17,6 +17,7 @@ export default async function ReviewLayout({ children }: { children: React.React
     { href: "/qa", label: "Documents" },
     { href: "/review", label: "Import Review" },
     { href: "/admin/discount", label: "Discount" },
+    { href: "/admin/requests", label: "Requests" },
     { href: "/admin/email", label: "Email" },
     { href: "/admin/agent", label: "AI Assistant" },
     { href: "/", label: "Public Site" },

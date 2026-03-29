@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import Link from "next/link";
+import DocumentRequestForm from "./DocumentRequestForm";
 
 function ContactForm() {
   const searchParams = useSearchParams();
@@ -101,22 +102,47 @@ function ContactForm() {
   );
 }
 
-export default function ContactPage() {
+function ContactPageInner() {
+  const searchParams = useSearchParams();
+  const type = searchParams.get("type");
+  const productId = searchParams.get("productId");
+  const productName = searchParams.get("product") || "";
+
+  const isDocRequest = type === "documents" && productId;
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <Link href="/" className="text-sm text-[#4a90c4] hover:underline mb-4 inline-block">
-        &larr; Back to Inventory
+      <Link href={productId ? `/product/${productId}` : "/"} className="text-sm text-[#4a90c4] hover:underline mb-4 inline-block">
+        &larr; {productId ? "Back to Product" : "Back to Inventory"}
       </Link>
 
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Request a Quote</h1>
-        <p className="text-gray-500 mb-6">
-          Fill out the form below and we will get back to you with pricing and availability.
-        </p>
-        <Suspense fallback={<div>Loading...</div>}>
-          <ContactForm />
-        </Suspense>
+        {isDocRequest ? (
+          <>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Request Documents</h1>
+            <p className="text-gray-500 mb-6">
+              Select the documents you need and we will review and send them to you by email.
+            </p>
+            <DocumentRequestForm productId={productId} productName={productName} />
+          </>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Request a Quote</h1>
+            <p className="text-gray-500 mb-6">
+              Fill out the form below and we will get back to you with pricing and availability.
+            </p>
+            <ContactForm />
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+export default function ContactPage() {
+  return (
+    <Suspense fallback={<div className="max-w-2xl mx-auto px-4 py-8 text-gray-500">Loading...</div>}>
+      <ContactPageInner />
+    </Suspense>
   );
 }

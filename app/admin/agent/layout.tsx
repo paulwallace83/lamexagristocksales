@@ -24,6 +24,7 @@ export default async function AgentLayout({ children }: { children: React.ReactN
           { href: "/admin/email", label: "Email" },
         ]
       : []),
+    { href: "/admin/requests", label: "Requests" },
     { href: "/admin/agent", label: "AI Assistant" },
     { href: "/", label: "Public Site" },
   ];

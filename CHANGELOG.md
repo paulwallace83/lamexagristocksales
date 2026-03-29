@@ -5,6 +5,34 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.10.0] — 2026-03-29
+
+### Added
+- **Document request workflow** — COA, test results, and spec sheets are no longer publicly downloadable; customers see availability badges and request documents via a form
+- **Document request form** (`/contact?type=documents`) — per-lot checkboxes for COA/test results and per-contract checkboxes for spec sheets, with contact fields and rate limiting (5/email/hour)
+- **Admin review queue** (`/admin/requests`) — pending/approved/rejected/sent status filter tabs, per-request detail view with file availability indicators, approve/reject actions
+- **QA notification email** — sent to `coa@lamexfoods.us` via Resend when a new request is submitted, with requester info and "Review Request" CTA
+- **Customer approval email** — approved documents sent as Resend email attachments with branded template
+- **`sendEmailWithAttachments()`** in `lib/email-send.ts` — Resend attachment support with 40 MB size check
+- **`/api/products/[id]/available-docs`** — public endpoint returning per-lot and per-contract restricted document availability (no file URLs)
+- **`/api/document-requests`** — POST (public, rate-limited) + GET (auth)
+- **`/api/document-requests/[id]`** — GET + PATCH (auth) for approve/reject with email delivery
+- **`document_requests` SQLite table** — preserved during weekly sync, cleared during full seed
+
+### Changed
+- **Product detail page** — COA/test-result download links replaced with green availability badges; spec sheet links replaced with badge in contract header; new "Request Documents" emerald CTA callout
+- **Contract documents section** — only shows labels and photos publicly; specs filtered out
+- **File serving** (`/api/files/[...path]`) — COA, test-results, and specs paths return 404 for unauthenticated users
+- "Requests" nav link added to all admin/QA layouts (visible to both `qa` and `reviewer` roles)
+
+### Security
+- File serving restriction returns 404 (not 403) to avoid revealing file existence
+- Rate limiting on document request submission (5 per email per hour, SQL-based)
+- Email validation on document request submissions
+- Input validation: field length limits, JSON structure validation, product existence check
+
+---
+
 ## [0.9.9] — 2026-03-29
 
 ### Security

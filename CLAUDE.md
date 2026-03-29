@@ -533,6 +533,55 @@ Weekly HTML marketing emails sent to buyers via Resend, highlighting current inv
 - `app/api/email/preview/route.ts` — GET rendered email HTML
 - `app/api/email/send/route.ts` — POST send via Resend
 
+## Document Request Workflow
+
+COA, test results, and specification sheets are **restricted** — not publicly downloadable. Customers see availability badges and request documents via a form. QA reviews and approves, then documents are emailed as attachments.
+
+### Restricted Categories
+
+- `coa` — Certificates of Analysis
+- `test-results` — Heavy metals, pesticide, and other lab reports
+- `specs` — Specification sheets
+
+**Remain public:** `labels` (label photos), `photos` (product photos)
+
+### Public Flow
+
+1. Product detail page shows availability badges (green pills) per lot for COA/test results, and per contract for spec sheets.
+2. "Request Documents" CTA links to `/contact?type=documents&productId={id}`.
+3. Customer selects lots/documents, fills in contact info, submits.
+4. `POST /api/document-requests` creates a `document_requests` record and sends notification email to `coa@lamexfoods.us`.
+5. Rate limited: 5 requests per email per hour.
+
+### Admin Review
+
+- `/admin/requests` — Review queue (requires `qa` or `reviewer` role).
+- Status filter tabs: All | Pending | Approved | Rejected | Sent.
+- Click into a request to see requester info, requested documents with file availability, and approve/reject form.
+- **Approve:** Gathers matching files from disk, emails them to the customer via Resend as attachments, updates status to `sent`.
+- **Reject:** Updates status with optional notes.
+- If email delivery fails after approval, status stays `approved` (not `sent`) so QA can retry.
+
+### File Serving Restriction
+
+The `/api/files/[...path]` route checks for restricted category names in the path segments. If found, requires `qa` or `reviewer` session. Returns 404 (not 403) for unauthorized access to avoid revealing file existence.
+
+### Database
+
+- `document_requests` table — preserved during weekly sync, cleared during full seed.
+- Fields: id, product_id, requester_name, requester_company, requester_email, requester_phone, message, requested_docs (JSON), status (pending/approved/rejected/sent), created_at, reviewed_at, reviewed_by, notes.
+
+### Key Files
+
+- `lib/document-requests.ts` — Types, CRUD, rate limiting, pending count
+- `lib/document-request-emails.ts` — QA notification + customer approval email templates
+- `lib/email-send.ts` — `sendEmailWithAttachments()` for Resend attachment support
+- `app/api/document-requests/route.ts` — POST (public) + GET (auth)
+- `app/api/document-requests/[id]/route.ts` — GET + PATCH (auth)
+- `app/api/products/[id]/available-docs/route.ts` — Public GET (no file URLs)
+- `app/contact/DocumentRequestForm.tsx` — Customer document request form
+- `app/admin/requests/` — Admin review queue (layout, page, [id]/page, ReviewFormClient)
+
 ## Security Hardening
 
 ### HTTP Security Headers
@@ -586,6 +635,7 @@ Key tables in `lamex.db` (full DDL in `lib/db.ts`):
 - **`conversations`** — Agent chat session headers (user_email, title, timestamps). **Preserved during weekly sync.**
 - **`conversation_messages`** — Agent chat messages (role, content, file_names). CASCADE deletes with parent conversation. **Preserved during weekly sync.**
 - **`api_usage`** — Per-request token usage and cost (model, input/output/cache tokens, iterations, cost_usd). **Preserved during weekly sync.**
+- **`document_requests`** — Customer document requests with status workflow (pending/approved/rejected/sent). **Preserved during weekly sync.**
 
 ## Code Conventions
 

@@ -20,6 +20,7 @@ export default async function QALayout({ children }: { children: React.ReactNode
           { href: "/admin/email", label: "Email" },
         ]
       : []),
+    { href: "/admin/requests", label: "Requests" },
     { href: "/admin/agent", label: "AI Assistant" },
     { href: "/", label: "Public Site" },
   ];

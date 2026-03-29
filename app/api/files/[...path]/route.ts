@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFileSync, existsSync } from "fs";
 import { join, resolve, extname } from "path";
 import { getUploadsRoot } from "@/lib/paths";
+import { auth } from "@/lib/auth";
 
 const MIME_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
@@ -34,6 +35,15 @@ export async function GET(
   // Path traversal guard
   if (!filepath.startsWith(uploadsRoot + "/")) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Restrict COA, test-results, and spec sheets to authenticated QA/reviewer users
+  const RESTRICTED_CATEGORIES = new Set(["coa", "test-results", "specs"]);
+  if (safeParts.some((seg) => RESTRICTED_CATEGORIES.has(seg))) {
+    const session = await auth();
+    if (!session?.user?.role || !["qa", "reviewer"].includes(session.user.role)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
   }
 
   if (!existsSync(filepath)) {
