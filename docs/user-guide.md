@@ -400,7 +400,7 @@ The assistant **always asks for your approval** before taking any action that mo
 - The assistant cannot modify code or system configuration
 - It cannot run the weekly sync or seed scripts directly
 - It cannot delete documents or inventory records
-- Conversation history is not saved between page reloads
+- Conversations are saved to SQLite and persist across page reloads. Use the history dropdown to resume previous conversations.
 
 ---
 
@@ -450,10 +450,12 @@ The email includes:
 | Command | Purpose | Destructive? |
 |---------|---------|-------------|
 | `npm run dev` | Start dev server on port 3000 | No |
-| `npm run build` | Seed database + build for production | Yes (full seed) |
+| `npm run build` | Build Next.js for production (DB auto-seeds if empty at runtime) | No |
+| `npm run build:fresh` | Full destructive seed + build | **Yes — clears documents + users** |
 | `npm run seed` | Full destructive seed from JSON files | **Yes — clears documents + users** |
 | `npm run sync` | Weekly inventory sync (preserves docs + users) | Partial (inventory only) |
 | `npm run import-excel -- <path>` | Import ERP Excel export | No (writes proposed files) |
+| `npm run update-pricing` | Fetch current Anthropic API pricing | No |
 | `npm start` | Start production server | No |
 
 ### Data Files
@@ -487,7 +489,7 @@ SQLite database at `lamex.db`. Key tables:
 - `AUTH_SECRET` in `.env.local` — required for NextAuth.js session encryption
 - `ANTHROPIC_API_KEY` in `.env.local` — required for the AI Assistant agent portal
 - `RESEND_API_KEY` in `.env.local` — required for sending marketing emails
-- `NEXT_PUBLIC_SITE_URL` in `.env.local` — public site URL for email CTA links and logo (defaults to `https://inventory.lamexfoods.us`)
+- `NEXT_PUBLIC_SITE_URL` in `.env.local` — public site URL for email CTA links and logo (defaults to `https://www.lamexagrifoodsinventory.com`)
 - Credentials stored in `secrets.md` (gitignored, never committed)
 
 ### Key URLs

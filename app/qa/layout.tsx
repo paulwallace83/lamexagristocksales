@@ -6,7 +6,7 @@ export default async function QALayout({ children }: { children: React.ReactNode
   const session = await auth();
 
   if (!session?.user) {
-    return <>{children}</>;
+    redirect("/qa/login");
   }
 
   const isReviewer = session.user.role === "reviewer";

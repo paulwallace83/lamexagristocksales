@@ -92,9 +92,9 @@ export function findLotsByNumber(lotNumber: string): LotMatch[] {
     FROM lots lo
     JOIN listings li ON lo.listing_id = li.id
     JOIN products p  ON li.product_id = p.id
-    WHERE LOWER(lo.lot_number) LIKE LOWER(?)
+    WHERE LOWER(lo.lot_number) LIKE LOWER(?) ESCAPE '\'
     ORDER BY p.commodity, p.product
-  `).all(`%${lotNumber}%`) as Array<{
+  `).all(`%${lotNumber.replace(/[%_]/g, "\\$&")}%`) as Array<{
     lot_id: number; lot_number: string; quantity: number; weight_lbs: number; bbd: string;
     listing_id: number; warehouse: string; city: string; state: string; supplier: string;
     product_id: string; product: string; commodity: string; format: string; organic: number;
@@ -137,9 +137,10 @@ export function findByContractNumber(contractRef: string): ContractMatch[] {
   const db = getDb();
 
   // Match both full ref (124717-04) and base contract (124717)
+  const escaped = contractRef.replace(/[%_]/g, "\\$&");
   const searchPattern = contractRef.includes("-")
-    ? contractRef
-    : `${contractRef}%`;
+    ? escaped
+    : `${escaped}%`;
 
   const rows = db.prepare(`
     SELECT DISTINCT lc.contract,
@@ -149,7 +150,7 @@ export function findByContractNumber(contractRef: string): ContractMatch[] {
     JOIN lots lo     ON lc.lot_id = lo.id
     JOIN listings li ON lo.listing_id = li.id
     JOIN products p  ON li.product_id = p.id
-    WHERE lc.contract LIKE ?
+    WHERE lc.contract LIKE ? ESCAPE '\'
     ORDER BY p.commodity, lo.lot_number
   `).all(searchPattern) as Array<{
     contract: string; lot_id: number; lot_number: string; quantity: number; weight_lbs: number; bbd: string;
@@ -195,14 +196,15 @@ export function getSyncInfo(): { lastUpdated: string } {
 /** Full-text search on product name, commodity, and specification. */
 export function searchProducts(query: string): ProductSearchResult[] {
   const db = getDb();
-  const like = `%${query}%`;
+  const escaped = query.replace(/[%_]/g, "\\$&");
+  const like = `%${escaped}%`;
 
   const rows = db.prepare(`
     SELECT id, product, commodity, format, organic
     FROM products
-    WHERE LOWER(product)       LIKE LOWER(?)
-       OR LOWER(commodity)     LIKE LOWER(?)
-       OR LOWER(specification) LIKE LOWER(?)
+    WHERE LOWER(product)       LIKE LOWER(?) ESCAPE '\'
+       OR LOWER(commodity)     LIKE LOWER(?) ESCAPE '\'
+       OR LOWER(specification) LIKE LOWER(?) ESCAPE '\'
     ORDER BY commodity, product
     LIMIT 20
   `).all(like, like, like) as Array<{

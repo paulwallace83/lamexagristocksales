@@ -15,7 +15,7 @@
 ## Repository Protocol
 - Only Claude Code may edit repository contents.
 - Planning happens in chat and in planning documents, not through manual source edits by the planner.
-- Every non-trivial code change should begin from a slice document in slices/.
+- Every non-trivial code change should begin from a defined task with clear scope and acceptance criteria.
 - Claude Code should treat CLAUDE.md as the business-rule source of truth.
 - Claude Code should update relevant docs when behavior, workflow, or operating rules change.
 - If direct human edits occur, Claude Code should acknowledge them before continuing with the next slice.

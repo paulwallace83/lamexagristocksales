@@ -5,6 +5,25 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.9.9] — 2026-03-29
+
+### Security
+- **Removed `unsafe-eval` from CSP in production** — `script-src 'unsafe-eval'` now only included in development mode (`NODE_ENV === "development"`)
+- **QA layout auth fix** — unauthenticated users now redirected to login instead of rendering page without header
+- **Path traversal fix** — added trailing slash to `startsWith()` check in documents DELETE endpoint to prevent prefix collision bypass
+- **LIKE wildcard injection fix** — escaped `%` and `_` characters in all agent search queries (`findLotsByNumber`, `searchProducts`, `findByContractNumber`) with `ESCAPE '\'` clause
+- **Removed plaintext test credentials from CLAUDE.md** — replaced with pointer to `secrets.md` (gitignored)
+
+### Changed
+- All project documentation updated for accuracy and cross-document consistency
+- `npm run build` description corrected across all docs (no longer describes destructive seed)
+- `build:fresh` script documented in all npm scripts tables
+- User guide updated: conversation persistence, correct site URL, `update-pricing` script
+- Workflow docs: removed stale `slices/` directory references
+- Upload storage paths documented with Railway volume override notation
+
+---
+
 ## [0.9.2] — 2026-03-28
 
 ### Security

@@ -256,13 +256,13 @@ Roles are stored in the `users` table (`role TEXT NOT NULL DEFAULT 'qa'`) and in
 Documents are associated at two distinct levels:
 
 #### Lot-Level Documents
-Stored in `public/uploads/{product-id}/lots/{lot-number}/{category}/`
+Stored in `{uploadsRoot}/{product-id}/lots/{lot-number}/{category}/` (locally: `public/uploads/...`, on Railway: `{RAILWAY_VOLUME_PATH}/uploads/...` — resolved via `lib/paths.ts`)
 
 1. **COA** (Certificate of Analysis) — per lot. One COA can cover multiple lots (uploaded once, tagged to multiple lots via `document_lots` junction table).
 2. **Pesticide / Test Results** — per lot. Optional — some lots may not have separate test results.
 
 #### Contract-Level Documents
-Stored in `public/uploads/{product-id}/contracts/{base-contract}/{category}/`
+Stored in `{uploadsRoot}/{product-id}/contracts/{base-contract}/{category}/`
 
 3. **Specification Sheets** — per base contract number. Shared across all lots/containers under that contract.
 4. **Label Photos** — per base contract number.
@@ -600,25 +600,19 @@ Key tables in `lamex.db` (full DDL in `lib/db.ts`):
 - Credentials and secrets in `secrets.md` (gitignored, never committed)
 - Environment variables in `.env.local` (gitignored)
 
-## Test Credentials (Development Only)
+## Credentials
 
-> **TODO (PRE-LAUNCH): Replace test passwords with strong credentials and remove this section before production deployment.**
-
-Both accounts use password: `lamex2026`
-
-| Role | Email | Password |
-|------|-------|----------|
-| QA | `coa@lamexfoods.us` | `lamex2026` |
-| Reviewer | `paul@lamexfoods.us` | `lamex2026` |
-
-`AUTH_SECRET` must be set in `.env.local` — use any random string for dev, generate a strong secret for production.
+- All credentials are stored in `secrets.md` (gitignored — never committed).
+- `AUTH_SECRET` must be set in `.env.local` — use any random string for dev, generate a strong secret for production.
+- **Never commit plaintext passwords to version control.**
 
 ## npm Scripts
 
 | Command | Purpose |
 |---------|---------|
 | `npm run dev` | Start Next.js dev server on port 3000 |
-| `npm run build` | Seed database + build Next.js for production |
+| `npm run build` | Build Next.js for production (no seed — DB auto-seeds from JSON if empty at runtime) |
+| `npm run build:fresh` | Full destructive seed + build (for fresh installs where you want to reset all data before building) |
 | `npm run seed` | Full destructive seed — clears ALL tables (including documents/users) and reloads from JSON. Use for fresh installs only. |
 | `npm run sync` | Weekly inventory sync — preserves documents + users, snapshots previous state, re-seeds from updated JSON. |
 | `npm run import-excel -- <path>` | Import raw ERP Excel export → `inventory-proposed.json` (included items) + `import-review.json` (soft-excluded for manual review). Feeds into existing sync workflow. |

@@ -10,7 +10,6 @@ Use these files consistently:
 - AGENTS.md: repository operating protocol for planner and implementation agent behavior.
 - CLAUDE.md: business rules, inventory rules, QA portal rules, sync workflow, and publishing constraints.
 - docs/roadmap.md: prioritized upcoming work.
-- slices/: atomic implementation tasks.
 - CHANGELOG.md: released changes only.
 - secrets.md: credentials and secrets (gitignored, never committed).
 - .env.local: environment variables including AUTH_SECRET (gitignored, never committed).
@@ -43,9 +42,8 @@ If new suppliers are found, Claude asks the user for COO before proceeding. If n
 Rollback: copy any snapshot from data/snapshots/ back to data/inventory.json and run `npm run seed`.
 
 ## Delivery Flow
-1. Planner creates or updates a slice in slices/.
-2. Slice defines goal, scope, constraints, acceptance criteria, and verification.
-3. Claude Code reviews the slice and relevant project docs.
+1. Planner defines a task with goal, scope, constraints, acceptance criteria, and verification.
+2. Claude Code reviews the task and relevant project docs.
 4. Claude Code inspects the current codebase before making changes.
 5. Claude Code implements the smallest complete solution.
 6. Claude Code verifies the result.

@@ -108,6 +108,15 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Bug fix: document API route was using `lotId` instead of `lotNumber` for URL generation (broken View links).
 - Empty state shows "No documents uploaded" with link to upload page.
 
+### ✅ Security Hardening & Documentation Audit (v0.9.9)
+- CSP `unsafe-eval` removed from production builds.
+- QA layout auth bypass fixed (unauthenticated users now redirected).
+- Path traversal trailing-slash fix on documents DELETE endpoint.
+- LIKE wildcard injection fix across all agent search queries.
+- Plaintext test credentials removed from committed files.
+- Full cross-document audit: npm scripts, conversation persistence, site URL, upload paths, stale references corrected.
+- Railway deployment support: `lib/paths.ts` volume routing, auto-seed on empty DB, `force-dynamic` pages, API-based file serving.
+
 ## Active Priorities
 ### 1. Data Quality (remaining)
 - Validate unit types are correctly identified per product during sync.

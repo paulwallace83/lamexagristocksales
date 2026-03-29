@@ -70,7 +70,7 @@ export async function DELETE(
   }
 
   // Final guard: ensure resolved path stays within uploads directory
-  if (!resolve(filepath).startsWith(uploadsRoot)) {
+  if (!resolve(filepath).startsWith(uploadsRoot + "/")) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
