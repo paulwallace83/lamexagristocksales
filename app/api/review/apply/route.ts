@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { readFileSync, writeFileSync, existsSync, unlinkSync, renameSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, unlinkSync, renameSync, statSync } from "fs";
 import { join } from "path";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ function acquireLock(): boolean {
   if (existsSync(LOCK_FILE)) {
     // Check if lock is stale (older than 30 seconds)
     try {
-      const stat = require("fs").statSync(LOCK_FILE);
+      const stat = statSync(LOCK_FILE);
       if (Date.now() - stat.mtimeMs < 30000) return false;
     } catch { /* stale lock, proceed */ }
   }

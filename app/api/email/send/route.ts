@@ -110,12 +110,14 @@ export async function POST(request: Request) {
 
   if (!result.success) {
     console.error("[email/send] Send failed:", result.error);
-    // Sanitize error — don't leak Resend API internals to client
-    const safeError = result.error?.includes("RESEND_API_KEY")
+    // Whitelist-based sanitization — never return raw API error text to the client
+    const safeError = result.error?.includes("RESEND_API_KEY") || result.error?.includes("not configured")
       ? "Email service is not configured. Contact the administrator."
-      : result.error?.includes("Invalid")
-        ? result.error
-        : "Failed to send email. Please try again or contact the administrator.";
+      : result.error?.includes("Invalid email") || result.error?.includes("invalid email")
+        ? "One or more recipient email addresses are invalid."
+        : result.error?.includes("rate limit") || result.error?.includes("rate_limit")
+          ? "Too many emails sent recently. Please wait a moment and try again."
+          : "Failed to send email. Please try again or contact the administrator.";
     return NextResponse.json({ error: safeError }, { status: 500 });
   }
 

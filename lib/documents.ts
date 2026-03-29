@@ -210,22 +210,25 @@ export function addDocument(entry: {
     }
   }
 
-  db.prepare(`
+  const insertDoc = db.prepare(`
     INSERT INTO documents (id, product_id, category, filename, original_name, uploaded_at, uploaded_by, base_contract, lot_numbers)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    entry.id, entry.productId, entry.category, entry.filename,
-    entry.originalName, entry.uploadedAt, entry.uploadedBy,
-    entry.baseContract ?? null,
-    lotNumbersJson,
-  );
+  `);
+  const insertLot = db.prepare("INSERT INTO document_lots (document_id, lot_id) VALUES (?, ?)");
 
-  if (entry.lotIds && entry.lotIds.length > 0) {
-    const insert = db.prepare("INSERT INTO document_lots (document_id, lot_id) VALUES (?, ?)");
-    for (const lotId of entry.lotIds) {
-      insert.run(entry.id, lotId);
+  db.transaction(() => {
+    insertDoc.run(
+      entry.id, entry.productId, entry.category, entry.filename,
+      entry.originalName, entry.uploadedAt, entry.uploadedBy,
+      entry.baseContract ?? null,
+      lotNumbersJson,
+    );
+    if (entry.lotIds && entry.lotIds.length > 0) {
+      for (const lotId of entry.lotIds) {
+        insertLot.run(entry.id, lotId);
+      }
     }
-  }
+  })();
 }
 
 /**

@@ -122,6 +122,77 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   );
 }
 
+/** Convert a country name to its flag emoji (returns empty string if unknown) */
+function countryFlag(country: string): string {
+  const flags: Record<string, string> = {
+    "Argentina": "🇦🇷",
+    "Australia": "🇦🇺",
+    "Austria": "🇦🇹",
+    "Belgium": "🇧🇪",
+    "Bolivia": "🇧🇴",
+    "Brazil": "🇧🇷",
+    "Bulgaria": "🇧🇬",
+    "Cambodia": "🇰🇭",
+    "Canada": "🇨🇦",
+    "Chile": "🇨🇱",
+    "China": "🇨🇳",
+    "Colombia": "🇨🇴",
+    "Costa Rica": "🇨🇷",
+    "Croatia": "🇭🇷",
+    "Czech Republic": "🇨🇿",
+    "Ecuador": "🇪🇨",
+    "Egypt": "🇪🇬",
+    "El Salvador": "🇸🇻",
+    "France": "🇫🇷",
+    "Germany": "🇩🇪",
+    "Greece": "🇬🇷",
+    "Guatemala": "🇬🇹",
+    "Honduras": "🇭🇳",
+    "Hungary": "🇭🇺",
+    "India": "🇮🇳",
+    "Indonesia": "🇮🇩",
+    "Iran": "🇮🇷",
+    "Israel": "🇮🇱",
+    "Italy": "🇮🇹",
+    "Japan": "🇯🇵",
+    "Jordan": "🇯🇴",
+    "Kazakhstan": "🇰🇿",
+    "Kenya": "🇰🇪",
+    "Macedonia": "🇲🇰",
+    "Malaysia": "🇲🇾",
+    "Mexico": "🇲🇽",
+    "Morocco": "🇲🇦",
+    "Netherlands": "🇳🇱",
+    "Nicaragua": "🇳🇮",
+    "North Macedonia": "🇲🇰",
+    "Pakistan": "🇵🇰",
+    "Panama": "🇵🇦",
+    "Paraguay": "🇵🇾",
+    "Peru": "🇵🇪",
+    "Philippines": "🇵🇭",
+    "Poland": "🇵🇱",
+    "Portugal": "🇵🇹",
+    "Romania": "🇷🇴",
+    "Serbia": "🇷🇸",
+    "South Africa": "🇿🇦",
+    "South Korea": "🇰🇷",
+    "Spain": "🇪🇸",
+    "Sri Lanka": "🇱🇰",
+    "Taiwan": "🇹🇼",
+    "Thailand": "🇹🇭",
+    "Turkey": "🇹🇷",
+    "Türkiye": "🇹🇷",
+    "Ukraine": "🇺🇦",
+    "United States": "🇺🇸",
+    "USA": "🇺🇸",
+    "Uruguay": "🇺🇾",
+    "Uzbekistan": "🇺🇿",
+    "Vietnam": "🇻🇳",
+    "Zambia": "🇿🇲",
+  };
+  return flags[country] ?? "";
+}
+
 function SummaryCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-white p-4">
@@ -149,9 +220,14 @@ function ListingCard({
           {listing.warehouse}
           <span className="text-gray-400 font-normal"> — {listing.city}, {listing.state}</span>
         </h3>
-        <span className="text-xs bg-[#1a2b5f]/10 text-[#1a2b5f] px-2 py-0.5 rounded font-medium">
-          {listing.countryOfOrigin}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {countryFlag(listing.countryOfOrigin) && (
+            <span className="text-2xl leading-none">{countryFlag(listing.countryOfOrigin)}</span>
+          )}
+          <span className="text-xs bg-[#1a2b5f]/10 text-[#1a2b5f] px-2 py-0.5 rounded font-medium">
+            {listing.countryOfOrigin}
+          </span>
+        </div>
       </div>
       <div className="px-4 py-3">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">

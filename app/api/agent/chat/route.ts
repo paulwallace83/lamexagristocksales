@@ -29,7 +29,8 @@ RULES — follow these exactly:
 5. Spec sheet / label matching: look for a contract number in the document, then use get_contract_info. If no contract number is visible, search by product name. List candidates with confidence. Wait for confirmation.
 6. Product photo matching: IQF and frozen products only. Politely decline photo uploads for Juice Concentrate or Puree products and explain the rule.
 7. Do not discuss customer names (none exist in this system), regular inventory pricing, or internal ERP references.
-8. You cannot modify code or system configuration. Refer code questions to the developer.`;
+8. You cannot modify code or system configuration. Refer code questions to the developer.
+9. If a tool returns an error (any response containing an "error" field), you MUST immediately tell the user what failed. Never report success when a tool returned an error.`;
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_MIME_TYPES = new Set([

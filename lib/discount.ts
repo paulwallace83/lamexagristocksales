@@ -447,8 +447,9 @@ export function restoreToInventory(id: string): boolean {
       let inventory: { products?: Array<any> };
       try {
         inventory = JSON.parse(readFileSync(inventoryPath, "utf-8"));
-      } catch {
-        return; // Can't parse — lot will come back on next sync
+      } catch (err) {
+        console.error("[discount] Failed to parse inventory.json during lot restore:", err);
+        return; // Lot will come back on next sync
       }
 
       if (!Array.isArray(inventory.products)) return;
@@ -530,7 +531,8 @@ export function loadDiscountFromJson(): number {
   let data: DiscountData;
   try {
     data = JSON.parse(readFileSync(DISCOUNT_JSON_PATH, "utf-8"));
-  } catch {
+  } catch (err) {
+    console.error("[discount] Failed to parse discount-inventory.json:", err);
     return 0;
   }
 

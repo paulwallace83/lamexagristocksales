@@ -43,8 +43,9 @@ export async function sendMarketingEmail(
     return { success: false, error: "No recipients provided", recipientCount: 0 };
   }
 
-  // Validate email addresses
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Validate email addresses — RFC 5321 simplified: local@domain.tld
+  // Rejects: missing TLD, consecutive dots, leading/trailing dots in local part, spaces
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
   const invalid = to.filter((e) => !emailRegex.test(e));
   if (invalid.length > 0) {
     const shown = invalid.slice(0, 5);
