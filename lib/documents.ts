@@ -4,6 +4,7 @@ import { getDb } from "./db";
 import { getInventory } from "./inventory-db";
 import type { Product } from "./inventory";
 import { extractBaseContract, getBaseContracts, getAllLots } from "./inventory";
+import { getUploadsRoot } from "./paths";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -46,6 +47,7 @@ export interface ProductDocStatus {
   lots: Array<{
     id: number;
     lotNumber: string;
+    bbd: string;
     contracts: string[];
     supplier: string;
     hasCOA: boolean;
@@ -297,20 +299,16 @@ export function getUploadDir(productId: string, category: string, opts?: { lotId
   const pid = safeSeg(productId);
   const cat = safeSeg(category);
   let dir: string;
+  const uploadsRoot = getUploadsRoot();
   if (opts?.lotNumber != null) {
-    // Preferred: use lot number (stable across re-seeds)
-    dir = join(process.cwd(), "public", "uploads", pid, "lots", safeSeg(opts.lotNumber), cat);
+    dir = join(uploadsRoot, pid, "lots", safeSeg(opts.lotNumber), cat);
   } else if (opts?.lotId != null) {
-    // Legacy fallback: use lot ID (unstable — changes on re-seed)
-    dir = join(process.cwd(), "public", "uploads", pid, "lots", String(opts.lotId), cat);
+    dir = join(uploadsRoot, pid, "lots", String(opts.lotId), cat);
   } else if (opts?.baseContract != null) {
-    dir = join(process.cwd(), "public", "uploads", pid, "contracts", safeSeg(opts.baseContract), cat);
+    dir = join(uploadsRoot, pid, "contracts", safeSeg(opts.baseContract), cat);
   } else {
-    // Legacy fallback
-    dir = join(process.cwd(), "public", "uploads", pid, cat);
+    dir = join(uploadsRoot, pid, cat);
   }
-  // Verify resolved path stays within uploads root to prevent path traversal
-  const uploadsRoot = resolve(process.cwd(), "public", "uploads");
   if (!resolve(dir).startsWith(uploadsRoot)) {
     throw new Error("Invalid upload path");
   }
@@ -326,13 +324,13 @@ export function getDocumentUrl(productId: string, category: string, filename: st
   const cat = encodeURIComponent(safeSeg(category));
   const fn = encodeURIComponent(safeSeg(filename));
   if (opts?.lotNumber != null) {
-    return `/uploads/${pid}/lots/${encodeURIComponent(safeSeg(opts.lotNumber))}/${cat}/${fn}`;
+    return `/api/files/${pid}/lots/${encodeURIComponent(safeSeg(opts.lotNumber))}/${cat}/${fn}`;
   } else if (opts?.lotId != null) {
-    return `/uploads/${pid}/lots/${opts.lotId}/${cat}/${fn}`;
+    return `/api/files/${pid}/lots/${opts.lotId}/${cat}/${fn}`;
   } else if (opts?.baseContract != null) {
-    return `/uploads/${pid}/contracts/${encodeURIComponent(safeSeg(opts.baseContract))}/${cat}/${fn}`;
+    return `/api/files/${pid}/contracts/${encodeURIComponent(safeSeg(opts.baseContract))}/${cat}/${fn}`;
   }
-  return `/uploads/${pid}/${cat}/${fn}`;
+  return `/api/files/${pid}/${cat}/${fn}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -442,6 +440,7 @@ export function getDocumentStatus(): ProductDocStatus[] {
       lots: lots.map((lot) => ({
         id: lot.id,
         lotNumber: lot.lotNumber,
+        bbd: lot.bbd,
         contracts: lot.contracts,
         supplier: lotSupplier.get(lot.id) || "",
         hasCOA: lotIdsWithCOA.has(lot.id),

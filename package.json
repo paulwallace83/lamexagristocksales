@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "tsx scripts/seed.ts && next build",
+    "build": "next build",
+    "build:fresh": "tsx scripts/seed.ts && next build",
     "start": "next start",
     "seed": "tsx scripts/seed.ts",
     "sync": "tsx scripts/sync-inventory.ts",
@@ -20,6 +21,9 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "bugs": {
     "url": "https://github.com/paulwallace83/lamexagristocksales/issues"
   },

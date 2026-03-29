@@ -11,7 +11,7 @@ export const EMAIL_CONFIG = {
 
   /** Public site URL for CTA links. Override via NEXT_PUBLIC_SITE_URL env var. */
   get siteUrl(): string {
-    return process.env.NEXT_PUBLIC_SITE_URL || "https://inventory.lamexfoods.us";
+    return process.env.NEXT_PUBLIC_SITE_URL || "https://www.lamexagrifoodsinventory.com";
   },
 
   /** Brand colors */

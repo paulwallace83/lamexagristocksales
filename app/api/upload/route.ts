@@ -4,6 +4,7 @@ import { join, resolve } from "path";
 import { auth } from "@/lib/auth";
 import { addDocument, getUploadDir, getDocumentUrl } from "@/lib/documents";
 import { getDb } from "@/lib/db";
+import { getUploadsRoot } from "@/lib/paths";
 import type { DocCategory } from "@/lib/documents";
 
 const VALID_CATEGORIES: DocCategory[] = ["coa", "test-results", "specs", "labels", "photos"];
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
   const filepath = join(dir, filename);
 
   // Verify the resolved path stays within the uploads directory
-  const uploadsRoot = resolve(process.cwd(), "public", "uploads");
+  const uploadsRoot = resolve(getUploadsRoot());
   if (!resolve(filepath).startsWith(uploadsRoot + "/")) {
     return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
   }

@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from "next/server";
+import { readFileSync, existsSync } from "fs";
+import { join, resolve, extname } from "path";
+import { getUploadsRoot } from "@/lib/paths";
+
+const MIME_TYPES: Record<string, string> = {
+  ".pdf": "application/pdf",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+};
+
+/** Sanitize a single path segment — strip anything except safe characters. */
+function safeSeg(segment: string): string {
+  return decodeURIComponent(segment).replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  const { path: segments } = await params;
+
+  if (!segments || segments.length < 2) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const uploadsRoot = resolve(getUploadsRoot());
+  const safeParts = segments.map(safeSeg);
+  const filepath = resolve(join(uploadsRoot, ...safeParts));
+
+  // Path traversal guard
+  if (!filepath.startsWith(uploadsRoot + "/")) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (!existsSync(filepath)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const ext = extname(filepath).toLowerCase();
+  const contentType = MIME_TYPES[ext] || "application/octet-stream";
+
+  const fileBuffer = readFileSync(filepath);
+
+  return new NextResponse(fileBuffer, {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Content-Length": String(fileBuffer.length),
+      "Cache-Control": "public, max-age=86400",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}

@@ -5,10 +5,11 @@ import { join, resolve } from "path";
 import { auth } from "@/lib/auth";
 import { TOOL_DEFINITIONS, executeTool, type FileData } from "@/lib/agent-tools";
 import { recordUsage, calculateCost } from "@/lib/api-usage";
+import { getAgentTempRoot } from "@/lib/paths";
 
 export const dynamic = "force-dynamic";
 
-const AGENT_TEMP_DIR = join(process.cwd(), ".agent-uploads");
+const AGENT_TEMP_DIR = getAgentTempRoot();
 const TEMP_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });

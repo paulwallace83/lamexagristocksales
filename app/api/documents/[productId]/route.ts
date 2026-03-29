@@ -3,6 +3,7 @@ import { unlinkSync, existsSync } from "fs";
 import { join, resolve } from "path";
 import { auth } from "@/lib/auth";
 import { getDocumentsForProduct, removeDocument, getDocumentUrl } from "@/lib/documents";
+import { getUploadsRoot } from "@/lib/paths";
 
 /** Sanitize path segments to prevent directory traversal */
 function safePath(segment: string): string {
@@ -24,7 +25,7 @@ export async function GET(
   const withUrls = documents.map((d) => ({
     ...d,
     url: getDocumentUrl(d.productId, d.category, d.filename, {
-      lotId: d.lotIds.length > 0 ? d.lotIds[0] : undefined,
+      lotNumber: d.lotNumbers.length > 0 ? d.lotNumbers[0] : undefined,
       baseContract: d.baseContract ?? undefined,
     }),
   }));
@@ -57,7 +58,7 @@ export async function DELETE(
   const safeProductId = safePath(productId);
   const safeFilename = safePath(filename);
   const safeCategory = safePath(category);
-  const uploadsRoot = resolve(process.cwd(), "public", "uploads");
+  const uploadsRoot = resolve(getUploadsRoot());
 
   let filepath: string;
   if (lotId) {

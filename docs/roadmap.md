@@ -90,16 +90,37 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Email validation tightened to RFC 5321 simplified pattern.
 - Silent catch blocks in `lib/discount.ts` now log errors.
 
+### ✅ Conversation Persistence & API Usage Tracking (v0.9.7 — S010)
+- Agent chat sessions saved to SQLite, survive page reloads.
+- Conversation list dropdown (up to 20 recent), resume, new chat, per-conversation delete.
+- Per-request token usage and cost tracking (`api_usage` table).
+- Stats bar above chat: daily/monthly/yearly call count and cost.
+- Configurable pricing from `data/api-pricing.json` with `npm run update-pricing`.
+- Fuzzy file matching fix for `upload_document` tool (substring + lot-number fallback).
+- Security hardening: conversation message validation (role, content size, message count), pricing bounds checks, CSRF middleware fix.
+
+### ✅ QA Dashboard Document Visibility (v0.9.8)
+- Expand-to-view documents: click product row chevron (▶) to see all uploaded documents inline.
+- Documents lazy-loaded from `GET /api/documents/{productId}` and cached client-side.
+- Documents grouped by category (COA, Test Results, Specs, Labels, Photos) with clickable View links.
+- Each document shows filename, lot number, BBD (amber highlight if expired), and contract reference.
+- BBD dates added to QA lot pills (`BBD: YYYY-MM-DD`), matching public product detail page format.
+- Bug fix: document API route was using `lotId` instead of `lotNumber` for URL generation (broken View links).
+- Empty state shows "No documents uploaded" with link to upload page.
+
 ## Active Priorities
 ### 1. Data Quality (remaining)
 - Validate unit types are correctly identified per product during sync.
 - Flag potential duplicate products with similar names/specs.
 
 ## Near-Term Candidate Slices
-- S009: Batch document upload via agent (multi-file COA matching in one turn).
-- S010: Conversation persistence (save/resume agent chat sessions).
-- S011: Agent-powered weekly sync assistant (paste pivot data in agent, auto-parse and sync).
+- S009: Batch document upload via agent (multi-file COA matching in one turn). High impact for large shipments (24+ lots).
+- S011: Agent-powered weekly sync assistant (paste pivot data in agent, auto-parse and sync). Removes need for Claude Code session for routine syncs.
 - S012: Customer inquiry portal (public-facing quote request with agent-assisted follow-up).
+
+## Medium-Term Candidate Slices
+- QA Dashboard enhancements: delete documents from expanded panel, upload directly from expanded panel, filter/search by supplier or document status.
+- Reporting & analytics dashboard: inventory trends over time (from weekly snapshots), document completion velocity, agent usage patterns and cost trends.
 
 ## Planning Notes
 - Prefer slices that produce a visible operational improvement in one pass.

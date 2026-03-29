@@ -13,6 +13,7 @@ import { getProductById } from "./inventory-db";
 import { getDb } from "./db";
 import { getDocumentStatus, addDocument, getUploadDir, getDocumentUrl } from "./documents";
 import { getDiscountItems, addDiscountItemsFromLots, restoreToInventory } from "./discount";
+import { getUploadsRoot } from "./paths";
 import type { DocCategory } from "./documents";
 import type { DiscountReason, DiscountStatus } from "./discount";
 
@@ -384,7 +385,7 @@ export async function executeTool(
       }
 
       const filepath = join(dir, filename);
-      const uploadsRoot = resolve(process.cwd(), "public", "uploads");
+      const uploadsRoot = resolve(getUploadsRoot());
       if (!resolve(filepath).startsWith(uploadsRoot)) {
         return { error: "Invalid upload path" };
       }

@@ -26,6 +26,7 @@ interface ReviewItem {
 export default async function ReviewPage() {
   const session = await auth();
   if (!session?.user) redirect("/qa/login");
+  if (session.user.role !== "reviewer") redirect("/qa");
 
   const reviewPath = join(process.cwd(), "data", "import-review.json");
 

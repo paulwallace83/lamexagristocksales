@@ -12,5 +12,7 @@ export default async function QADashboard() {
 
   const statuses = getDocumentStatus();
 
-  return <QADashboardClient statuses={statuses} />;
+  const today = new Date().toISOString().slice(0, 10);
+
+  return <QADashboardClient statuses={statuses} today={today} />;
 }

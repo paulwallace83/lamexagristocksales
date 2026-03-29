@@ -150,9 +150,10 @@ A web page where clients can:
 - **Data import (fresh install):** `npm run seed` — reads JSON from `/data` and populates SQLite. Destructive: clears all tables including documents and users.
 - **Data import (weekly sync):** `npm run sync` — reads `data/inventory-proposed.json`, snapshots current state, re-seeds SQLite while **preserving documents and users**. See "Weekly Inventory Sync" section above.
 - **Diff engine:** `lib/sync.ts` — compares proposed vs current inventory, validates business rules, generates diff reports and reconciliation tables. Used by Claude during the weekly paste workflow.
-- **Documents:** Stored on local filesystem in `public/uploads/` and tracked in SQLite (`documents`, `document_lots` tables)
+- **Documents:** Stored on filesystem and tracked in SQLite (`documents`, `document_lots` tables). Served via `GET /api/files/[...path]` route. Storage root determined by `RAILWAY_VOLUME_PATH` env var (falls back to `public/uploads/` locally).
+- **Persistent data paths:** All runtime data (database, uploads, agent temp files) routed through `lib/paths.ts` which checks `RAILWAY_VOLUME_PATH` for production deployment.
 - **Auth:** NextAuth.js with credentials provider and JWT sessions. Requires `AUTH_SECRET` in `.env.local`.
-- **Hosting:** Can be deployed to Vercel, Netlify, or similar (requires server mode, not static export)
+- **Hosting:** Railway with persistent volume. Domain: `www.lamexagrifoodsinventory.com`.
 
 ## Collaboration Model
 
@@ -318,8 +319,10 @@ Show product photos if: format === "IQF" OR (processType === "Frozen" AND format
 - **Heavy Metals column** — shows lot coverage for Juice Concentrate products (expected: heavy metal test per lot). Shows "N/A" for other product types.
 - **Pesticide column** — shows lot coverage for Organic products (expected: pesticide test per lot). Shows "N/A" for non-organic products. Juice Concentrate products show heavy metals instead (even if organic).
 - Lot pills reflect overall product status: green if product complete, amber if partial, red if lot has no COA.
+- Lot pills show `BBD: YYYY-MM-DD` — expired BBDs highlighted in amber, matching the public product detail page.
 - Coverage numbers (e.g., "3/14") use amber when partial (some but not all).
 - Filter is client-side only — does not persist across page loads.
+- **Expand-to-view documents:** Click any product row chevron (▶) to expand an inline panel showing all uploaded documents grouped by category (COA, Test Results, Specs, Labels, Photos). Documents are lazy-loaded from `GET /api/documents/{productId}` and cached client-side. Each document shows filename (clickable link), lot number, BBD (with amber highlight if expired), and contract reference. Products with no documents show "No documents uploaded" with a link to the upload page. Only one product can be expanded at a time.
 
 ### File Upload Security
 
@@ -516,7 +519,7 @@ Weekly HTML marketing emails sent to buyers via Resend, highlighting current inv
 ### Configuration
 
 - `RESEND_API_KEY` in `.env.local` (required for sending).
-- `NEXT_PUBLIC_SITE_URL` in `.env.local` (for CTA links and logo URL; defaults to `https://inventory.lamexfoods.us`).
+- `NEXT_PUBLIC_SITE_URL` in `.env.local` (for CTA links and logo URL; defaults to `https://www.lamexagrifoodsinventory.com`).
 - Branding constants in `emails/config.ts`.
 
 ### Key Files
