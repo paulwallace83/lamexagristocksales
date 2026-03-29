@@ -9,5 +9,5 @@ lamex.db-wal
 lamex.db-shm
 secrets.md
 data/snapshots/*.json
-# public/uploads/ temporarily tracked for initial deploy
+public/uploads/
 .agent-uploads/
