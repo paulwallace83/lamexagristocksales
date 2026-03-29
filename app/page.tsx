@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getInventory, getInventoryStats } from "@/lib/inventory-db";
 import { getProductDocMap } from "@/lib/documents";
 import { formatWeight } from "@/lib/inventory";
