@@ -232,6 +232,8 @@ export function getDb(): Database.Database {
         console.log("[db] Empty database detected — auto-seeding from JSON...");
         autoSeed(_db);
       }
+      // Copy uploads from build image to volume (first deploy only)
+      copyUploadsToVolume();
     }
   }
   return _db;
@@ -342,19 +344,23 @@ function autoSeed(db: Database.Database): void {
     console.log("[db] Post-seed linking skipped:", (e as Error).message);
   }
 
-  // Copy uploads from build image to volume (first deploy only)
+}
+
+/** Copy uploaded documents from build image to persistent volume (runs once). */
+function copyUploadsToVolume(): void {
   const vol = process.env.RAILWAY_VOLUME_PATH;
-  if (vol && existsSync(vol)) {
-    const { cpSync } = require("fs");
-    const srcUploads = join(process.cwd(), "public", "uploads");
-    const destUploads = join(vol, "uploads");
-    if (existsSync(srcUploads) && !existsSync(destUploads)) {
-      try {
-        cpSync(srcUploads, destUploads, { recursive: true });
-        console.log("[db] Copied uploads from build image to volume.");
-      } catch (e) {
-        console.log("[db] Upload copy failed:", (e as Error).message);
-      }
+  if (!vol) return;
+  const { existsSync: exists, cpSync } = require("fs");
+  const { join: pjoin } = require("path");
+  if (!exists(vol)) return;
+  const srcUploads = pjoin(process.cwd(), "public", "uploads");
+  const destUploads = pjoin(vol, "uploads");
+  if (exists(srcUploads) && !exists(destUploads)) {
+    try {
+      cpSync(srcUploads, destUploads, { recursive: true });
+      console.log("[db] Copied uploads from build image to volume.");
+    } catch (e) {
+      console.log("[db] Upload copy failed:", (e as Error).message);
     }
   }
 }
