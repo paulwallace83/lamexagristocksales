@@ -4,6 +4,7 @@ import { join, resolve } from "path";
 import {
   getProductSummaries,
   findLotsByNumber,
+  findLotsByNumbers,
   findByContractNumber,
   searchProducts,
   getSyncInfo,
@@ -72,6 +73,22 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
         lotNumber: { type: "string", description: "Lot number to search for (partial match supported)" },
       },
       required: ["lotNumber"],
+    },
+  },
+  {
+    name: "batch_lot_lookup",
+    description:
+      "Look up multiple lot numbers in a single call. Use this instead of calling get_lot_by_number repeatedly when processing multiple files. Returns matches grouped by each input lot number.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        lotNumbers: {
+          type: "array",
+          items: { type: "string" },
+          description: "Array of lot numbers to search for (partial match supported for each)",
+        },
+      },
+      required: ["lotNumbers"],
     },
   },
   {
@@ -162,6 +179,47 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "batch_upload_documents",
+    description:
+      "Upload multiple documents in a single call. Each item specifies a file, its target product/lot/contract, and category. Use this instead of calling upload_document repeatedly when processing multiple files. ALWAYS confirm ALL matches with the user in a single consolidated table before calling this tool.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        uploads: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              productId: { type: "string", description: "Product ID to attach the document to" },
+              category: {
+                type: "string",
+                enum: ["coa", "test-results", "specs", "labels", "photos"],
+                description: "Document category",
+              },
+              fileRef: {
+                type: "string",
+                description: "Sanitised filename of the uploaded file",
+              },
+              originalName: { type: "string", description: "Original filename for display" },
+              lotIds: {
+                type: "array",
+                items: { type: "number" },
+                description: "Required for coa and test-results: database lot IDs",
+              },
+              baseContract: {
+                type: "string",
+                description: "Required for specs, labels, and photos: base contract number",
+              },
+            },
+            required: ["productId", "category", "fileRef", "originalName"],
+          },
+          description: "Array of upload specifications, one per file",
+        },
+      },
+      required: ["uploads"],
+    },
+  },
+  {
     name: "create_discount_item",
     description:
       "Move a specific lot from regular inventory to Discount & Clearance. The lot is immediately deducted from regular inventory. ALWAYS confirm the lot, product, reason, and price with the user before calling this tool.",
@@ -233,6 +291,170 @@ const VALID_REASONS: DiscountReason[] = [
   "damaged",
   "other",
 ];
+
+/* ------------------------------------------------------------------ */
+/*  Single-upload helper (shared by upload_document & batch)          */
+/* ------------------------------------------------------------------ */
+
+// Monotonic counter to prevent docId/filename collisions within a batch
+let uploadCounter = 0;
+
+type UploadSuccess = {
+  success: true;
+  documentId: string;
+  filename: string;
+  url: string;
+  category: string;
+  lotIds: number[];
+  fileBuffer: Buffer;
+  fileMimeType: string;
+};
+type UploadFailure = { success: false; error: string };
+type UploadResult = UploadSuccess | UploadFailure;
+
+function executeOneUpload(
+  input: { productId: string; category: string; fileRef: string; originalName: string; lotIds?: number[]; baseContract?: string },
+  fileMap: Map<string, FileData>,
+  uploaderEmail: string,
+): UploadResult {
+  const { productId, fileRef, originalName } = input;
+  const category = input.category as DocCategory;
+  const lotIds = input.lotIds ?? [];
+  const baseContract = input.baseContract;
+
+  if (!productId) return { success: false, error: "productId is required" };
+  const productExists = getProductById(productId);
+  if (!productExists) return { success: false, error: `Product '${productId}' not found` };
+
+  if (!VALID_CATEGORIES.includes(category)) {
+    return { success: false, error: `Invalid category '${category}'` };
+  }
+  if (LOT_CATEGORIES.includes(category) && lotIds.length === 0) {
+    return { success: false, error: "lotIds are required for coa and test-results" };
+  }
+  if (CONTRACT_CATEGORIES.includes(category) && !baseContract) {
+    return { success: false, error: "baseContract is required for specs, labels, and photos" };
+  }
+
+  // Resolve file from fileMap with fuzzy matching
+  let fileData = fileMap.get(fileRef);
+  if (!fileData) {
+    const refLower = fileRef.toLowerCase();
+    for (const [key, data] of fileMap) {
+      if (
+        key.toLowerCase().includes(refLower) ||
+        refLower.includes(key.toLowerCase()) ||
+        (() => {
+          const refDigits = refLower.match(/\d{5,}/g);
+          const keyDigits = key.toLowerCase().match(/\d{5,}/g);
+          return refDigits && keyDigits && refDigits.some((d) => keyDigits.includes(d));
+        })()
+      ) {
+        fileData = data;
+        break;
+      }
+    }
+  }
+  if (!fileData) {
+    const available = Array.from(fileMap.keys()).join(", ");
+    return {
+      success: false,
+      error: `File '${fileRef}' not found. Available files: ${available || "none — please re-upload"}.`,
+    };
+  }
+
+  const safePid = productId.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const timestamp = `${Date.now()}-${uploadCounter++}`;
+  const filename = `${timestamp}-${safeName}`;
+
+  // Resolve lot number for stable storage path (lot IDs change on re-seed)
+  let lotNumber: string | undefined;
+  if (LOT_CATEGORIES.includes(category) && lotIds.length > 0) {
+    const lotRow = getDb().prepare("SELECT lot_number FROM lots WHERE id = ?").get(lotIds[0]) as { lot_number: string } | undefined;
+    if (!lotRow) return { success: false, error: `Lot ID ${lotIds[0]} not found in database` };
+    lotNumber = lotRow.lot_number;
+  }
+
+  const storageOpts = LOT_CATEGORIES.includes(category)
+    ? { lotNumber: lotNumber! }
+    : { baseContract: baseContract!.replace(/[^a-zA-Z0-9._-]/g, "_") };
+
+  let dir: string;
+  try {
+    dir = getUploadDir(safePid, category, storageOpts);
+  } catch {
+    return { success: false, error: "Invalid upload path" };
+  }
+
+  const filepath = join(dir, filename);
+  const uploadsRoot = resolve(getUploadsRoot());
+  if (!resolve(filepath).startsWith(uploadsRoot)) {
+    return { success: false, error: "Invalid upload path" };
+  }
+
+  writeFileSync(filepath, fileData.buffer);
+
+  const docId = `${productId}-${category}-${timestamp}`;
+  try {
+    addDocument({
+      id: docId,
+      productId,
+      category,
+      filename,
+      originalName,
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: uploaderEmail,
+      baseContract: CONTRACT_CATEGORIES.includes(category) ? (baseContract ?? null) : null,
+      lotIds: LOT_CATEGORIES.includes(category) ? lotIds : undefined,
+    });
+  } catch (err) {
+    try { unlinkSync(filepath); } catch { /* best-effort cleanup */ }
+    return { success: false, error: err instanceof Error ? err.message : "Database error saving document" };
+  }
+
+  const url = getDocumentUrl(productId, category, filename, storageOpts);
+  return {
+    success: true,
+    documentId: docId,
+    filename,
+    url,
+    category,
+    lotIds,
+    fileBuffer: Buffer.from(fileData.buffer),
+    fileMimeType: fileData.mimeType,
+  };
+}
+
+/**
+ * Fire-and-forget COA auto-extraction via Claude Haiku vision.
+ * Mirrors the pattern in /api/upload/route.ts.
+ */
+function triggerCoaExtraction(result: UploadSuccess): void {
+  if (result.category !== "coa" || result.lotIds.length === 0) return;
+
+  // fileBuffer is already a clone (Buffer.from in executeOneUpload), safe for async use
+  const extractBuffer = result.fileBuffer;
+  const extractLotIds = [...result.lotIds];
+
+  import("./coa-extract").then(({ extractCoaData }) => {
+    extractCoaData(extractBuffer, result.fileMimeType).then((fields) => {
+      if (fields) {
+        import("./coa-data").then(({ upsertCoaData }) => {
+          for (const lid of extractLotIds) {
+            try {
+              upsertCoaData(lid, fields, "auto-extract");
+            } catch (err) {
+              console.warn(`[agent] COA data upsert failed for lot ${lid}:`, err);
+            }
+          }
+        });
+      }
+    }).catch((err) => {
+      console.warn("[agent] COA extraction failed:", err);
+    });
+  });
+}
 
 /* ------------------------------------------------------------------ */
 /*  Tool execution                                                    */
@@ -324,112 +546,90 @@ export async function executeTool(
     case "get_sync_info":
       return getSyncInfo();
 
+    /* ── Batch read-only tools ──────────────────────────────────── */
+
+    case "batch_lot_lookup": {
+      const lotNumbers = Array.isArray(input.lotNumbers)
+        ? (input.lotNumbers as string[]).filter((s) => typeof s === "string" && s.trim())
+        : [];
+      if (lotNumbers.length === 0) return { error: "lotNumbers array is required and must not be empty" };
+      if (lotNumbers.length > 50) return { error: "Maximum 50 lot numbers per batch" };
+
+      const resultMap = findLotsByNumbers(lotNumbers);
+      const results: Record<string, unknown> = {};
+      for (const lotNum of lotNumbers) {
+        const matches = resultMap.get(lotNum.trim()) ?? [];
+        results[lotNum] = matches.length > 0
+          ? { found: true, matches }
+          : { found: false, message: `No lots found matching '${lotNum}'` };
+      }
+      return { results };
+    }
+
     /* ── Action tools ────────────────────────────────────────────── */
 
     case "upload_document": {
-      const productId = String(input.productId ?? "");
-      const category = String(input.category ?? "") as DocCategory;
-      const fileRef = String(input.fileRef ?? "");
-      const originalName = String(input.originalName ?? "");
-      const lotIds = Array.isArray(input.lotIds)
-        ? (input.lotIds as unknown[]).filter((id): id is number => typeof id === "number" && Number.isInteger(id))
-        : [];
-      const baseContract = input.baseContract ? String(input.baseContract) : undefined;
+      const result = executeOneUpload(
+        {
+          productId: String(input.productId ?? ""),
+          category: String(input.category ?? ""),
+          fileRef: String(input.fileRef ?? ""),
+          originalName: String(input.originalName ?? ""),
+          lotIds: Array.isArray(input.lotIds)
+            ? (input.lotIds as unknown[]).filter((id): id is number => typeof id === "number" && Number.isInteger(id))
+            : [],
+          baseContract: input.baseContract ? String(input.baseContract) : undefined,
+        },
+        fileMap,
+        uploaderEmail,
+      );
+      if (result.success) triggerCoaExtraction(result);
+      return result.success
+        ? { success: true, documentId: result.documentId, filename: result.filename, url: result.url }
+        : { error: result.error };
+    }
 
-      if (!productId) return { error: "productId is required" };
-      const productExists = getProductById(productId);
-      if (!productExists) return { error: `Product '${productId}' not found` };
+    case "batch_upload_documents": {
+      const uploads = Array.isArray(input.uploads) ? (input.uploads as Record<string, unknown>[]) : [];
+      if (uploads.length === 0) return { error: "uploads array is required and must not be empty" };
+      if (uploads.length > 30) return { error: "Maximum 30 uploads per batch" };
 
-      if (!VALID_CATEGORIES.includes(category)) {
-        return { error: `Invalid category '${category}'` };
-      }
-      if (LOT_CATEGORIES.includes(category) && lotIds.length === 0) {
-        return { error: "lotIds are required for coa and test-results" };
-      }
-      if (CONTRACT_CATEGORIES.includes(category) && !baseContract) {
-        return { error: "baseContract is required for specs, labels, and photos" };
-      }
+      const results: Array<{ fileRef: string; success: boolean; documentId?: string; filename?: string; url?: string; error?: string }> = [];
+      let succeeded = 0;
+      let failed = 0;
 
-      let fileData = fileMap.get(fileRef);
-      // Fuzzy match: Claude may invent a fileRef that doesn't match the sanitized
-      // original filename. Try matching by substring (lot number or partial name).
-      if (!fileData) {
-        const refLower = fileRef.toLowerCase();
-        for (const [key, data] of fileMap) {
-          if (
-            key.toLowerCase().includes(refLower) ||
-            refLower.includes(key.toLowerCase()) ||
-            // Match by lot/batch number embedded in both names
-            (() => {
-              const refDigits = refLower.match(/\d{5,}/g);
-              const keyDigits = key.toLowerCase().match(/\d{5,}/g);
-              return refDigits && keyDigits && refDigits.some((d) => keyDigits.includes(d));
-            })()
-          ) {
-            fileData = data;
-            break;
+      for (const spec of uploads) {
+        const fileRef = String(spec.fileRef ?? "");
+        try {
+          const result = executeOneUpload(
+            {
+              productId: String(spec.productId ?? ""),
+              category: String(spec.category ?? ""),
+              fileRef,
+              originalName: String(spec.originalName ?? ""),
+              lotIds: Array.isArray(spec.lotIds)
+                ? (spec.lotIds as unknown[]).filter((id): id is number => typeof id === "number" && Number.isInteger(id))
+                : [],
+              baseContract: spec.baseContract ? String(spec.baseContract) : undefined,
+            },
+            fileMap,
+            uploaderEmail,
+          );
+          if (result.success) {
+            triggerCoaExtraction(result);
+            results.push({ fileRef, success: true, documentId: result.documentId, filename: result.filename, url: result.url });
+            succeeded++;
+          } else {
+            results.push({ fileRef, success: false, error: result.error });
+            failed++;
           }
+        } catch (err) {
+          results.push({ fileRef, success: false, error: err instanceof Error ? err.message : "Unknown error" });
+          failed++;
         }
       }
-      if (!fileData) {
-        const available = Array.from(fileMap.keys()).join(", ");
-        return {
-          error: `File '${fileRef}' not found. Available files: ${available || "none — please re-upload"}.`,
-        };
-      }
 
-      const safePid = productId.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const timestamp = Date.now();
-      const filename = `${timestamp}-${safeName}`;
-
-      // Resolve lot number for stable storage path (lot IDs change on re-seed)
-      let lotNumber: string | undefined;
-      if (LOT_CATEGORIES.includes(category) && lotIds.length > 0) {
-        const lotRow = getDb().prepare("SELECT lot_number FROM lots WHERE id = ?").get(lotIds[0]) as { lot_number: string } | undefined;
-        if (!lotRow) return { error: `Lot ID ${lotIds[0]} not found in database` };
-        lotNumber = lotRow.lot_number;
-      }
-
-      const storageOpts = LOT_CATEGORIES.includes(category)
-        ? { lotNumber: lotNumber! }
-        : { baseContract: baseContract!.replace(/[^a-zA-Z0-9._-]/g, "_") };
-
-      let dir: string;
-      try {
-        dir = getUploadDir(safePid, category, storageOpts);
-      } catch {
-        return { error: "Invalid upload path" };
-      }
-
-      const filepath = join(dir, filename);
-      const uploadsRoot = resolve(getUploadsRoot());
-      if (!resolve(filepath).startsWith(uploadsRoot)) {
-        return { error: "Invalid upload path" };
-      }
-
-      writeFileSync(filepath, fileData.buffer);
-
-      const docId = `${productId}-${category}-${timestamp}`;
-      try {
-        addDocument({
-          id: docId,
-          productId,
-          category,
-          filename,
-          originalName,
-          uploadedAt: new Date().toISOString(),
-          uploadedBy: uploaderEmail,
-          baseContract: CONTRACT_CATEGORIES.includes(category) ? (baseContract ?? null) : null,
-          lotIds: LOT_CATEGORIES.includes(category) ? lotIds : undefined,
-        });
-      } catch (err) {
-        try { unlinkSync(filepath); } catch { /* best-effort cleanup */ }
-        return { error: err instanceof Error ? err.message : "Database error saving document" };
-      }
-
-      const url = getDocumentUrl(productId, category, filename, storageOpts);
-      return { success: true, documentId: docId, filename, url };
+      return { results, summary: { total: uploads.length, succeeded, failed } };
     }
 
     case "create_discount_item": {

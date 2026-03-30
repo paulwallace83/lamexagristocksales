@@ -366,6 +366,7 @@ Click any product name to see full details:
 | Task | Example |
 |------|---------|
 | **Upload a COA** | Drag in the PDF and say "Upload this COA to the correct lots" — the assistant reads the document, finds matching lot numbers, and proposes the upload |
+| **Batch upload COAs** | Drag in multiple COA PDFs at once — the assistant reads all files, presents a single matching table, and uploads them all after one confirmation. Works for 24+ files in one turn |
 | **Upload a test result** | Drag in a third-party lab report (SGS, Eurofins, GFL) — the assistant recognizes it as a test result (not a COA) and matches to the correct lots |
 | **Upload a spec sheet** | Attach the PDF and say "This is a spec sheet" — the assistant looks for contract numbers and matches to the right product |
 | **Check document coverage** | "What products are missing COAs?" or "Which products are missing test results?" |
@@ -379,9 +380,11 @@ Click any product name to see full details:
 
 - **Drag-and-drop** files directly into the chat window, or click the paperclip icon
 - Multiple files can be attached to a single message
+- **Batch upload:** When you attach multiple files, the assistant reads all of them, extracts lot/contract numbers from each, and presents a consolidated matching table. You confirm once and all files upload in one batch — no per-file confirmation needed. This handles large shipments (24+ COAs) efficiently.
 - Files persist across conversation turns (30 min expiry) — you can upload a file, discuss it, and confirm the upload in a follow-up message
 - Maximum file size: 50 MB per file
 - Supported types: PDF, JPEG, PNG, GIF, WebP
+- **COA auto-extraction:** When a COA is uploaded (single or batch), key parameters (brix, acidity, color, etc.) are automatically extracted via Claude vision and displayed on the product detail page. The upload succeeds immediately — extraction runs in the background.
 
 ### COA vs Test Result
 
@@ -393,7 +396,7 @@ The assistant automatically distinguishes COAs from test results:
 
 ### Confirmation Model
 
-The assistant **always asks for your approval** before taking any action that modifies data (uploading documents, creating discount items, restoring items). It will describe exactly what it intends to do and wait for your explicit "yes" before proceeding.
+The assistant **always asks for your approval** before taking any action that modifies data (uploading documents, batch uploading documents, creating discount items, restoring items). It will describe exactly what it intends to do and wait for your explicit "yes" before proceeding. For batch uploads, the assistant presents a single table showing all proposed matches — you confirm or correct the entire table before any files are uploaded.
 
 ### Limitations
 

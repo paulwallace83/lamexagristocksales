@@ -5,6 +5,25 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.10.2] — 2026-03-29
+
+### Added
+- **Batch document upload via agent** — drop 24+ files at once; the agent reads all files, presents a consolidated matching table, and uploads all after a single confirmation
+- **`batch_lot_lookup` tool** — look up multiple lot numbers in one call (replaces N individual `get_lot_by_number` calls for batch workflows)
+- **`batch_upload_documents` tool** — upload multiple files in one call with per-upload error isolation
+- **`findLotsByNumbers()`** in `lib/agent-db.ts` — batch query function for the new tool
+
+### Fixed
+- **COA auto-extraction on agent uploads** — agent uploads via `upload_document` and `batch_upload_documents` now trigger Claude Haiku vision extraction (previously only fired from the QA upload route at `/api/upload`)
+- **Timestamp collision in batch uploads** — monotonic counter prevents docId/filename collisions when multiple uploads complete within the same millisecond
+
+### Changed
+- Refactored `upload_document` execution into shared `executeOneUpload()` helper (used by both single and batch paths)
+- Agent system prompt updated with batch workflow rules (rule 11) and updated rule 3 for batch lot lookup
+- Agent tool count: 13 → 15 (10 read-only, 5 action)
+
+---
+
 ## [0.10.1] — 2026-03-29
 
 ### Added

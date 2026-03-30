@@ -47,7 +47,7 @@ Rollback: copy any snapshot from data/snapshots/ back to data/inventory.json and
 4. Claude Code inspects the current codebase before making changes.
 5. Claude Code implements the smallest complete solution.
 6. Claude Code verifies the result.
-7. Claude Code updates relevant docs when workflow or behavior changes.
+7. Claude Code completes the Documentation Checklist (see Definition Of Done).
 8. Claude Code reports the implementation outcome, verification status, and open risks.
 ## Slice Standards
 Every slice should be small enough to complete and verify in one focused pass.
@@ -72,8 +72,27 @@ If business inputs are missing, the planner should supply them before implementa
 A slice is done only when:
 - implementation is complete
 - required verification has been run, or the inability to run it has been stated clearly
-- relevant documentation has been updated
+- the documentation checklist below has been completed
 - no known violation of CLAUDE.md rules remains inside the implemented scope
+
+### Documentation Checklist
+After every completed slice, Claude Code must verify each applicable item before reporting done. Skip items marked N/A with a brief reason.
+
+| # | Document | Check | Applies When |
+|---|----------|-------|-------------|
+| 1 | **CLAUDE.md** | Feature spec, tool counts, key files list, architecture section, capability descriptions | Any feature, tool, workflow, or API change |
+| 2 | **CHANGELOG.md** | New version entry with Added/Fixed/Changed sections | Every release |
+| 3 | **docs/roadmap.md** | Move slice from candidate → completed section; update active priorities | Every slice |
+| 4 | **docs/user-guide.md** | User-facing workflow, "What You Can Do" table, file upload section, admin reference tables | Any change visible to QA/reviewer/admin users |
+| 5 | **Agent system prompt** | Tool list in rule 1 (confirmation), batch rules, matching rules, new capabilities | Any agent tool or behavior change |
+| 6 | **docs/workflow.md** | Source of truth list, sync procedure, delivery flow | Process or protocol changes |
+| 7 | **AGENTS.md** | Role definitions, task lifecycle | Role or responsibility changes |
+
+**Cross-check step:** After updating docs, grep for stale counts and references:
+- `grep -r "N tools" *.md docs/*.md` — verify tool counts match current total
+- `grep -r "read-only.*action" *.md docs/*.md` — verify read-only/action split
+- Check that all action tools appear in the system prompt rule 1 confirmation list
+- Check that CLAUDE.md key files sections reference any new or renamed files
 ## Decision Boundaries
 Use this rule to resolve ambiguity:
 - Product, workflow, and data-policy decisions belong to the planner.

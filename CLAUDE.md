@@ -313,7 +313,7 @@ Extracted COA parameters (brix, acidity, color, clarity, ratio, defects, overrip
 
 ### Automatic Extraction
 
-When a COA document is uploaded via `/api/upload`, the file is sent to Claude Haiku vision (`claude-haiku-4-5-20251001`) for automatic parameter extraction. This happens fire-and-forget after the upload response — extraction failure does not block the upload. Works on both text-based PDFs and scanned images.
+When a COA document is uploaded via `/api/upload` (QA portal) or via the agent's `upload_document`/`batch_upload_documents` tools, the file is sent to Claude Haiku vision (`claude-haiku-4-5-20251001`) for automatic parameter extraction. This happens fire-and-forget after the upload response — extraction failure does not block the upload. Works on both text-based PDFs and scanned images.
 
 ### Agent Tool
 
@@ -331,8 +331,8 @@ COA data is exported (with lot numbers) before the sync transaction, deleted alo
 
 - `lib/coa-data.ts` — Types, query, upsert, export/relink, display formatting
 - `lib/coa-extract.ts` — Claude vision extraction function
-- `app/api/upload/route.ts` — Auto-extraction hook (fire-and-forget on COA upload)
-- `lib/agent-tools.ts` — `save_coa_data` tool definition and execution
+- `app/api/upload/route.ts` — Auto-extraction hook for QA portal COA uploads
+- `lib/agent-tools.ts` — `save_coa_data` tool definition and execution; auto-extraction hook for agent COA uploads (single and batch)
 - `app/product/[id]/page.tsx` — Public display in `LotRow` component
 
 ## Public Inventory Page
@@ -443,6 +443,7 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 ### Capabilities
 
 - **Document matching:** Upload a COA, spec sheet, label, or product photo via drag-and-drop or file picker → Claude reads the document, extracts lot numbers / contract numbers / product names, proposes matches against inventory, and uploads after explicit user confirmation.
+- **Batch document upload:** Drop multiple files (24+) at once → Claude reads all files, extracts lot/contract numbers, presents a single consolidated matching table, and uploads all after one confirmation. Uses `batch_lot_lookup` and `batch_upload_documents` tools to complete within 3–4 iterations regardless of file count.
 - **Test result recognition:** Third-party lab reports (SGS, Eurofins, GFL, etc.) are automatically categorized as `test-results`, not `coa`, regardless of filename. If a supplier's COA contains HM/pesticide data, it stays as `coa` and the agent notes the test data is included.
 - **Inventory queries:** Answer questions about current stock (including discount items in overview), document coverage (COA + test result gaps), and import review status.
 - **Discount management:** Move lots to Discount & Clearance or restore them, via conversation.
@@ -460,8 +461,9 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 
 ### Architecture
 
-- Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 13 tools (9 read-only, 4 action).
-- Action tools (`upload_document`, `create_discount_item`, `restore_discount_item`, `save_coa_data`) require conversational confirmation from the user before execution — enforced via system prompt.
+- Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 15 tools (10 read-only, 5 action).
+- Action tools (`upload_document`, `batch_upload_documents`, `create_discount_item`, `restore_discount_item`, `save_coa_data`) require conversational confirmation from the user before execution — enforced via system prompt.
+- COA auto-extraction fires on both single and batch uploads via the agent (same Claude Haiku vision pipeline as the QA upload route).
 - Files are uploaded in-band with the chat message (multipart form data) and persisted to a per-user temp directory (`.agent-uploads/{user}/`) so they survive across conversation turns (auto-cleaned after 30 min).
 - Responses stream via SSE with tool activity indicators. Max 10 tool-use iterations per request with a user-visible warning if the limit is reached.
 - Requires `ANTHROPIC_API_KEY` in `.env.local`.

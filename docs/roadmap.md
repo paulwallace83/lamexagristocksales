@@ -137,13 +137,20 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Product detail page shows compact navy-tinted pills on each lot row for populated fields.
 - Sync preservation: COA data exported/re-linked by lot number across weekly re-seeds.
 
+### Batch Document Upload via Agent (v0.10.2 — S009)
+- Two new agent tools: `batch_lot_lookup` (look up multiple lot numbers in one call) and `batch_upload_documents` (upload multiple files in one call).
+- Batch workflow: drop 24+ files at once → agent reads all, presents consolidated matching table, single confirmation, batch upload. Completes in 3–4 tool iterations regardless of file count.
+- Extracted `executeOneUpload()` helper from existing `upload_document` — shared by both single and batch paths.
+- COA auto-extraction bug fix: agent uploads now trigger Claude Haiku vision extraction (previously only fired from QA upload route).
+- Per-upload error isolation in batch: one failed file doesn't abort the rest.
+- Agent tool count: 13 → 15 (10 read-only, 5 action).
+
 ## Active Priorities
 ### 1. Data Quality (remaining)
 - Validate unit types are correctly identified per product during sync.
 - Flag potential duplicate products with similar names/specs.
 
 ## Near-Term Candidate Slices
-- S009: Batch document upload via agent (multi-file COA matching in one turn). High impact for large shipments (24+ lots).
 - S011: Agent-powered weekly sync assistant (paste pivot data in agent, auto-parse and sync). Removes need for Claude Code session for routine syncs.
 - Enquiry tracking dashboard: persist all enquiries to DB (not just doc requests) so sales has visibility into lead volume, response times, and product interest.
 - Pending request badge in admin nav: show document request count on the "Requests" nav link across all admin pages so QA spots new requests without navigating there.

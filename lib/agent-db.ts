@@ -132,6 +132,25 @@ export function findLotsByNumber(lotNumber: string): LotMatch[] {
   });
 }
 
+/**
+ * Batch version of findLotsByNumber — accepts multiple lot numbers, returns
+ * results keyed by the input string. Each lot number is matched independently
+ * using the same partial-match LIKE query.
+ */
+export function findLotsByNumbers(lotNumbers: string[]): Map<string, LotMatch[]> {
+  const results = new Map<string, LotMatch[]>();
+  const seen = new Set<string>();
+
+  for (const raw of lotNumbers) {
+    const trimmed = raw.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    results.set(trimmed, findLotsByNumber(trimmed));
+  }
+
+  return results;
+}
+
 /** Find products and lots associated with a contract/container reference. */
 export function findByContractNumber(contractRef: string): ContractMatch[] {
   const db = getDb();
