@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFileSync, unlinkSync } from "fs";
+import { writeFileSync, unlinkSync, mkdirSync } from "fs";
 import { join, resolve } from "path";
 import { auth } from "@/lib/auth";
 import { addDocument, getUploadDir, getDocumentUrl, generateDocFilename } from "@/lib/documents";
@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
   }
 
+  mkdirSync(dir, { recursive: true }); // ensure directory exists (belt-and-suspenders)
   writeFileSync(filepath, buffer);
 
   const docId = `${productId}-${category}-${Date.now()}`;

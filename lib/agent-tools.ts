@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { writeFileSync, unlinkSync, existsSync, readFileSync } from "fs";
+import { writeFileSync, unlinkSync, existsSync, readFileSync, mkdirSync } from "fs";
 import { join, resolve } from "path";
 import {
   getProductSummaries,
@@ -441,6 +441,7 @@ function executeOneUpload(
     return { success: false, error: "Invalid upload path" };
   }
 
+  mkdirSync(dir, { recursive: true }); // ensure directory exists (belt-and-suspenders)
   writeFileSync(filepath, fileData.buffer);
 
   const docId = `${productId}-${category}-${Date.now()}-${uploadCounter++}`;

@@ -136,11 +136,13 @@ export function generateDocFilename(opts: {
   let base: string;
   if (opts.lotNumber) {
     // Lot-level: YYYY-MM-DD. {Product} - {Type} - {LotNumber}
-    base = `${date}. ${product} - ${typeLabel} - ${opts.lotNumber}`;
+    const lot = sanitizeSegment(opts.lotNumber);
+    base = `${date}. ${product} - ${typeLabel} - ${lot}`;
   } else if (opts.baseContract) {
     // Contract-level: YYYY-MM-DD. {Product} - {Contract} | {COO} | {Type}
-    const coo = opts.countryOfOrigin || "Unknown";
-    base = `${date}. ${product} - ${opts.baseContract} | ${coo} | ${typeLabel}`;
+    const contract = sanitizeSegment(opts.baseContract);
+    const coo = sanitizeSegment(opts.countryOfOrigin || "Unknown");
+    base = `${date}. ${product} - ${contract} | ${coo} | ${typeLabel}`;
   } else {
     // Fallback
     base = `${date}. ${product} - ${typeLabel}`;
@@ -382,7 +384,7 @@ export function getUploadDir(productId: string, category: string, opts?: { lotId
   } else {
     dir = join(uploadsRoot, pid, cat);
   }
-  if (!resolve(dir).startsWith(uploadsRoot)) {
+  if (!resolve(dir).startsWith(resolve(uploadsRoot) + "/")) {
     throw new Error("Invalid upload path");
   }
   if (!existsSync(dir)) {
