@@ -250,6 +250,7 @@ Roles are stored in the `users` table (`role TEXT NOT NULL DEFAULT 'qa'`) and in
 - **Auth:** NextAuth.js with credentials provider. QA login at `/qa/login`. Credentials are in `secrets.md` (gitignored).
 - **Notification email:** `coa@lamexfoods.us`
 - **Metadata:** Tracked in SQLite (`documents`, `document_lots` tables)
+- **COA auto-extraction:** When a COA is uploaded, Claude Haiku vision automatically extracts measurable parameters (brix, acidity, color, etc.) and stores them in the `coa_data` table. Extraction is fire-and-forget — the upload succeeds immediately. See the "COA Key Aspects" section for details.
 
 ### Document Hierarchy
 
@@ -445,6 +446,7 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 - **Test result recognition:** Third-party lab reports (SGS, Eurofins, GFL, etc.) are automatically categorized as `test-results`, not `coa`, regardless of filename. If a supplier's COA contains HM/pesticide data, it stays as `coa` and the agent notes the test data is included.
 - **Inventory queries:** Answer questions about current stock (including discount items in overview), document coverage (COA + test result gaps), and import review status.
 - **Discount management:** Move lots to Discount & Clearance or restore them, via conversation.
+- **COA data management:** Review, correct, or supplement auto-extracted COA parameters (brix, acidity, color, etc.) via `save_coa_data` tool. COA data is auto-extracted on upload but the agent can fix incorrect values or add missing fields.
 - **Import review:** View soft-excluded items from the last Excel import.
 - **Markdown responses:** Agent output renders with full markdown support (tables, bold, headers, lists, blockquotes).
 - **True streaming:** Responses stream token-by-token via the Anthropic streaming API.
@@ -458,8 +460,8 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 
 ### Architecture
 
-- Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 12 tools (9 read-only, 3 action).
-- Action tools (`upload_document`, `create_discount_item`, `restore_discount_item`) require conversational confirmation from the user before execution — enforced via system prompt.
+- Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 13 tools (9 read-only, 4 action).
+- Action tools (`upload_document`, `create_discount_item`, `restore_discount_item`, `save_coa_data`) require conversational confirmation from the user before execution — enforced via system prompt.
 - Files are uploaded in-band with the chat message (multipart form data) and persisted to a per-user temp directory (`.agent-uploads/{user}/`) so they survive across conversation turns (auto-cleaned after 30 min).
 - Responses stream via SSE with tool activity indicators. Max 10 tool-use iterations per request with a user-visible warning if the limit is reached.
 - Requires `ANTHROPIC_API_KEY` in `.env.local`.
