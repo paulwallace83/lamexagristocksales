@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { existsSync } from "fs";
 import { getDbPath } from "./paths";
 
 const SCHEMA_SQL = `
@@ -252,7 +253,7 @@ export function getDb(): Database.Database {
     // Auto-seed if database is empty (first deploy / fresh install)
     // Skip during build — volume isn't mounted, so seeding would go to a throwaway DB
     const isBuild = process.env.NEXT_PHASE === "phase-production-build"
-      || (process.env.RAILWAY_VOLUME_PATH && !require("fs").existsSync(process.env.RAILWAY_VOLUME_PATH));
+      || (process.env.RAILWAY_VOLUME_PATH && !existsSync(process.env.RAILWAY_VOLUME_PATH));
     if (!isBuild) {
       const count = _db.prepare("SELECT COUNT(*) AS n FROM products").get() as { n: number };
       if (count.n === 0) {
