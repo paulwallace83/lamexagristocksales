@@ -179,6 +179,22 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Dark mode: respect `prefers-color-scheme` for admin portal (QA staff reviewing documents after hours).
 - Keyboard shortcuts on inventory page: `/` to focus search, arrow keys to navigate, `Enter` to open detail.
 
+## Potential Improvements
+### Operational
+- Agent document gap report email: automated email to QA after each sync listing all lots missing COAs/test results, sorted by product. Removes need to manually check the QA dashboard.
+- Supplier scorecard: track document completeness rate per supplier over time (from weekly snapshots). Surfaces suppliers that consistently ship without COAs.
+- Inventory age alerts: flag products approaching BBD thresholds (90/60/30 days) on admin dashboard and optionally in the marketing email. Helps move aging stock before it becomes discount.
+
+### Sales-Facing
+- Product detail page share preview: OpenGraph/Twitter card meta tags on `/product/[id]` so shared links show product name, format, origin, and weight. Zero-effort marketing.
+- Saved search / watchlist: let buyers bookmark commodities or formats via localStorage. Highlight new arrivals matching their interests on return visits. No login required.
+- PDF inventory export: one-click download of the current filtered inventory as a branded PDF. Buyers frequently forward these to procurement teams.
+
+### Developer / Ops
+- Health check endpoint: `GET /api/health` returning DB status, last sync date, pending doc requests count, disk usage. Useful for Railway monitoring and uptime checks.
+- Sync dry-run mode: `npm run sync -- --dry-run` that runs the full pipeline but doesn't write to disk or DB. Shows what would change without risk.
+- Agent tool usage analytics: track which tools are called most/least frequently. Identifies tools to optimize and capabilities users don't know about.
+
 ## Planning Notes
 - Prefer slices that produce a visible operational improvement in one pass.
 - Avoid bundling unrelated admin, UI, and data work together.
