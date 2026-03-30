@@ -120,6 +120,31 @@ export async function POST(req: NextRequest) {
 
   const url = getDocumentUrl(productId, category, filename, storageOpts);
 
+  // Fire-and-forget COA data extraction via Claude vision
+  if (cat === "coa" && lotIds.length > 0) {
+    // Clone buffer to ensure it survives past the HTTP response
+    const bufferCopy = Buffer.from(buffer);
+    const extractLotIds = [...lotIds];
+    import("@/lib/coa-extract").then(({ extractCoaData }) => {
+      extractCoaData(bufferCopy, file.type).then((fields) => {
+        if (fields) {
+          import("@/lib/coa-data").then(({ upsertCoaData }) => {
+            for (const lid of extractLotIds) {
+              try {
+                upsertCoaData(lid, fields, "auto-extract");
+              } catch (err) {
+                console.warn(`COA data upsert failed for lot ${lid}:`, err instanceof Error ? err.message : err);
+              }
+            }
+            console.log(`COA data extracted for lot(s) ${extractLotIds.join(",")}: ${Object.keys(fields).join(", ")}`);
+          });
+        }
+      }).catch((err) => {
+        console.warn("COA auto-extraction failed (non-blocking):", err instanceof Error ? err.message : err);
+      });
+    });
+  }
+
   return NextResponse.json({
     success: true,
     document: { id: docId, filename, url },

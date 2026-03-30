@@ -128,6 +128,15 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - `document_requests` SQLite table preserved during weekly sync.
 - Nav link added to all admin layouts.
 
+### COA Key Aspects Display (v0.10.1)
+- `coa_data` SQLite table stores extracted COA parameters per lot as flexible JSON (any key-value pair).
+- Automatic extraction: COA uploads trigger Claude Haiku vision to extract brix, acidity, color, clarity, ratio, defects, overripe, underripe, NTU, and any other measurable parameters.
+- Works on both text-based PDFs and scanned images — no separate OCR library needed.
+- Fire-and-forget extraction: upload succeeds immediately, extraction runs async.
+- Agent tool `save_coa_data` for manual correction or supplementing auto-extracted data.
+- Product detail page shows compact navy-tinted pills on each lot row for populated fields.
+- Sync preservation: COA data exported/re-linked by lot number across weekly re-seeds.
+
 ## Active Priorities
 ### 1. Data Quality (remaining)
 - Validate unit types are correctly identified per product during sync.
@@ -136,11 +145,22 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 ## Near-Term Candidate Slices
 - S009: Batch document upload via agent (multi-file COA matching in one turn). High impact for large shipments (24+ lots).
 - S011: Agent-powered weekly sync assistant (paste pivot data in agent, auto-parse and sync). Removes need for Claude Code session for routine syncs.
-- S012: Customer inquiry portal (public-facing quote request with agent-assisted follow-up).
+- Enquiry tracking dashboard: persist all enquiries to DB (not just doc requests) so sales has visibility into lead volume, response times, and product interest.
+- Pending request badge in admin nav: show document request count on the "Requests" nav link across all admin pages so QA spots new requests without navigating there.
 
 ## Medium-Term Candidate Slices
 - QA Dashboard enhancements: delete documents from expanded panel, upload directly from expanded panel, filter/search by supplier or document status.
 - Reporting & analytics dashboard: inventory trends over time (from weekly snapshots), document completion velocity, agent usage patterns and cost trends.
+- Customer portal with login: repeat buyers log in to see request history, re-request documents, and get saved pricing. Reduces repeat enquiries.
+- Auth-protected email preview route: let sales/QA preview notification emails without sending test submissions.
+
+## UX Polish Candidates
+- Enquiry form: accept `name`, `company`, `email` as URL params so returning customers from approval emails don't re-type info.
+- Enquiry success state: add "Back to Product" and "Browse More Products" links after submission.
+- Product page availability badge count: show "3 COAs available" summary instead of individual per-lot badges.
+- Admin requests: clickable column headers for date and product name sorting.
+- Rate limit feedback: show remaining cooldown time ("Please try again in 23 minutes") instead of generic error.
+- Mobile sticky CTA: add bottom padding to page content to prevent overlap with the fixed "Request Quote" footer.
 
 ## Planning Notes
 - Prefer slices that produce a visible operational improvement in one pass.

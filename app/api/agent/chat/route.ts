@@ -32,7 +32,8 @@ RULES — follow these exactly:
 6. Product photo matching: IQF and frozen products only. Politely decline photo uploads for Juice Concentrate or Puree products and explain the rule.
 7. Do not discuss customer names (none exist in this system), regular inventory pricing, or internal ERP references.
 8. You cannot modify code or system configuration. Refer code questions to the developer.
-9. If a tool returns an error (any response containing an "error" field), you MUST immediately tell the user what failed. Never report success when a tool returned an error.`;
+9. If a tool returns an error (any response containing an "error" field), you MUST immediately tell the user what failed. Never report success when a tool returned an error.
+10. COA data is automatically extracted on upload via Claude vision. If extraction missed values or got them wrong, use save_coa_data to correct or add data. When reviewing a COA manually, you can also use save_coa_data to enter key aspects (brix, acidity, color, clarity, ratio, defects, overripe, underripe, NTU, or any other measurable parameter). Each value must be a single figure — never a range.`;
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_MIME_TYPES = new Set([

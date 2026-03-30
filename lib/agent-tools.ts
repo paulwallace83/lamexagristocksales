@@ -199,6 +199,24 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
       required: ["discountId"],
     },
   },
+  {
+    name: "save_coa_data",
+    description:
+      "Save or update extracted COA key aspects (brix, acidity, color, clarity, ratio, defects, overripe, underripe, NTU, etc.) for a specific lot. COA data is auto-extracted on upload, but use this tool to correct values, add missing data, or manually enter data after reviewing a COA. Only include fields you can clearly verify.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        lotNumber: { type: "string", description: "Lot number to save data for" },
+        productId: { type: "string", description: "Product ID the lot belongs to" },
+        fields: {
+          type: "object",
+          description: "Key-value pairs of COA parameters. Keys should be lowercase snake_case (e.g. brix, acidity, color, ntu). Values must be a single number or short string — never a range.",
+          additionalProperties: { oneOf: [{ type: "number" }, { type: "string" }] },
+        },
+      },
+      required: ["lotNumber", "productId", "fields"],
+    },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -445,6 +463,56 @@ export async function executeTool(
       const success = restoreToInventory(discountId);
       if (!success) return { error: `Discount item '${discountId}' not found` };
       return { success: true, message: `Item ${discountId} restored to regular inventory` };
+    }
+
+    case "save_coa_data": {
+      const lotNumber = String(input.lotNumber ?? "");
+      const productId = String(input.productId ?? "");
+      const fields = input.fields as Record<string, unknown> | undefined;
+
+      if (!lotNumber || lotNumber.length > 100) return { error: "lotNumber is required (max 100 chars)" };
+      if (!productId || productId.length > 200) return { error: "productId is required (max 200 chars)" };
+      if (!fields || typeof fields !== "object" || Array.isArray(fields) || Object.keys(fields).length === 0) {
+        return { error: "fields must be a non-empty object" };
+      }
+      if (Object.keys(fields).length > 50) {
+        return { error: "Too many fields (max 50)" };
+      }
+
+      // Look up lot by number + product
+      const db = getDb();
+      const lot = db.prepare(
+        `SELECT lo.id FROM lots lo
+         JOIN listings li ON lo.listing_id = li.id
+         WHERE li.product_id = ? AND lo.lot_number = ?`,
+      ).get(productId, lotNumber) as { id: number } | undefined;
+
+      if (!lot) return { error: `Lot '${lotNumber}' not found for product '${productId}'` };
+
+      // Validate, normalize, and bound-check fields
+      const { upsertCoaData } = await import("./coa-data");
+      const cleanFields: Record<string, number | string> = {};
+      for (const [key, value] of Object.entries(fields)) {
+        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9_]/g, "");
+        if (!normalizedKey || normalizedKey.length > 50) continue;
+        if (typeof value === "number") {
+          if (!Number.isFinite(value)) continue;
+          cleanFields[normalizedKey] = value;
+        } else if (typeof value === "string") {
+          if (value.length > 500) continue;
+          cleanFields[normalizedKey] = value;
+        }
+      }
+      if (Object.keys(cleanFields).length === 0) {
+        return { error: "No valid fields provided (values must be finite numbers or strings under 500 chars)" };
+      }
+
+      upsertCoaData(lot.id, cleanFields, "agent");
+      return {
+        success: true,
+        message: `Saved COA data for lot ${lotNumber}: ${Object.keys(cleanFields).join(", ")}`,
+        fields: cleanFields,
+      };
     }
 
     default:

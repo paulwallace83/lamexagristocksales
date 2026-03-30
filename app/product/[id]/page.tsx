@@ -18,6 +18,8 @@ import {
 } from "@/lib/documents";
 import type { DocumentEntry, DocCategory } from "@/lib/documents";
 import { countryFlag } from "@/lib/country-flags";
+import { getCoaDataForLots, formatCoaFields } from "@/lib/coa-data";
+import type { CoaData } from "@/lib/coa-data";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const totalQty = getTotalQuantity(product);
   const totalWeight = getTotalWeight(product);
   const documents = getDocumentsForProduct(id);
+  const allLotIds = product.listings.flatMap((l) => l.lots.map((lot) => lot.id));
+  const coaDataMap = getCoaDataForLots(allLotIds);
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       {/* Breadcrumb */}
@@ -95,6 +99,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 listing={listing}
                 unitType={product.unitType}
                 documents={documents}
+                coaDataMap={coaDataMap}
                 showLots={listing.lots.length > 0}
               />
             ))}
@@ -136,11 +141,13 @@ function ListingCard({
   listing,
   unitType,
   documents,
+  coaDataMap,
   showLots,
 }: {
   listing: Listing;
   unitType: string;
   documents: DocumentEntry[];
+  coaDataMap: Map<number, CoaData>;
   showLots: boolean;
 }) {
   return (
@@ -199,7 +206,7 @@ function ListingCard({
             </h4>
             <div className="space-y-3">
               {listing.lots.map((lot) => (
-                <LotRow key={lot.id} lot={lot} unitType={listing.unitType || unitType} documents={documents} />
+                <LotRow key={lot.id} lot={lot} unitType={listing.unitType || unitType} documents={documents} coaDataMap={coaDataMap} />
               ))}
             </div>
           </div>
@@ -209,11 +216,13 @@ function ListingCard({
   );
 }
 
-function LotRow({ lot, unitType, documents }: { lot: Lot; unitType: string; documents: DocumentEntry[] }) {
+function LotRow({ lot, unitType, documents, coaDataMap }: { lot: Lot; unitType: string; documents: DocumentEntry[]; coaDataMap: Map<number, CoaData> }) {
   const lotDocs = documents.filter((d) => d.lotIds.includes(lot.id));
   const coaDocs = lotDocs.filter((d) => d.category === "coa");
   const testDocs = lotDocs.filter((d) => d.category === "test-results");
   const hasCOA = coaDocs.length > 0;
+  const coaData = coaDataMap.get(lot.id);
+  const formattedFields = coaData ? formatCoaFields(coaData.fields) : [];
 
   return (
     <div className="bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-100 border-l-4 border-l-[#1a2b5f]">
@@ -267,6 +276,20 @@ function LotRow({ lot, unitType, documents }: { lot: Lot; unitType: string; docu
           )
         ) : null}
       </div>
+
+      {/* Line 3: COA key aspects (only when data exists) */}
+      {formattedFields.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+          {formattedFields.map((f) => (
+            <span
+              key={f.label}
+              className="text-xs bg-[#1a2b5f]/5 text-[#1a2b5f]/70 px-1.5 py-0.5 rounded"
+            >
+              <span className="font-medium">{f.label}:</span> {f.value}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

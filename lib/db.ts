@@ -208,6 +208,13 @@ CREATE TABLE IF NOT EXISTS document_requests (
 
 CREATE INDEX IF NOT EXISTS idx_doc_requests_status ON document_requests(status);
 CREATE INDEX IF NOT EXISTS idx_doc_requests_product ON document_requests(product_id);
+
+CREATE TABLE IF NOT EXISTS coa_data (
+  lot_id      INTEGER PRIMARY KEY REFERENCES lots(id),
+  data        TEXT NOT NULL,
+  updated_at  TEXT NOT NULL,
+  updated_by  TEXT NOT NULL
+);
 `;
 
 let _db: Database.Database | null = null;

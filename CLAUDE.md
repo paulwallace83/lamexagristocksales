@@ -299,6 +299,41 @@ Show product photos if: format === "IQF" OR (processType === "Frozen" AND format
 - `app/qa/page.tsx` — QA dashboard server component
 - `app/qa/upload/[id]/page.tsx` — Per-product upload page
 
+## COA Key Aspects
+
+Extracted COA parameters (brix, acidity, color, clarity, ratio, defects, overripe, underripe, NTU, etc.) are displayed publicly on the product detail page next to each lot.
+
+### Data Model
+
+- **`coa_data`** table: `lot_id` (PK, FK → lots), `data` (JSON), `updated_at`, `updated_by`.
+- `data` is a flexible JSON object — any key-value pair can be stored (e.g., `{"brix": 11.5, "color": "Light Amber"}`).
+- Values are **single figures** (number or short string), never ranges.
+- The field set is not fixed — unknown keys are title-cased automatically for display.
+
+### Automatic Extraction
+
+When a COA document is uploaded via `/api/upload`, the file is sent to Claude Haiku vision (`claude-haiku-4-5-20251001`) for automatic parameter extraction. This happens fire-and-forget after the upload response — extraction failure does not block the upload. Works on both text-based PDFs and scanned images.
+
+### Agent Tool
+
+`save_coa_data` — allows the agent to manually enter, correct, or supplement auto-extracted data. Requires `lotNumber`, `productId`, and `fields` (key-value object).
+
+### Public Display
+
+Product detail page (`app/product/[id]/page.tsx`) shows a third line below each lot's quantity/weight/BBD row with compact navy-tinted pills for each available parameter. Only populated fields are rendered.
+
+### Sync Preservation
+
+COA data is exported (with lot numbers) before the sync transaction, deleted alongside `document_lots`, and re-linked after re-seed by matching lot numbers — same pattern as `relinkDocumentLots()`.
+
+### Key Files
+
+- `lib/coa-data.ts` — Types, query, upsert, export/relink, display formatting
+- `lib/coa-extract.ts` — Claude vision extraction function
+- `app/api/upload/route.ts` — Auto-extraction hook (fire-and-forget on COA upload)
+- `lib/agent-tools.ts` — `save_coa_data` tool definition and execution
+- `app/product/[id]/page.tsx` — Public display in `LotRow` component
+
 ## Public Inventory Page
 
 - Products are **grouped by format** (IQF, Juice Concentrate, Puree) with collapsible section headers showing product count and total weight.
@@ -640,6 +675,7 @@ Key tables in `lamex.db` (full DDL in `lib/db.ts`):
 - **`conversation_messages`** — Agent chat messages (role, content, file_names). CASCADE deletes with parent conversation. **Preserved during weekly sync.**
 - **`api_usage`** — Per-request token usage and cost (model, input/output/cache tokens, iterations, cost_usd). **Preserved during weekly sync.**
 - **`document_requests`** — Customer document requests with status workflow (pending/approved/rejected/sent). **Preserved during weekly sync.**
+- **`coa_data`** — Extracted COA key aspects per lot (lot_id PK, data JSON, updated_at, updated_by). Flexible JSON stores any parameter (brix, acidity, color, etc.). **Preserved during weekly sync** via `exportCoaData()`/`relinkCoaData()` — same lot-number matching pattern as `document_lots`.
 
 ## Code Conventions
 

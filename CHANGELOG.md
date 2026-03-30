@@ -5,6 +5,18 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.10.1] — 2026-03-29
+
+### Added
+- **COA key aspects display** — extracted COA parameters (brix, acidity, color, clarity, ratio, defects, overripe, underripe, NTU, etc.) shown as compact navy pills on each lot row of the product detail page
+- **Automatic COA extraction** — uploading a COA via QA portal triggers Claude Haiku vision to extract measurable parameters; works on both text PDFs and scanned images
+- **`coa_data` table** — flexible JSON storage per lot for any COA key-value pair; preserved during weekly sync via lot-number relink
+- **`save_coa_data` agent tool** — allows the AI agent to manually enter, correct, or supplement auto-extracted COA data
+- **`lib/coa-data.ts`** — data access layer with query, upsert, export/relink, and display formatting
+- **`lib/coa-extract.ts`** — Claude Haiku vision extraction function for COA documents
+
+---
+
 ## [0.10.0] — 2026-03-29
 
 ### Added

@@ -138,14 +138,20 @@ try {
 
 const db = getDb();
 
+// Export COA data before lots are deleted (lot IDs will change on re-seed)
+import { exportCoaData, relinkCoaData } from "../lib/coa-data";
+const savedCoaData = exportCoaData();
+
 // PRAGMA foreign_keys must be set outside transactions.
 // Use try/finally to GUARANTEE it's re-enabled even on crash.
 db.exec("PRAGMA foreign_keys = OFF");
 
 try {
   const seedInventory = db.transaction(() => {
-    // Clean up document_lots that reference lots about to be deleted.
+    // Clean up junction tables that reference lots about to be deleted.
     // This preserves the documents themselves but removes stale lot associations.
+    // COA data was exported above and will be re-linked after re-seed.
+    db.exec("DELETE FROM coa_data");
     db.exec("DELETE FROM document_lots");
 
     // Clear only inventory tables (preserve documents, users)
@@ -308,6 +314,19 @@ if (relinkReport.linked > 0 || relinkReport.orphaned > 0) {
   }
 } else {
   console.log("\n📎 No document-lot associations to re-link.");
+}
+
+// ─── Step 3a-2: Re-link COA data ────────────────────────────────
+
+if (savedCoaData.length > 0) {
+  const coaRelinkReport = relinkCoaData(savedCoaData);
+  console.log(`\n🔬 COA data re-linking:`);
+  if (coaRelinkReport.linked > 0) {
+    console.log(`   ✅ ${coaRelinkReport.linked} lot(s) restored`);
+  }
+  if (coaRelinkReport.orphaned > 0) {
+    console.log(`   ⚠️  ${coaRelinkReport.orphaned} lot(s) not found`);
+  }
 }
 
 // ─── Step 3b: Auto-detect new arrivals ──────────────────────────
