@@ -28,12 +28,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/" className="text-sm font-medium text-[#1a2b5f] hover:text-[#4a90c4] transition-colors">
                 Inventory
               </Link>
-              <Link
-                href="/contact"
-                className="text-sm font-medium bg-[#1a2b5f] text-white px-4 py-2 rounded-md hover:bg-[#4a90c4] transition-colors"
-              >
-                Request Quote
-              </Link>
             </nav>
           </div>
         </header>

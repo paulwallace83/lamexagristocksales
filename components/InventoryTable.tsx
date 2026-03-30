@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import FilterBar from "./FilterBar";
 import {
   Product,
@@ -74,6 +75,7 @@ function GroupHeader({
 }
 
 export default function InventoryTable({ products, lastUpdated, productIdsWithDocs = [] }: InventoryTableProps) {
+  const router = useRouter();
   const [filters, setFilters] = useState({
     commodity: "",
     format: "",
@@ -216,17 +218,18 @@ export default function InventoryTable({ products, lastUpdated, productIdsWithDo
                         <th className="text-right px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantity</th>
                         <th className="text-right px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Weight</th>
                         <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Warehouse</th>
-                        <th className="text-center px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Price</th>
+                        <th className="w-8"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {groupProducts.map((p, i) => (
                         <tr
                           key={p.id}
-                          className={`border-b border-gray-100 hover:bg-blue-50/50 transition-colors ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}
+                          onClick={() => router.push(`/product/${p.id}`)}
+                          className={`group border-b border-gray-100 hover:bg-blue-50/50 transition-colors cursor-pointer ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}
                         >
                           <td className="px-4 py-3">
-                            <Link href={`/product/${p.id}`} className="text-[#1a2b5f] font-semibold hover:underline">
+                            <Link href={`/product/${p.id}`} onClick={(e) => e.stopPropagation()} className="text-[#1a2b5f] font-semibold hover:underline">
                               {p.product}
                             </Link>
                             <div className="flex items-center gap-1.5 mt-0.5">
@@ -264,13 +267,10 @@ export default function InventoryTable({ products, lastUpdated, productIdsWithDo
                               <div key={i} className="text-xs leading-tight">{w}</div>
                             ))}
                           </td>
-                          <td className="px-3 py-3 text-center">
-                            <Link
-                              href={`/contact?product=${encodeURIComponent(p.product)}`}
-                              className="inline-block bg-[#1a2b5f] text-white text-xs font-semibold px-3 py-1.5 rounded hover:bg-[#4a90c4] transition-colors"
-                            >
-                              Inquire
-                            </Link>
+                          <td className="px-2 py-3 text-center text-gray-300 group-hover:text-[#4a90c4] transition-colors">
+                            <svg className="w-4 h-4 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
                           </td>
                         </tr>
                       ))}

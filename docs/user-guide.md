@@ -342,7 +342,7 @@ Click any product name to see full details:
 
 ### What Customers See
 
-- **Pricing:** Always shows "Inquire" for regular inventory. Discount items may show an asking price.
+- **Pricing:** No price column in the main inventory table. Customers click into a product and use "Request Quote" on the detail page. Discount items may show an asking price.
 - **Customer names:** Never displayed — all customer data is stripped during import.
 - **Grades:** Not displayed on the public page (inconsistent across products).
 - **Type labels:** "Organic" (green badge) or "Conventional" (gray badge).

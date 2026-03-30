@@ -25,6 +25,7 @@ Organized by status. Updated as priorities shift.
 | v0.10.1 | COA Key Aspects | Auto-extraction via Claude Haiku vision, `coa_data` table, pills on product page |
 | v0.10.2 | Batch Document Upload | `batch_lot_lookup` + `batch_upload_documents`, 24+ files in one drop |
 | v0.10.3 | COA Backfill & Tools | Backfill agent tools, `/admin/tools` UI, backfill API, pill filtering, AI caveat |
+| v0.10.4 | Enquiry Workflow | Remove table/header enquiry buttons; clickable rows with chevron; funnel enquiries through product detail page |
 
 ---
 

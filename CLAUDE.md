@@ -104,7 +104,7 @@ Organize available stock into a structured inventory list including:
 - Lot / batch numbers
 - Best-by or production date
 - Quantity available (cases, pallets, lbs/kg)
-- Price: Always display as **"Inquire"** on the web page and emails. Never publish pricing publicly. Pricing is handled offline.
+- Price: Never published on the public inventory table. Pricing is handled offline via the product detail page "Request Quote" flow. Email template shows "Inquire".
 - Status (available, reserved, incoming)
 
 ### 2. Attach Supporting Documents
@@ -357,6 +357,10 @@ COA data is exported (with lot numbers) before the sync transaction, deleted alo
 - Type labels display as "Organic" (green) or "Conventional" (gray) — no abbreviations, no icons.
 - The "Organic" certification badge is not shown under product names (redundant with the Type column).
 - Format column is not shown per row (redundant with format group headers).
+- **No Price column** in the inventory table. Pricing is handled on the product detail page via "Request Quote".
+- **Clickable rows** — entire desktop table rows navigate to the product detail page on click. A subtle chevron arrow (→) on the right indicates clickability, turning blue on hover. Product name is also a direct link for accessibility.
+- **No global "Request Quote" button** in the header nav. All enquiries flow through the product detail page.
+- Mobile cards are fully clickable links to the product detail page.
 
 ## QA Dashboard
 
