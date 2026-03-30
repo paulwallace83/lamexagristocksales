@@ -385,7 +385,7 @@ Click any product name to see full details:
 - Files persist across conversation turns (30 min expiry) — you can upload a file, discuss it, and confirm the upload in a follow-up message
 - Maximum file size: 50 MB per file
 - Supported types: PDF, JPEG, PNG, GIF, WebP
-- **COA auto-extraction:** When a COA is uploaded (single or batch), key parameters (brix, acidity, color, etc.) are automatically extracted via Claude vision and displayed on the product detail page. The upload succeeds immediately — extraction runs in the background.
+- **COA auto-extraction:** When a COA is uploaded (single or batch), key parameters (brix, acidity, color, etc.) are automatically extracted via Claude vision and displayed on the product detail page. The upload succeeds immediately — extraction runs in the background. Up to 6 parameters are shown per lot, prioritizing quality metrics (brix, acidity, pH, color, clarity, NTU, defects). Microorganism data, weight/packaging, and temperature fields are stored but not shown publicly.
 
 ### COA vs Test Result
 

@@ -323,7 +323,12 @@ When a COA document is uploaded via `/api/upload` (QA portal) or via the agent's
 
 ### Public Display
 
-Product detail page (`app/product/[id]/page.tsx`) shows a third line below each lot's quantity/weight/BBD row with compact navy-tinted pills for each available parameter. Only populated fields are rendered.
+Product detail page (`app/product/[id]/page.tsx`) shows a third line below each lot's quantity/weight/BBD row with compact navy-tinted pills for selected parameters. Display rules:
+- **Maximum 6 pills** per lot.
+- **Priority order:** Known fields first (brix, acidity, pH, ratio, color, clarity, NTU, defects, overripe, underripe), then unknown fields alphabetically.
+- **Excluded from display:** Microorganism analysis (APC, coliform, E. coli, yeast, mold, salmonella, listeria, staphylococcus), weight/packaging (net weight, gross weight, drums, cartons, cases), temperature (storage, shipping), and administrative fields (FDA no, batch no, QC name, dates).
+- **String values capped** at 50 characters for display.
+- All extracted data remains stored in `coa_data` — only the public display is filtered.
 
 ### Sync Preservation
 

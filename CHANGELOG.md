@@ -14,8 +14,19 @@ This project follows [Semantic Versioning](https://semver.org/).
 - **`getCoaBackfillStatus()`** and **`getCoaBackfillDocuments()`** in `lib/agent-db.ts` — query functions for identifying backfill candidates
 
 ### Changed
+- **COA pill display filtering** — max 6 pills per lot; excludes microorganism analysis, weight/packaging, temperature, and administrative fields from public display. Added pH to priority known fields. String values capped at 50 chars.
 - Agent tool count: 15 → 17 (11 read-only, 6 action)
 - Agent system prompt updated with rule 12 (COA backfill workflow) and `backfill_coa_data` added to rule 1 confirmation list
+
+### Security
+- Path traversal guard on backfill file reads (`resolve().startsWith()`)
+- All path segments sanitized via `safeSeg()` in backfill handler
+- Input bounds: `lotNumbers` capped at 100 items/100 chars, SQL IN capped at 100 placeholders
+- Error messages sanitized — full errors logged server-side, generic messages returned to client
+- COA pill display values capped at 50 characters
+
+### Fixed
+- `totalLots` in backfill status now deduped by lot ID (was double-counting lots linked to multiple COA documents)
 
 ---
 

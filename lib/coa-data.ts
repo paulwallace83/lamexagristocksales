@@ -176,12 +176,15 @@ export function formatCoaFields(fields: CoaFields): FormattedCoaField[] {
   for (const [key, value] of Object.entries(fields)) {
     if (value === null || value === undefined || value === "" || typeof value === "object") continue;
     if (isExcludedField(key)) continue;
+    const displayValue = typeof value === "number"
+      ? String(value)
+      : String(value).slice(0, 50);
     const known = KNOWN_FIELDS[key];
     if (known) {
       const display =
         known.unit && typeof value === "number"
           ? `${value} ${known.unit}`
-          : String(value);
+          : displayValue;
       entries.push({ label: known.label, value: display, order: known.order });
     } else {
       // Unknown field: strip non-alphanumeric, then title-case
@@ -191,7 +194,7 @@ export function formatCoaFields(fields: CoaFields): FormattedCoaField[] {
         .replace(/_/g, " ")
         .replace(/\b\w/g, (c) => c.toUpperCase());
       if (!label) continue;
-      entries.push({ label, value: String(value), order: 100 });
+      entries.push({ label, value: displayValue, order: 100 });
     }
   }
 
