@@ -391,11 +391,16 @@ export function getUploadDir(productId: string, category: string, opts?: { lotId
   return dir;
 }
 
-/** Build the public URL path for a document. All segments are sanitized. */
+/** Build the public URL path for a document. All segments are sanitized.
+ *  Structural segments (productId, category, lotNumber, baseContract) go through
+ *  safeSeg since they are slug-style identifiers. The filename is only
+ *  URI-encoded — safeSeg would corrupt spaces and pipes introduced by the
+ *  descriptive naming convention (e.g. "2026-03-28. Apple JC - COA - lot.pdf").
+ */
 export function getDocumentUrl(productId: string, category: string, filename: string, opts?: { lotId?: number; lotNumber?: string; baseContract?: string }): string {
   const pid = encodeURIComponent(safeSeg(productId));
   const cat = encodeURIComponent(safeSeg(category));
-  const fn = encodeURIComponent(safeSeg(filename));
+  const fn = encodeURIComponent(filename);
   if (opts?.lotNumber != null) {
     return `/api/files/${pid}/lots/${encodeURIComponent(safeSeg(opts.lotNumber))}/${cat}/${fn}`;
   } else if (opts?.lotId != null) {

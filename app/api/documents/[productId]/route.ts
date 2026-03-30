@@ -5,9 +5,13 @@ import { auth } from "@/lib/auth";
 import { getDocumentsForProduct, removeDocument, getDocumentUrl } from "@/lib/documents";
 import { getUploadsRoot } from "@/lib/paths";
 
-/** Sanitize path segments to prevent directory traversal */
+/** Sanitize path segments to prevent directory traversal.
+ *  Strips path-traversal characters while preserving spaces, pipes, and
+ *  other characters valid in filenames. The resolve().startsWith() guard
+ *  is the real security backstop.
+ */
 function safePath(segment: string): string {
-  return segment.replace(/[^a-zA-Z0-9._-]/g, "_");
+  return segment.replace(/[/\\?%*<>"\x00-\x1f]/g, "_");
 }
 
 export async function GET(

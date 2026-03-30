@@ -13,9 +13,12 @@ const MIME_TYPES: Record<string, string> = {
   ".webp": "image/webp",
 };
 
-/** Sanitize a single path segment — strip anything except safe characters. */
+/** Sanitize a single path segment — strips path-traversal characters while
+ *  preserving spaces, pipes, and other characters valid in filenames.
+ *  The resolve().startsWith() traversal guard is the real security backstop.
+ */
 function safeSeg(segment: string): string {
-  return decodeURIComponent(segment).replace(/[^a-zA-Z0-9._-]/g, "_");
+  return decodeURIComponent(segment).replace(/[/\\?%*<>"\x00-\x1f]/g, "_");
 }
 
 export async function GET(
