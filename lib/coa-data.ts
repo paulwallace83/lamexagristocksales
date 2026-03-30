@@ -126,13 +126,14 @@ export function relinkCoaData(saved: ExportedCoaRow[]): { linked: number; orphan
 const KNOWN_FIELDS: Record<string, { label: string; unit?: string; order: number }> = {
   brix: { label: "Brix", unit: "Bx", order: 1 },
   acidity: { label: "Acidity", unit: "%", order: 2 },
-  ratio: { label: "Ratio", order: 3 },
-  color: { label: "Color", order: 4 },
-  clarity: { label: "Clarity", order: 5 },
-  ntu: { label: "NTU", unit: "NTU", order: 6 },
-  defects: { label: "Defects", unit: "%", order: 7 },
-  overripe: { label: "Overripe", unit: "%", order: 8 },
-  underripe: { label: "Underripe", unit: "%", order: 9 },
+  ph: { label: "pH", order: 3 },
+  ratio: { label: "Ratio", order: 4 },
+  color: { label: "Color", order: 5 },
+  clarity: { label: "Clarity", order: 6 },
+  ntu: { label: "NTU", unit: "NTU", order: 7 },
+  defects: { label: "Defects", unit: "%", order: 8 },
+  overripe: { label: "Overripe", unit: "%", order: 9 },
+  underripe: { label: "Underripe", unit: "%", order: 10 },
 };
 
 export interface FormattedCoaField {
@@ -140,15 +141,41 @@ export interface FormattedCoaField {
   value: string;
 }
 
+/** Maximum number of COA pills to display per lot on the product detail page. */
+const MAX_DISPLAY_FIELDS = 6;
+
+/** Fields excluded from public display — microorganism analysis, logistics, packaging. */
+const EXCLUDED_PATTERNS = [
+  // Microorganism / microbiology
+  "aerobic", "coliform", "e_coli", "ecoli", "yeast", "mold", "mould",
+  "salmonella", "listeria", "staphylococcus", "total_count", "tpc",
+  "heat_resistant", "tab_lod", "acb_lod",
+  // Weight / packaging / logistics
+  "net_weight", "gross_weight", "number_of_drums", "number_of_cartons",
+  "number_of_cases", "unit_packaging", "quantity_kg",
+  // Temperature / storage / shipping
+  "storage_temperature", "shipping_temperature", "temperature",
+  // Administrative
+  "fda_no", "quality_control", "batch_no", "product_date", "expiry_date",
+];
+
+function isExcludedField(key: string): boolean {
+  const lower = key.toLowerCase();
+  return EXCLUDED_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
 /**
  * Format COA fields for display. Returns entries in a stable order:
  * known fields first (by defined order), then unknown fields alphabetically.
+ * Excludes microorganism data, weight/packaging, and temperature fields.
+ * Capped at MAX_DISPLAY_FIELDS entries.
  */
 export function formatCoaFields(fields: CoaFields): FormattedCoaField[] {
   const entries: Array<FormattedCoaField & { order: number }> = [];
 
   for (const [key, value] of Object.entries(fields)) {
     if (value === null || value === undefined || value === "" || typeof value === "object") continue;
+    if (isExcludedField(key)) continue;
     const known = KNOWN_FIELDS[key];
     if (known) {
       const display =
@@ -169,5 +196,5 @@ export function formatCoaFields(fields: CoaFields): FormattedCoaField[] {
   }
 
   entries.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
-  return entries.map(({ label, value }) => ({ label, value }));
+  return entries.slice(0, MAX_DISPLAY_FIELDS).map(({ label, value }) => ({ label, value }));
 }
