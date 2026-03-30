@@ -5,6 +5,20 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.10.3] — 2026-03-29
+
+### Added
+- **Bulk COA data backfill via agent** — scan for COA documents missing extracted key aspects and re-extract parameters in bulk using Claude Haiku vision
+- **`get_coa_backfill_status` tool** — shows lots with COA documents but no extracted `coa_data`, grouped by product with document and lot counts
+- **`backfill_coa_data` tool** — reads COA files from disk, extracts parameters, and upserts to all linked lots. Document-centric: extracts once per unique file, upserts to all lots sharing that COA. Processes up to 50 documents per call.
+- **`getCoaBackfillStatus()`** and **`getCoaBackfillDocuments()`** in `lib/agent-db.ts` — query functions for identifying backfill candidates
+
+### Changed
+- Agent tool count: 15 → 17 (11 read-only, 6 action)
+- Agent system prompt updated with rule 12 (COA backfill workflow) and `backfill_coa_data` added to rule 1 confirmation list
+
+---
+
 ## [0.10.2] — 2026-03-29
 
 ### Added

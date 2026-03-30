@@ -315,9 +315,11 @@ Extracted COA parameters (brix, acidity, color, clarity, ratio, defects, overrip
 
 When a COA document is uploaded via `/api/upload` (QA portal) or via the agent's `upload_document`/`batch_upload_documents` tools, the file is sent to Claude Haiku vision (`claude-haiku-4-5-20251001`) for automatic parameter extraction. This happens fire-and-forget after the upload response — extraction failure does not block the upload. Works on both text-based PDFs and scanned images.
 
-### Agent Tool
+### Agent Tools
 
-`save_coa_data` — allows the agent to manually enter, correct, or supplement auto-extracted data. Requires `lotNumber`, `productId`, and `fields` (key-value object).
+- `save_coa_data` — manually enter, correct, or supplement auto-extracted data. Requires `lotNumber`, `productId`, and `fields` (key-value object).
+- `get_coa_backfill_status` — shows lots with COA documents on disk but no extracted `coa_data` row. Grouped by product with document and lot counts.
+- `backfill_coa_data` — reads COA files from disk and re-extracts parameters via Claude Haiku vision. Document-centric: extracts once per unique document file, upserts to all linked lots. Accepts optional `lotNumbers` filter; processes up to 50 documents per call. `updatedBy` is set to `"backfill"`.
 
 ### Public Display
 
@@ -331,8 +333,9 @@ COA data is exported (with lot numbers) before the sync transaction, deleted alo
 
 - `lib/coa-data.ts` — Types, query, upsert, export/relink, display formatting
 - `lib/coa-extract.ts` — Claude vision extraction function
+- `lib/agent-db.ts` — `getCoaBackfillStatus()`, `getCoaBackfillDocuments()` query functions for backfill
 - `app/api/upload/route.ts` — Auto-extraction hook for QA portal COA uploads
-- `lib/agent-tools.ts` — `save_coa_data` tool definition and execution; auto-extraction hook for agent COA uploads (single and batch)
+- `lib/agent-tools.ts` — `save_coa_data`, `get_coa_backfill_status`, `backfill_coa_data` tool definitions and execution; auto-extraction hook for agent COA uploads (single and batch)
 - `app/product/[id]/page.tsx` — Public display in `LotRow` component
 
 ## Public Inventory Page
@@ -448,6 +451,7 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 - **Inventory queries:** Answer questions about current stock (including discount items in overview), document coverage (COA + test result gaps), and import review status.
 - **Discount management:** Move lots to Discount & Clearance or restore them, via conversation.
 - **COA data management:** Review, correct, or supplement auto-extracted COA parameters (brix, acidity, color, etc.) via `save_coa_data` tool. COA data is auto-extracted on upload but the agent can fix incorrect values or add missing fields.
+- **COA data backfill:** Scan for COA documents that were uploaded before auto-extraction existed (or where extraction failed), and re-extract parameters in bulk. Uses `get_coa_backfill_status` to show scope, then `backfill_coa_data` to process up to 50 documents per call.
 - **Import review:** View soft-excluded items from the last Excel import.
 - **Markdown responses:** Agent output renders with full markdown support (tables, bold, headers, lists, blockquotes).
 - **True streaming:** Responses stream token-by-token via the Anthropic streaming API.
@@ -461,8 +465,8 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 
 ### Architecture
 
-- Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 15 tools (10 read-only, 5 action).
-- Action tools (`upload_document`, `batch_upload_documents`, `create_discount_item`, `restore_discount_item`, `save_coa_data`) require conversational confirmation from the user before execution — enforced via system prompt.
+- Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 17 tools (11 read-only, 6 action).
+- Action tools (`upload_document`, `batch_upload_documents`, `create_discount_item`, `restore_discount_item`, `save_coa_data`, `backfill_coa_data`) require conversational confirmation from the user before execution — enforced via system prompt.
 - COA auto-extraction fires on both single and batch uploads via the agent (same Claude Haiku vision pipeline as the QA upload route).
 - Files are uploaded in-band with the chat message (multipart form data) and persisted to a per-user temp directory (`.agent-uploads/{user}/`) so they survive across conversation turns (auto-cleaned after 30 min).
 - Responses stream via SSE with tool activity indicators. Max 10 tool-use iterations per request with a user-visible warning if the limit is reached.

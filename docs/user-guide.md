@@ -373,6 +373,7 @@ Click any product name to see full details:
 | **Query inventory** | "List all products" (includes discount items) or "How much mango do we have?" |
 | **Move lots to discount** | "Move lot TN4-25142 from Grapes IQF to discount — expired, asking $0.25/lb" |
 | **Restore discount items** | "Restore disc-001 to regular inventory" |
+| **Backfill COA data** | "What COAs need backfill?" — the assistant scans for COA documents missing extracted data, shows a summary, and re-extracts parameters in bulk after your confirmation |
 | **Check import review** | "Are there any items pending review from the last import?" |
 | **Check sync status** | "When was the last inventory sync?" |
 
@@ -396,7 +397,7 @@ The assistant automatically distinguishes COAs from test results:
 
 ### Confirmation Model
 
-The assistant **always asks for your approval** before taking any action that modifies data (uploading documents, batch uploading documents, creating discount items, restoring items). It will describe exactly what it intends to do and wait for your explicit "yes" before proceeding. For batch uploads, the assistant presents a single table showing all proposed matches — you confirm or correct the entire table before any files are uploaded.
+The assistant **always asks for your approval** before taking any action that modifies data (uploading documents, batch uploading documents, creating discount items, restoring items, backfilling COA data). It will describe exactly what it intends to do and wait for your explicit "yes" before proceeding. For batch uploads, the assistant presents a single table showing all proposed matches — you confirm or correct the entire table before any files are uploaded.
 
 ### Limitations
 

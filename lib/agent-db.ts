@@ -240,6 +240,148 @@ export function searchProducts(query: string): ProductSearchResult[] {
 }
 
 /* ------------------------------------------------------------------ */
+/*  COA backfill                                                       */
+/* ------------------------------------------------------------------ */
+
+export interface BackfillProduct {
+  productId: string;
+  product: string;
+  documents: Array<{
+    documentId: string;
+    filename: string;
+    lots: Array<{ lotId: number; lotNumber: string }>;
+  }>;
+}
+
+export interface BackfillStatus {
+  totalDocuments: number;
+  totalLots: number;
+  productCount: number;
+  products: BackfillProduct[];
+}
+
+export interface BackfillDocument {
+  documentId: string;
+  filename: string;
+  productId: string;
+  /** First linked lot's number — used to resolve the file path on disk. */
+  lotNumber: string;
+  lots: Array<{ lotId: number; lotNumber: string }>;
+}
+
+/**
+ * Find all COA documents that have linked lots but no extracted coa_data.
+ * Groups by product → document for a clear summary.
+ */
+export function getCoaBackfillStatus(): BackfillStatus {
+  const db = getDb();
+
+  const rows = db.prepare(`
+    SELECT d.id AS document_id, d.filename, d.product_id,
+           p.product,
+           lo.id AS lot_id, lo.lot_number
+    FROM documents d
+    JOIN document_lots dl ON dl.document_id = d.id
+    JOIN lots lo ON dl.lot_id = lo.id
+    JOIN listings li ON lo.listing_id = li.id
+    JOIN products p ON li.product_id = p.id
+    LEFT JOIN coa_data cd ON lo.id = cd.lot_id
+    WHERE d.category = 'coa' AND cd.lot_id IS NULL
+    ORDER BY d.product_id, lo.lot_number
+  `).all() as Array<{
+    document_id: string; filename: string; product_id: string;
+    product: string; lot_id: number; lot_number: string;
+  }>;
+
+  // Group by product, then by document
+  const productMap = new Map<string, BackfillProduct>();
+  const docLots = new Map<string, Array<{ lotId: number; lotNumber: string }>>();
+
+  for (const r of rows) {
+    if (!productMap.has(r.product_id)) {
+      productMap.set(r.product_id, {
+        productId: r.product_id,
+        product: r.product,
+        documents: [],
+      });
+    }
+    const key = r.document_id;
+    if (!docLots.has(key)) docLots.set(key, []);
+    docLots.get(key)!.push({ lotId: r.lot_id, lotNumber: r.lot_number });
+  }
+
+  // Build document entries per product
+  const seenDocs = new Set<string>();
+  for (const r of rows) {
+    if (seenDocs.has(r.document_id)) continue;
+    seenDocs.add(r.document_id);
+    productMap.get(r.product_id)!.documents.push({
+      documentId: r.document_id,
+      filename: r.filename,
+      lots: docLots.get(r.document_id)!,
+    });
+  }
+
+  const products = Array.from(productMap.values());
+  const totalDocuments = seenDocs.size;
+  const totalLots = rows.length;
+
+  return { totalDocuments, totalLots, productCount: products.length, products };
+}
+
+/**
+ * Get the flat list of unique COA documents needing backfill, with all linked
+ * lots that are missing coa_data. Optionally filter to specific lot numbers.
+ * Capped at 50 documents to keep API costs bounded.
+ */
+export function getCoaBackfillDocuments(lotNumbers?: string[]): BackfillDocument[] {
+  const db = getDb();
+
+  let query = `
+    SELECT d.id AS document_id, d.filename, d.product_id,
+           lo.id AS lot_id, lo.lot_number
+    FROM documents d
+    JOIN document_lots dl ON dl.document_id = d.id
+    JOIN lots lo ON dl.lot_id = lo.id
+    JOIN listings li ON lo.listing_id = li.id
+    LEFT JOIN coa_data cd ON lo.id = cd.lot_id
+    WHERE d.category = 'coa' AND cd.lot_id IS NULL
+  `;
+  const params: string[] = [];
+
+  if (lotNumbers && lotNumbers.length > 0) {
+    const placeholders = lotNumbers.map(() => "?").join(",");
+    query += ` AND lo.lot_number IN (${placeholders})`;
+    params.push(...lotNumbers);
+  }
+
+  query += " ORDER BY d.product_id, lo.lot_number";
+
+  const rows = db.prepare(query).all(...params) as Array<{
+    document_id: string; filename: string; product_id: string;
+    lot_id: number; lot_number: string;
+  }>;
+
+  // Group by document, dedup
+  const docMap = new Map<string, BackfillDocument>();
+  for (const r of rows) {
+    if (!docMap.has(r.document_id)) {
+      docMap.set(r.document_id, {
+        documentId: r.document_id,
+        filename: r.filename,
+        productId: r.product_id,
+        lotNumber: r.lot_number, // first lot for file path
+        lots: [],
+      });
+    }
+    docMap.get(r.document_id)!.lots.push({ lotId: r.lot_id, lotNumber: r.lot_number });
+  }
+
+  // Cap at 50 documents
+  return Array.from(docMap.values()).slice(0, 50);
+}
+
+/* ------------------------------------------------------------------ */
 /*  Test-result coverage                                               */
 /* ------------------------------------------------------------------ */
 

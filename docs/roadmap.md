@@ -145,6 +145,13 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Per-upload error isolation in batch: one failed file doesn't abort the rest.
 - Agent tool count: 13 → 15 (10 read-only, 5 action).
 
+### Bulk COA Data Backfill via Agent (v0.10.3)
+- Two new agent tools: `get_coa_backfill_status` (scan for COA documents missing extracted data) and `backfill_coa_data` (re-extract parameters from files on disk via Claude Haiku vision).
+- Document-centric extraction: extracts once per unique COA file, upserts to all linked lots. Avoids redundant API calls when one COA covers multiple lots.
+- Processes up to 50 documents per call. Optional `lotNumbers` filter to narrow scope.
+- Agent workflow: status check → user reviews scope → confirms → bulk extraction → per-document results with summary.
+- Agent tool count: 15 → 17 (11 read-only, 6 action).
+
 ## Active Priorities
 ### 1. Data Quality (remaining)
 - Validate unit types are correctly identified per product during sync.
@@ -161,7 +168,6 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Customer portal with login: repeat buyers log in to see request history, re-request documents, and get saved pricing. Reduces repeat enquiries.
 - Auth-protected email preview route: let sales/QA preview notification emails without sending test submissions.
 - COA extraction review queue: flag lots for QA review after auto-extraction so values are verified against the original document before going public.
-- Bulk COA data backfill via agent: dedicated flow to scan all uploaded COAs missing `coa_data` rows, extract parameters, and backfill. Critical for bootstrapping on existing inventory.
 - Email delivery status tracking: track Resend webhook events (delivered, bounced, opened) on `document_requests` so QA knows if documents were actually received.
 - Admin dashboard homepage: single `/admin` landing page showing pending doc requests, missing documents by product, agent usage, last sync date, and quick links.
 - Inventory change notifications: let buyers subscribe by commodity/product for automatic email when weekly sync adds matching new stock.

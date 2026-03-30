@@ -9,6 +9,8 @@ import {
   searchProducts,
   getSyncInfo,
   getTestResultCoverage,
+  getCoaBackfillStatus,
+  getCoaBackfillDocuments,
 } from "./agent-db";
 import { getProductById } from "./inventory-db";
 import { getDb } from "./db";
@@ -255,6 +257,28 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
         },
       },
       required: ["discountId"],
+    },
+  },
+  {
+    name: "get_coa_backfill_status",
+    description:
+      "Check which COA documents have been uploaded but are missing extracted key aspects (brix, acidity, color, etc.). Returns a summary grouped by product showing documents and lots that need backfill. Call this BEFORE backfill_coa_data to show the user the scope.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "backfill_coa_data",
+    description:
+      "Re-extract COA key aspects from already-uploaded COA files on disk using Claude vision. Reads each COA file, sends it for extraction, and saves the results. ALWAYS call get_coa_backfill_status first to show the scope, then confirm with the user before calling this tool. Processes up to 50 documents per call.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        lotNumbers: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional: specific lot numbers to backfill. Omit to process all lots missing COA data (up to 50 documents).",
+        },
+      },
+      required: [],
     },
   },
   {
@@ -546,6 +570,9 @@ export async function executeTool(
     case "get_sync_info":
       return getSyncInfo();
 
+    case "get_coa_backfill_status":
+      return getCoaBackfillStatus();
+
     /* ── Batch read-only tools ──────────────────────────────────── */
 
     case "batch_lot_lookup": {
@@ -630,6 +657,102 @@ export async function executeTool(
       }
 
       return { results, summary: { total: uploads.length, succeeded, failed } };
+    }
+
+    case "backfill_coa_data": {
+      const lotNumbers = Array.isArray(input.lotNumbers)
+        ? (input.lotNumbers as string[]).filter((s) => typeof s === "string" && s.trim())
+        : undefined;
+
+      const docs = getCoaBackfillDocuments(lotNumbers);
+      if (docs.length === 0) {
+        return { message: "Nothing to backfill — all COA documents already have extracted data." };
+      }
+
+      const { extractCoaData } = await import("./coa-extract");
+      const { upsertCoaData } = await import("./coa-data");
+      const uploadsRoot = getUploadsRoot();
+
+      const MIME_MAP: Record<string, string> = {
+        ".pdf": "application/pdf",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+      };
+
+      const results: Array<{
+        documentId: string;
+        filename: string;
+        productId: string;
+        success: boolean;
+        lotsUpdated?: number;
+        fields?: string[];
+        error?: string;
+      }> = [];
+      let succeeded = 0;
+      let failed = 0;
+      let totalLotsUpdated = 0;
+
+      for (const doc of docs) {
+        const safePid = doc.productId.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const filePath = join(uploadsRoot, safePid, "lots", doc.lotNumber, "coa", doc.filename);
+
+        if (!existsSync(filePath)) {
+          results.push({ documentId: doc.documentId, filename: doc.filename, productId: doc.productId, success: false, error: "File not found on disk" });
+          failed++;
+          continue;
+        }
+
+        try {
+          const buffer = readFileSync(filePath);
+          const ext = doc.filename.substring(doc.filename.lastIndexOf(".")).toLowerCase();
+          const mimeType = MIME_MAP[ext] ?? "application/pdf";
+
+          const fields = await extractCoaData(buffer, mimeType);
+          if (!fields) {
+            results.push({ documentId: doc.documentId, filename: doc.filename, productId: doc.productId, success: false, error: "Extraction returned no data" });
+            failed++;
+            continue;
+          }
+
+          // Upsert to all linked lots
+          for (const lot of doc.lots) {
+            upsertCoaData(lot.lotId, fields, "backfill");
+          }
+
+          results.push({
+            documentId: doc.documentId,
+            filename: doc.filename,
+            productId: doc.productId,
+            success: true,
+            lotsUpdated: doc.lots.length,
+            fields: Object.keys(fields),
+          });
+          succeeded++;
+          totalLotsUpdated += doc.lots.length;
+        } catch (err) {
+          results.push({
+            documentId: doc.documentId,
+            filename: doc.filename,
+            productId: doc.productId,
+            success: false,
+            error: err instanceof Error ? err.message : "Unknown error",
+          });
+          failed++;
+        }
+      }
+
+      return {
+        results,
+        summary: {
+          documentsProcessed: docs.length,
+          succeeded,
+          failed,
+          totalLotsUpdated,
+        },
+      };
     }
 
     case "create_discount_item": {
