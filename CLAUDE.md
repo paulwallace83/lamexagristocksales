@@ -722,4 +722,5 @@ Key tables in `lamex.db` (full DDL in `lib/db.ts`):
 | `npm run sync` | Weekly inventory sync — preserves documents + users, snapshots previous state, re-seeds from updated JSON. |
 | `npm run import-excel -- <path>` | Import raw ERP Excel export → `inventory-proposed.json` (included items) + `import-review.json` (soft-excluded for manual review). Feeds into existing sync workflow. |
 | `npm run update-pricing` | Fetch current Anthropic pricing and update `data/api-pricing.json` |
+| `npm run backfill-coa` | Re-extract COA key aspects from uploaded files missing `coa_data`. Processes up to 50 documents. Run on Railway: `railway run npm run backfill-coa` |
 | `npm start` | Start production server |

@@ -12,6 +12,7 @@ This project follows [Semantic Versioning](https://semver.org/).
 - **`get_coa_backfill_status` tool** — shows lots with COA documents but no extracted `coa_data`, grouped by product with document and lot counts
 - **`backfill_coa_data` tool** — reads COA files from disk, extracts parameters, and upserts to all linked lots. Document-centric: extracts once per unique file, upserts to all lots sharing that COA. Processes up to 50 documents per call.
 - **`getCoaBackfillStatus()`** and **`getCoaBackfillDocuments()`** in `lib/agent-db.ts` — query functions for identifying backfill candidates
+- **`npm run backfill-coa`** — standalone script for bulk COA re-extraction, runnable on Railway production via `railway run npm run backfill-coa`
 
 ### Changed
 - **COA pill display filtering** — max 6 pills per lot; excludes microorganism analysis, weight/packaging, temperature, and administrative fields from public display. Added pH to priority known fields. String values capped at 50 chars.

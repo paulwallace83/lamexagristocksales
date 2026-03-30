@@ -11,7 +11,8 @@
     "seed": "tsx scripts/seed.ts",
     "sync": "tsx scripts/sync-inventory.ts",
     "import-excel": "tsx scripts/import-excel.ts",
-    "update-pricing": "tsx scripts/update-pricing.ts"
+    "update-pricing": "tsx scripts/update-pricing.ts",
+    "backfill-coa": "tsx scripts/backfill-coa.ts"
   },
   "repository": {
     "type": "git",
