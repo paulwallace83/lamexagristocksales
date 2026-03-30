@@ -297,8 +297,10 @@ Show product photos if: format === "IQF" OR (processType === "Frozen" AND format
 - `lib/inventory.ts` — Core inventory types (Product, Listing, Lot, InventoryData)
 - `lib/inventory-db.ts` — Query layer that reads products/listings/lots from SQLite
 - `app/api/documents/[productId]/route.ts` — GET/DELETE document endpoints (auth required)
-- `app/qa/page.tsx` — QA dashboard server component
-- `app/qa/upload/[id]/page.tsx` — Per-product upload page
+- `app/qa/(protected)/layout.tsx` — Auth guard layout (redirects unauthenticated users to `/qa/login`)
+- `app/qa/(protected)/page.tsx` — QA dashboard server component
+- `app/qa/(protected)/upload/[id]/page.tsx` — Per-product upload page
+- `app/qa/login/page.tsx` — Login page (outside auth guard via route group)
 
 ## COA Key Aspects
 

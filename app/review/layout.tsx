@@ -10,7 +10,7 @@ export default async function ReviewLayout({ children }: { children: React.React
   }
 
   if (session.user.role !== "reviewer") {
-    redirect("/qa");
+    redirect("/qa/login");
   }
 
   const navLinks = [

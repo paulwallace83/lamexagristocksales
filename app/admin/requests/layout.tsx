@@ -10,7 +10,7 @@ export default async function RequestsLayout({ children }: { children: React.Rea
   }
 
   if (!session.user.role || !["qa", "reviewer"].includes(session.user.role)) {
-    redirect("/qa");
+    redirect("/qa/login");
   }
 
   const navLinks = [

@@ -10,7 +10,7 @@ export default async function EmailLayout({ children }: { children: React.ReactN
   }
 
   if (session.user.role !== "reviewer") {
-    redirect("/qa");
+    redirect("/qa/login");
   }
 
   const navLinks = [

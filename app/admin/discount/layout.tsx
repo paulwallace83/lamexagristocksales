@@ -10,7 +10,7 @@ export default async function DiscountLayout({ children }: { children: React.Rea
   }
 
   if (session.user.role !== "reviewer") {
-    redirect("/qa");
+    redirect("/qa/login");
   }
 
   const navLinks = [

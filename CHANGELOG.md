@@ -24,8 +24,10 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Input bounds: `lotNumbers` capped at 100 items/100 chars, SQL IN capped at 100 placeholders
 - Error messages sanitized — full errors logged server-side, generic messages returned to client
 - COA pill display values capped at 50 characters
+- Standardized all admin layout failed-role redirects to `/qa/login` (previously some redirected to `/qa`, causing unnecessary double-redirects)
 
 ### Fixed
+- **QA login page redirect loop** — `/qa/login` was wrapped by the auth-guarding `app/qa/layout.tsx`, causing an infinite 307 redirect for unauthenticated users. Fixed by moving protected pages into `app/qa/(protected)/` route group so login renders without auth.
 - `totalLots` in backfill status now deduped by lot ID (was double-counting lots linked to multiple COA documents)
 
 ---
