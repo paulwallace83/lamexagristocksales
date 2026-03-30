@@ -77,7 +77,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <div className="bg-white p-4 flex flex-col justify-center">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Price</p>
             <Link
-              href={`/contact?product=${encodeURIComponent(product.product)}`}
+              href={`/contact?productId=${encodeURIComponent(id)}&product=${encodeURIComponent(product.product)}`}
               className="inline-flex items-center justify-center gap-1.5 bg-[#1a2b5f] text-white text-sm font-semibold px-4 py-2 rounded-md hover:bg-[#4a90c4] transition-colors"
             >
               Request Quote
@@ -101,25 +101,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        {/* Request Documents CTA */}
-        {documents.some((d) => d.category === "coa" || d.category === "test-results" || d.category === "specs") && (
-          <div className="mx-6 mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-emerald-800">Certificates, Test Results &amp; Specification Sheets</p>
-              <p className="text-xs text-emerald-600 mt-0.5">Available upon request. We will review and send the documents to you by email.</p>
-            </div>
-            <Link
-              href={`/contact?type=documents&productId=${encodeURIComponent(id)}&product=${encodeURIComponent(product.product)}`}
-              className="shrink-0 inline-flex items-center gap-1.5 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Request Documents
-            </Link>
-          </div>
-        )}
-
         {/* Contract Documents (labels + photos only — specs are restricted) */}
         <ContractDocuments
           productId={id}
@@ -131,7 +112,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         {/* Sticky CTA on mobile */}
         <div className="md:hidden sticky bottom-0 p-4 bg-white border-t border-gray-200 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
           <Link
-            href={`/contact?product=${encodeURIComponent(product.product)}`}
+            href={`/contact?productId=${encodeURIComponent(id)}&product=${encodeURIComponent(product.product)}`}
             className="block w-full text-center bg-[#1a2b5f] text-white font-semibold py-3 rounded-md hover:bg-[#4a90c4] transition-colors"
           >
             Request Quote

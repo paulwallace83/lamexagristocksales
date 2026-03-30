@@ -119,9 +119,8 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 
 ### Document Request Workflow (v0.10.0 — S013)
 - COA, test results, and spec sheets restricted from public download — replaced with availability badges.
-- "Request Documents" CTA on product pages links to document request form.
-- Customer selects lots/documents, fills contact info, submits request.
-- QA notification email sent to `coa@lamexfoods.us` via Resend on each new request.
+- Unified product enquiry form: single "Request Quote" CTA on product pages with optional "Also request documents" toggle.
+- Enquiry always notifies sales (`sales@lamexfoods.us`); document requests concurrently notify QA (`coa@lamexfoods.us`).
 - Admin review queue (`/admin/requests`) with status filter tabs (All/Pending/Approved/Rejected/Sent).
 - Approve action gathers files from disk and emails them to customer as Resend attachments.
 - File serving restriction on `/api/files/` — COA/test-results/specs return 404 to unauthenticated users.

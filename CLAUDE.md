@@ -535,7 +535,7 @@ Weekly HTML marketing emails sent to buyers via Resend, highlighting current inv
 
 ## Document Request Workflow
 
-COA, test results, and specification sheets are **restricted** — not publicly downloadable. Customers see availability badges and request documents via a form. QA reviews and approves, then documents are emailed as attachments.
+COA, test results, and specification sheets are **restricted** — not publicly downloadable. Customers see availability badges on product pages. Document requests are integrated into the unified product enquiry flow — not a separate form.
 
 ### Restricted Categories
 
@@ -545,13 +545,16 @@ COA, test results, and specification sheets are **restricted** — not publicly 
 
 **Remain public:** `labels` (label photos), `photos` (product photos)
 
-### Public Flow
+### Unified Product Enquiry Flow
 
-1. Product detail page shows availability badges (green pills) per lot for COA/test results, and per contract for spec sheets.
-2. "Request Documents" CTA links to `/contact?type=documents&productId={id}`.
-3. Customer selects lots/documents, fills in contact info, submits.
-4. `POST /api/document-requests` creates a `document_requests` record and sends notification email to `coa@lamexfoods.us`.
-5. Rate limited: 5 requests per email per hour.
+Product pages have a single "Request Quote" button linking to `/contact?productId={id}&product={name}`. The contact page renders a unified enquiry form:
+
+1. Customer fills in contact info (name, company, email, phone, message).
+2. If the product has restricted documents, an "Also request product documents" toggle reveals per-lot/contract checkboxes for COA, test results, and spec sheets.
+3. `POST /api/enquiries` always sends a sales notification email to `sales@lamexfoods.us`.
+4. If documents were selected, also creates a `document_requests` record and sends QA notification to `coa@lamexfoods.us` — concurrent workflow.
+5. Rate limited: 5 requests per email per hour (in-memory for all enquiries + DB-based for doc requests).
+6. General enquiries (no `productId`) show a product text input and no document section.
 
 ### Admin Review
 
@@ -574,12 +577,13 @@ The `/api/files/[...path]` route checks for restricted category names in the pat
 ### Key Files
 
 - `lib/document-requests.ts` — Types, CRUD, rate limiting, pending count
-- `lib/document-request-emails.ts` — QA notification + customer approval email templates
+- `lib/document-request-emails.ts` — Sales notification, QA notification, customer approval email templates
 - `lib/email-send.ts` — `sendEmailWithAttachments()` for Resend attachment support
-- `app/api/document-requests/route.ts` — POST (public) + GET (auth)
-- `app/api/document-requests/[id]/route.ts` — GET + PATCH (auth)
+- `app/api/enquiries/route.ts` — POST (public) — unified enquiry endpoint
+- `app/api/document-requests/route.ts` — GET (auth) — admin list endpoint
+- `app/api/document-requests/[id]/route.ts` — GET + PATCH (auth) — admin review
 - `app/api/products/[id]/available-docs/route.ts` — Public GET (no file URLs)
-- `app/contact/DocumentRequestForm.tsx` — Customer document request form
+- `app/contact/EnquiryForm.tsx` — Unified customer enquiry form with optional doc request
 - `app/admin/requests/` — Admin review queue (layout, page, [id]/page, ReviewFormClient)
 
 ## Security Hardening

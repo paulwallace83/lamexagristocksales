@@ -28,7 +28,7 @@ export default async function RequestsPage() {
         <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
           <p className="text-gray-500">No document requests yet.</p>
           <p className="text-sm text-gray-400 mt-1">
-            Requests will appear here when customers use the &quot;Request Documents&quot; form on the product pages.
+            Requests will appear here when customers request documents via the product enquiry form.
           </p>
         </div>
       ) : (
