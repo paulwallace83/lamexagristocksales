@@ -661,7 +661,10 @@ export async function executeTool(
 
     case "backfill_coa_data": {
       const lotNumbers = Array.isArray(input.lotNumbers)
-        ? (input.lotNumbers as string[]).filter((s) => typeof s === "string" && s.trim())
+        ? (input.lotNumbers as string[])
+            .filter((s) => typeof s === "string" && s.trim())
+            .slice(0, 100)
+            .map((s) => s.slice(0, 100))
         : undefined;
 
       const docs = getCoaBackfillDocuments(lotNumbers);
@@ -671,7 +674,7 @@ export async function executeTool(
 
       const { extractCoaData } = await import("./coa-extract");
       const { upsertCoaData } = await import("./coa-data");
-      const uploadsRoot = getUploadsRoot();
+      const uploadsRoot = resolve(getUploadsRoot());
 
       const MIME_MAP: Record<string, string> = {
         ".pdf": "application/pdf",
@@ -681,6 +684,8 @@ export async function executeTool(
         ".gif": "image/gif",
         ".webp": "image/webp",
       };
+
+      const safeSeg = (s: string) => s.replace(/[^a-zA-Z0-9._-]/g, "_");
 
       const results: Array<{
         documentId: string;
@@ -696,8 +701,21 @@ export async function executeTool(
       let totalLotsUpdated = 0;
 
       for (const doc of docs) {
-        const safePid = doc.productId.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const filePath = join(uploadsRoot, safePid, "lots", doc.lotNumber, "coa", doc.filename);
+        const filePath = join(
+          uploadsRoot,
+          safeSeg(doc.productId),
+          "lots",
+          safeSeg(doc.lotNumber),
+          "coa",
+          safeSeg(doc.filename),
+        );
+
+        // Path traversal guard — same pattern as executeOneUpload
+        if (!resolve(filePath).startsWith(uploadsRoot)) {
+          results.push({ documentId: doc.documentId, filename: doc.filename, productId: doc.productId, success: false, error: "Invalid file path" });
+          failed++;
+          continue;
+        }
 
         if (!existsSync(filePath)) {
           results.push({ documentId: doc.documentId, filename: doc.filename, productId: doc.productId, success: false, error: "File not found on disk" });
@@ -707,7 +725,8 @@ export async function executeTool(
 
         try {
           const buffer = readFileSync(filePath);
-          const ext = doc.filename.substring(doc.filename.lastIndexOf(".")).toLowerCase();
+          const dotIdx = doc.filename.lastIndexOf(".");
+          const ext = dotIdx >= 0 ? doc.filename.substring(dotIdx).toLowerCase() : "";
           const mimeType = MIME_MAP[ext] ?? "application/pdf";
 
           const fields = await extractCoaData(buffer, mimeType);
@@ -733,12 +752,13 @@ export async function executeTool(
           succeeded++;
           totalLotsUpdated += doc.lots.length;
         } catch (err) {
+          console.error(`[backfill] Extraction failed for doc ${doc.documentId}:`, err);
           results.push({
             documentId: doc.documentId,
             filename: doc.filename,
             productId: doc.productId,
             success: false,
-            error: err instanceof Error ? err.message : "Unknown error",
+            error: "Extraction failed",
           });
           failed++;
         }

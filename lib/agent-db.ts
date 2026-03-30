@@ -324,7 +324,9 @@ export function getCoaBackfillStatus(): BackfillStatus {
 
   const products = Array.from(productMap.values());
   const totalDocuments = seenDocs.size;
-  const totalLots = rows.length;
+  // Dedup lots — a lot linked to multiple COA documents should only count once
+  const uniqueLots = new Set(rows.map((r) => r.lot_id));
+  const totalLots = uniqueLots.size;
 
   return { totalDocuments, totalLots, productCount: products.length, products };
 }
@@ -350,9 +352,11 @@ export function getCoaBackfillDocuments(lotNumbers?: string[]): BackfillDocument
   const params: string[] = [];
 
   if (lotNumbers && lotNumbers.length > 0) {
-    const placeholders = lotNumbers.map(() => "?").join(",");
+    // Cap to prevent unbounded IN clause
+    const bounded = lotNumbers.slice(0, 100);
+    const placeholders = bounded.map(() => "?").join(",");
     query += ` AND lo.lot_number IN (${placeholders})`;
-    params.push(...lotNumbers);
+    params.push(...bounded);
   }
 
   query += " ORDER BY d.product_id, lo.lot_number";
