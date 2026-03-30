@@ -160,8 +160,8 @@ const EXCLUDED_PATTERNS = [
 ];
 
 function isExcludedField(key: string): boolean {
-  const lower = key.toLowerCase();
-  return EXCLUDED_PATTERNS.some((pattern) => lower.includes(pattern));
+  const normalized = key.toLowerCase().replace(/[\s.\-]/g, "_");
+  return EXCLUDED_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
 /**

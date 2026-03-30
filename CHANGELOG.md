@@ -5,14 +5,17 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [0.10.3] — 2026-03-29
+## [0.10.3] — 2026-03-30
 
 ### Added
 - **Bulk COA data backfill via agent** — scan for COA documents missing extracted key aspects and re-extract parameters in bulk using Claude Haiku vision
 - **`get_coa_backfill_status` tool** — shows lots with COA documents but no extracted `coa_data`, grouped by product with document and lot counts
 - **`backfill_coa_data` tool** — reads COA files from disk, extracts parameters, and upserts to all linked lots. Document-centric: extracts once per unique file, upserts to all lots sharing that COA. Processes up to 50 documents per call.
 - **`getCoaBackfillStatus()`** and **`getCoaBackfillDocuments()`** in `lib/agent-db.ts` — query functions for identifying backfill candidates
-- **`npm run backfill-coa`** — standalone script for bulk COA re-extraction, runnable on Railway production via `railway run npm run backfill-coa`
+- **`npm run backfill-coa`** — standalone CLI script for bulk COA re-extraction (local use only; production uses API endpoint)
+- **`/api/backfill-coa` endpoint** — GET status / POST trigger backfill, runs inside Railway container against the production database (reviewer auth required)
+- **`/admin/tools` page** — Admin tools UI with two-step COA backfill: check status, then run extraction with progress reporting
+- **AI caveat on COA pills** — disclaimer below extracted parameters: *"AI-extracted — may contain errors. Request official documents before contracting."*
 
 ### Changed
 - **COA pill display filtering** — max 6 pills per lot; excludes microorganism analysis, weight/packaging, temperature, and administrative fields from public display. Added pH to priority known fields. String values capped at 50 chars.
@@ -26,10 +29,12 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Error messages sanitized — full errors logged server-side, generic messages returned to client
 - COA pill display values capped at 50 characters
 - Standardized all admin layout failed-role redirects to `/qa/login` (previously some redirected to `/qa`, causing unnecessary double-redirects)
+- Excluded-field matching now normalizes spaces, dots, hyphens to underscores (prevents AI-extracted field names with inconsistent separators from leaking into public pills)
 
 ### Fixed
 - **QA login page redirect loop** — `/qa/login` was wrapped by the auth-guarding `app/qa/layout.tsx`, causing an infinite 307 redirect for unauthenticated users. Fixed by moving protected pages into `app/qa/(protected)/` route group so login renders without auth.
 - `totalLots` in backfill status now deduped by lot ID (was double-counting lots linked to multiple COA documents)
+- `require("fs")` in `lib/db.ts` replaced with ESM `import` — fixes crash when running scripts via `tsx` in ESM mode
 
 ---
 

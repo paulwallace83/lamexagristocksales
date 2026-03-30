@@ -460,6 +460,7 @@ The email includes:
 | `npm run sync` | Weekly inventory sync (preserves docs + users) | Partial (inventory only) |
 | `npm run import-excel -- <path>` | Import ERP Excel export | No (writes proposed files) |
 | `npm run update-pricing` | Fetch current Anthropic API pricing | No |
+| `npm run backfill-coa` | Re-extract COA key aspects from uploaded files (local only; use `/admin/tools` on production) | No |
 | `npm start` | Start production server | No |
 
 ### Data Files
@@ -508,5 +509,7 @@ SQLite database at `lamex.db`. Key tables:
 | `/qa/login` | Login page (routes by role) | No |
 | `/review` | Import review portal | Reviewer |
 | `/admin/discount` | Discount inventory admin | Reviewer |
+| `/admin/requests` | Document request review queue | QA or Reviewer |
 | `/admin/email` | Marketing email composer | Reviewer |
 | `/admin/agent` | AI Assistant chat | QA or Reviewer |
+| `/admin/tools` | Admin tools (COA backfill) | Reviewer |

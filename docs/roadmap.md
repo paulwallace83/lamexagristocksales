@@ -150,6 +150,10 @@ This roadmap organizes planned work for the Lamex Agri Stock Sales application. 
 - Document-centric extraction: extracts once per unique COA file, upserts to all linked lots. Avoids redundant API calls when one COA covers multiple lots.
 - Processes up to 50 documents per call. Optional `lotNumbers` filter to narrow scope.
 - Agent workflow: status check → user reviews scope → confirms → bulk extraction → per-document results with summary.
+- `/admin/tools` page with web UI for triggering backfill on production (check status → run extraction).
+- `/api/backfill-coa` endpoint runs inside Railway container against the real production database.
+- AI caveat disclaimer on public COA pills: *"AI-extracted — may contain errors."*
+- COA pill exclusion filter hardened: field name normalization (spaces/dots/hyphens → underscores).
 - Agent tool count: 15 → 17 (11 read-only, 6 action).
 
 ## Active Priorities

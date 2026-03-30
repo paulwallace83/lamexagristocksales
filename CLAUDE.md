@@ -330,6 +330,8 @@ Product detail page (`app/product/[id]/page.tsx`) shows a third line below each 
 - **Priority order:** Known fields first (brix, acidity, pH, ratio, color, clarity, NTU, defects, overripe, underripe), then unknown fields alphabetically.
 - **Excluded from display:** Microorganism analysis (APC, coliform, E. coli, yeast, mold, salmonella, listeria, staphylococcus), weight/packaging (net weight, gross weight, drums, cartons, cases), temperature (storage, shipping), and administrative fields (FDA no, batch no, QC name, dates).
 - **String values capped** at 50 characters for display.
+- **Field name normalization:** Spaces, dots, and hyphens in field names are normalized to underscores before exclusion matching (handles inconsistent AI-extracted keys).
+- **AI caveat:** Below the pills, a small italic disclaimer reads: *"AI-extracted — may contain errors. Request official documents before contracting."*
 - All extracted data remains stored in `coa_data` — only the public display is filtered.
 
 ### Sync Preservation
@@ -343,7 +345,10 @@ COA data is exported (with lot numbers) before the sync transaction, deleted alo
 - `lib/agent-db.ts` — `getCoaBackfillStatus()`, `getCoaBackfillDocuments()` query functions for backfill
 - `app/api/upload/route.ts` — Auto-extraction hook for QA portal COA uploads
 - `lib/agent-tools.ts` — `save_coa_data`, `get_coa_backfill_status`, `backfill_coa_data` tool definitions and execution; auto-extraction hook for agent COA uploads (single and batch)
-- `app/product/[id]/page.tsx` — Public display in `LotRow` component
+- `app/product/[id]/page.tsx` — Public display in `LotRow` component with AI-extraction caveat
+- `app/api/backfill-coa/route.ts` — GET status / POST trigger backfill (reviewer auth, runs inside Railway container)
+- `app/admin/tools/` — Admin tools page with COA backfill UI (layout, page, BackfillClient)
+- `scripts/backfill-coa.ts` — Standalone CLI backfill script (for local use; production uses API endpoint)
 
 ## Public Inventory Page
 
