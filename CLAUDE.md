@@ -546,7 +546,7 @@ Agent chat sessions are saved to SQLite and survive page reloads.
 
 - Auth required: `qa` or `reviewer` role (same as existing QA/admin pages)
 - File validation: same 50 MB limit and MIME type checks as `/api/upload`
-- Path traversal protection: same `getUploadDir()` + `resolve().startsWith()` pattern
+- Path traversal protection: `getUploadDir()` creates and validates the directory; final `resolve(filepath).startsWith(uploadsRoot + "/")` guard on every write and read path
 - Per-user temp file isolation: uploaded files scoped by user email, auto-expire after 30 min
 - Product existence validated before document upload
 - Error messages sanitized — internal errors logged server-side, generic messages sent to client
@@ -686,6 +686,23 @@ Configured in `next.config.ts` via the `headers()` function:
 ### CSRF Protection
 
 `middleware.ts` validates the `Origin` header on all non-GET requests to `/api/*`. If the Origin host doesn't match the request Host, the request is rejected with 403. Requests without an Origin header (server-to-server, curl) pass through since they can't carry SameSite=Lax cookies.
+
+### Path Traversal Protection
+
+All user-supplied path segments (productId, lotNumber, baseContract, category, filename) are sanitized before use in filesystem operations. Two-layer defence:
+
+1. **Structural segments** (used in directory names) — passed through `safeSeg()` which strips `/\?%*<>` and control characters while preserving spaces and pipes valid in filenames.
+2. **Final resolved path check** — every file read and write asserts `resolve(filepath).startsWith(resolve(uploadsRoot) + "/")` before proceeding. Any path that resolves outside the uploads root is rejected without revealing details.
+
+`generateDocFilename()` additionally passes `lotNumber`, `baseContract`, and `countryOfOrigin` through `sanitizeSegment()` before embedding them in the filename string, preventing a `/` in a supplier-formatted lot number from being interpreted as a path separator.
+
+### Input & Error Hardening
+
+- **`lib/conversations.ts`** — `JSON.parse(file_names)` from the DB is wrapped in try-catch; malformed rows fall back to `[]` rather than crashing the conversation fetch.
+- **`lib/document-requests.ts`** — `JSON.parse(requested_docs)` wrapped in try-catch; malformed rows return an empty docs array.
+- **`app/api/document-requests/[id]/route.ts`** — `readFileSync` inside `existsSync` guard is wrapped in try-catch; a file deleted between the check and the read is logged and skipped, other attachments still send.
+- **`lib/auth.ts`** — database errors in `getUsers()` are logged to console; auth still fails securely (empty user list means no valid login).
+- **`lib/agent-tools.ts`** — both upload and COA backfill path traversal guards use `startsWith(uploadsRoot + "/")` with the trailing slash, preventing prefix-match bypass against sibling directories.
 
 ### Key Files
 
