@@ -279,15 +279,20 @@ function LotRow({ lot, unitType, documents, coaDataMap }: { lot: Lot; unitType: 
 
       {/* Line 3: COA key aspects (only when data exists) */}
       {formattedFields.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-          {formattedFields.map((f) => (
-            <span
-              key={f.label}
-              className="text-xs bg-[#1a2b5f]/5 text-[#1a2b5f]/70 px-1.5 py-0.5 rounded"
-            >
-              <span className="font-medium">{f.label}:</span> {f.value}
-            </span>
-          ))}
+        <div className="mt-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {formattedFields.map((f) => (
+              <span
+                key={f.label}
+                className="text-xs bg-[#1a2b5f]/5 text-[#1a2b5f]/70 px-1.5 py-0.5 rounded"
+              >
+                <span className="font-medium">{f.label}:</span> {f.value}
+              </span>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1 italic">
+            AI-extracted — may contain errors. Request official documents before contracting.
+          </p>
         </div>
       )}
     </div>
