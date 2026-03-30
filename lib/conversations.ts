@@ -60,7 +60,14 @@ export function getConversation(
     messages: messages.map((m) => ({
       role: m.role,
       content: m.content,
-      ...(m.file_names ? { fileNames: JSON.parse(m.file_names) } : {}),
+      ...(m.file_names ? {
+        fileNames: (() => {
+          try {
+            const parsed = JSON.parse(m.file_names!);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch { return []; }
+        })(),
+      } : {}),
     })),
   };
 }

@@ -437,7 +437,7 @@ function executeOneUpload(
 
   const filepath = join(dir, filename);
   const uploadsRoot = resolve(getUploadsRoot());
-  if (!resolve(filepath).startsWith(uploadsRoot)) {
+  if (!resolve(filepath).startsWith(uploadsRoot + "/")) {
     return { success: false, error: "Invalid upload path" };
   }
 
@@ -738,7 +738,7 @@ export async function executeTool(
         );
 
         // Path traversal guard — same pattern as executeOneUpload
-        if (!resolve(filePath).startsWith(uploadsRoot)) {
+        if (!resolve(filePath).startsWith(uploadsRoot + "/")) {
           results.push({ documentId: doc.documentId, filename: doc.filename, productId: doc.productId, success: false, error: "Invalid file path" });
           failed++;
           continue;

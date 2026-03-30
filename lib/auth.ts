@@ -36,8 +36,9 @@ function getUsers(): DbUser[] {
   try {
     const db = getDb();
     return db.prepare("SELECT * FROM users").all() as DbUser[];
-  } catch {
-    return [];
+  } catch (err) {
+    console.error("[auth] Failed to load users from database:", err);
+    return []; // auth will fail — no users means no valid login
   }
 }
 

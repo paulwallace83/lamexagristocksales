@@ -124,10 +124,15 @@ export async function PATCH(
           );
           const filepath = join(dir, doc.filename);
           if (existsSync(filepath)) {
-            attachments.push({
-              filename: doc.originalName,
-              content: readFileSync(filepath),
-            });
+            try {
+              attachments.push({
+                filename: doc.originalName,
+                content: readFileSync(filepath),
+              });
+            } catch (readErr) {
+              console.warn(`[document-requests] Could not read file ${filepath}:`, readErr);
+              // Skip this file — continue building attachments from remaining docs
+            }
           }
         }
       }
