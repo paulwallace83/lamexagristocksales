@@ -91,7 +91,7 @@ function rowToRequest(row: RequestRow): DocumentRequest {
     requesterEmail: row.requester_email,
     requesterPhone: row.requester_phone,
     message: row.message,
-    requestedDocs: JSON.parse(row.requested_docs),
+    requestedDocs: (() => { try { return JSON.parse(row.requested_docs); } catch { return []; } })(),
     status: row.status as DocumentRequest["status"],
     createdAt: row.created_at,
     reviewedAt: row.reviewed_at,

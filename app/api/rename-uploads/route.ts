@@ -184,9 +184,18 @@ export async function POST() {
     const currentPath = findFileOnDisk(uploadsRoot, preview.productId, preview.category, preview.currentFilename)!;
     const newPath = join(dirname(currentPath), preview.newFilename);
 
+    // Path traversal guard on destination
+    if (!resolve(newPath).startsWith(uploadsRoot + "/")) {
+      results.push({ filename: preview.currentFilename, newFilename: preview.newFilename, status: "failed", error: "path traversal prevented" });
+      failed++;
+      continue;
+    }
+
     try {
-      renameSync(currentPath, newPath);
-      updateFilename.run(preview.newFilename, preview.id);
+      db.transaction(() => {
+        renameSync(currentPath, newPath);
+        updateFilename.run(preview.newFilename, preview.id);
+      })();
       results.push({ filename: preview.currentFilename, newFilename: preview.newFilename, status: "ok" });
       renamed++;
     } catch (err) {

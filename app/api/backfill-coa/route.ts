@@ -26,7 +26,7 @@ const MIME_MAP: Record<string, string> = {
   ".webp": "image/webp",
 };
 
-const safeSeg = (s: string) => s.replace(/[^a-zA-Z0-9._-]/g, "_");
+const safeSeg = (s: string) => s.replace(/[/\\?%*<>"\x00-\x1f]/g, "_");
 
 export async function POST() {
   const session = await auth();
@@ -64,7 +64,7 @@ export async function POST() {
     );
 
     // Path traversal guard
-    if (!resolve(filePath).startsWith(uploadsRoot)) {
+    if (!resolve(filePath).startsWith(uploadsRoot + "/")) {
       results.push({ filename: doc.filename, status: "skipped", error: "invalid path" });
       failed++;
       continue;
