@@ -12,7 +12,8 @@
     "sync": "tsx scripts/sync-inventory.ts",
     "import-excel": "tsx scripts/import-excel.ts",
     "update-pricing": "tsx scripts/update-pricing.ts",
-    "backfill-coa": "tsx scripts/backfill-coa.ts"
+    "backfill-coa": "tsx scripts/backfill-coa.ts",
+    "rename-uploads": "tsx scripts/rename-uploads.ts"
   },
   "repository": {
     "type": "git",

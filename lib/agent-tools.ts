@@ -14,7 +14,7 @@ import {
 } from "./agent-db";
 import { getProductById } from "./inventory-db";
 import { getDb } from "./db";
-import { getDocumentStatus, addDocument, getUploadDir, getDocumentUrl } from "./documents";
+import { getDocumentStatus, addDocument, getUploadDir, getDocumentUrl, generateDocFilename } from "./documents";
 import { getDiscountItems, addDiscountItemsFromLots, restoreToInventory } from "./discount";
 import { getUploadsRoot } from "./paths";
 import type { DocCategory } from "./documents";
@@ -176,6 +176,10 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
           type: "string",
           description: "Required for specs, labels, and photos: the base contract number (e.g. '124717')",
         },
+        documentDate: {
+          type: "string",
+          description: "Production date or document date in YYYY-MM-DD format. Extract from the document if available (e.g. production date on a COA). Defaults to today if not provided.",
+        },
       },
       required: ["productId", "category", "fileRef", "originalName"],
     },
@@ -211,6 +215,10 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
               baseContract: {
                 type: "string",
                 description: "Required for specs, labels, and photos: base contract number",
+              },
+              documentDate: {
+                type: "string",
+                description: "Production date or document date in YYYY-MM-DD format. Extract from the document if available.",
               },
             },
             required: ["productId", "category", "fileRef", "originalName"],
@@ -337,7 +345,7 @@ type UploadFailure = { success: false; error: string };
 type UploadResult = UploadSuccess | UploadFailure;
 
 function executeOneUpload(
-  input: { productId: string; category: string; fileRef: string; originalName: string; lotIds?: number[]; baseContract?: string },
+  input: { productId: string; category: string; fileRef: string; originalName: string; lotIds?: number[]; baseContract?: string; documentDate?: string },
   fileMap: Map<string, FileData>,
   uploaderEmail: string,
 ): UploadResult {
@@ -345,6 +353,7 @@ function executeOneUpload(
   const category = input.category as DocCategory;
   const lotIds = input.lotIds ?? [];
   const baseContract = input.baseContract;
+  const documentDate = input.documentDate;
 
   if (!productId) return { success: false, error: "productId is required" };
   const productExists = getProductById(productId);
@@ -388,9 +397,6 @@ function executeOneUpload(
   }
 
   const safePid = productId.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const timestamp = `${Date.now()}-${uploadCounter++}`;
-  const filename = `${timestamp}-${safeName}`;
 
   // Resolve lot number for stable storage path (lot IDs change on re-seed)
   let lotNumber: string | undefined;
@@ -398,6 +404,13 @@ function executeOneUpload(
     const lotRow = getDb().prepare("SELECT lot_number FROM lots WHERE id = ?").get(lotIds[0]) as { lot_number: string } | undefined;
     if (!lotRow) return { success: false, error: `Lot ID ${lotIds[0]} not found in database` };
     lotNumber = lotRow.lot_number;
+  }
+
+  // Look up COO for contract-level docs
+  let countryOfOrigin: string | undefined;
+  if (CONTRACT_CATEGORIES.includes(category)) {
+    const cooRow = getDb().prepare("SELECT country_of_origin FROM listings WHERE product_id = ? LIMIT 1").get(productId) as { country_of_origin: string } | undefined;
+    countryOfOrigin = cooRow?.country_of_origin;
   }
 
   const storageOpts = LOT_CATEGORIES.includes(category)
@@ -411,6 +424,17 @@ function executeOneUpload(
     return { success: false, error: "Invalid upload path" };
   }
 
+  const filename = generateDocFilename({
+    category,
+    productName: productExists.product,
+    originalName,
+    documentDate,
+    lotNumber,
+    baseContract: CONTRACT_CATEGORIES.includes(category) ? baseContract! : undefined,
+    countryOfOrigin,
+    targetDir: dir,
+  });
+
   const filepath = join(dir, filename);
   const uploadsRoot = resolve(getUploadsRoot());
   if (!resolve(filepath).startsWith(uploadsRoot)) {
@@ -419,7 +443,7 @@ function executeOneUpload(
 
   writeFileSync(filepath, fileData.buffer);
 
-  const docId = `${productId}-${category}-${timestamp}`;
+  const docId = `${productId}-${category}-${Date.now()}-${uploadCounter++}`;
   try {
     addDocument({
       id: docId,
@@ -606,6 +630,7 @@ export async function executeTool(
             ? (input.lotIds as unknown[]).filter((id): id is number => typeof id === "number" && Number.isInteger(id))
             : [],
           baseContract: input.baseContract ? String(input.baseContract) : undefined,
+          documentDate: input.documentDate ? String(input.documentDate) : undefined,
         },
         fileMap,
         uploaderEmail,
@@ -638,6 +663,7 @@ export async function executeTool(
                 ? (spec.lotIds as unknown[]).filter((id): id is number => typeof id === "number" && Number.isInteger(id))
                 : [],
               baseContract: spec.baseContract ? String(spec.baseContract) : undefined,
+              documentDate: spec.documentDate ? String(spec.documentDate) : undefined,
             },
             fileMap,
             uploaderEmail,

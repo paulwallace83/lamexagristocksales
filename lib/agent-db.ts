@@ -92,7 +92,7 @@ export function findLotsByNumber(lotNumber: string): LotMatch[] {
     FROM lots lo
     JOIN listings li ON lo.listing_id = li.id
     JOIN products p  ON li.product_id = p.id
-    WHERE LOWER(lo.lot_number) LIKE LOWER(?) ESCAPE '\'
+    WHERE LOWER(lo.lot_number) LIKE LOWER(?) ESCAPE '\\'
     ORDER BY p.commodity, p.product
   `).all(`%${lotNumber.replace(/[%_]/g, "\\$&")}%`) as Array<{
     lot_id: number; lot_number: string; quantity: number; weight_lbs: number; bbd: string;
@@ -169,7 +169,7 @@ export function findByContractNumber(contractRef: string): ContractMatch[] {
     JOIN lots lo     ON lc.lot_id = lo.id
     JOIN listings li ON lo.listing_id = li.id
     JOIN products p  ON li.product_id = p.id
-    WHERE lc.contract LIKE ? ESCAPE '\'
+    WHERE lc.contract LIKE ? ESCAPE '\\'
     ORDER BY p.commodity, lo.lot_number
   `).all(searchPattern) as Array<{
     contract: string; lot_id: number; lot_number: string; quantity: number; weight_lbs: number; bbd: string;
@@ -221,9 +221,9 @@ export function searchProducts(query: string): ProductSearchResult[] {
   const rows = db.prepare(`
     SELECT id, product, commodity, format, organic
     FROM products
-    WHERE LOWER(product)       LIKE LOWER(?) ESCAPE '\'
-       OR LOWER(commodity)     LIKE LOWER(?) ESCAPE '\'
-       OR LOWER(specification) LIKE LOWER(?) ESCAPE '\'
+    WHERE LOWER(product)       LIKE LOWER(?) ESCAPE '\\'
+       OR LOWER(commodity)     LIKE LOWER(?) ESCAPE '\\'
+       OR LOWER(specification) LIKE LOWER(?) ESCAPE '\\'
     ORDER BY commodity, product
     LIMIT 20
   `).all(like, like, like) as Array<{

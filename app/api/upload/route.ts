@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFileSync, unlinkSync } from "fs";
 import { join, resolve } from "path";
 import { auth } from "@/lib/auth";
-import { addDocument, getUploadDir, getDocumentUrl } from "@/lib/documents";
+import { addDocument, getUploadDir, getDocumentUrl, generateDocFilename } from "@/lib/documents";
 import { getDb } from "@/lib/db";
 import { getUploadsRoot } from "@/lib/paths";
 import type { DocCategory } from "@/lib/documents";
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
   const category = formData.get("category") as string | null;
   const lotIdsStr = formData.get("lotIds") as string | null;
   const baseContract = formData.get("baseContract") as string | null;
+  const documentDate = formData.get("documentDate") as string | null;
 
   if (!file || !productId || !category) {
     return NextResponse.json({ error: "Missing file, productId, or category" }, { status: 400 });
@@ -68,19 +69,27 @@ export async function POST(req: NextRequest) {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
-  const timestamp = Date.now();
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const filename = `${timestamp}-${safeName}`;
+  const db = getDb();
+
+  // Look up product name for filename
+  const productRow = db.prepare("SELECT product FROM products WHERE id = ?").get(productId) as { product: string } | undefined;
+  const productName = productRow?.product ?? productId;
 
   // Resolve lot number for stable storage path (lot IDs change on re-seed)
   let lotNumber: string | undefined;
   if (LOT_CATEGORIES.includes(cat) && lotIds.length > 0) {
-    const db = getDb();
     const lotRow = db.prepare("SELECT lot_number FROM lots WHERE id = ?").get(lotIds[0]) as { lot_number: string } | undefined;
     if (!lotRow) {
       return NextResponse.json({ error: `Lot ID ${lotIds[0]} not found` }, { status: 400 });
     }
     lotNumber = lotRow.lot_number;
+  }
+
+  // Look up COO for contract-level docs
+  let countryOfOrigin: string | undefined;
+  if (CONTRACT_CATEGORIES.includes(cat)) {
+    const cooRow = db.prepare("SELECT country_of_origin FROM listings WHERE product_id = ? LIMIT 1").get(productId) as { country_of_origin: string } | undefined;
+    countryOfOrigin = cooRow?.country_of_origin;
   }
 
   // Determine storage path (sanitize all user-provided segments)
@@ -89,6 +98,18 @@ export async function POST(req: NextRequest) {
     : { baseContract: safePath(baseContract!) };
 
   const dir = getUploadDir(safeProductId, category, storageOpts);
+
+  const filename = generateDocFilename({
+    category: cat,
+    productName,
+    originalName: file.name,
+    documentDate: documentDate || undefined,
+    lotNumber,
+    baseContract: CONTRACT_CATEGORIES.includes(cat) ? baseContract! : undefined,
+    countryOfOrigin,
+    targetDir: dir,
+  });
+
   const filepath = join(dir, filename);
 
   // Verify the resolved path stays within the uploads directory
@@ -99,7 +120,7 @@ export async function POST(req: NextRequest) {
 
   writeFileSync(filepath, buffer);
 
-  const docId = `${productId}-${category}-${timestamp}`;
+  const docId = `${productId}-${category}-${Date.now()}`;
   try {
     addDocument({
       id: docId,

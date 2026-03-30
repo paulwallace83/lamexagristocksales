@@ -96,6 +96,79 @@ export function getCategoryLabel(category: DocCategory): string {
   }
 }
 
+/** Short label for filenames */
+export function getShortCategoryLabel(category: DocCategory): string {
+  switch (category) {
+    case "coa":
+      return "COA";
+    case "test-results":
+      return "Test Results";
+    case "specs":
+      return "Spec Sheet";
+    case "labels":
+      return "Label";
+    case "photos":
+      return "Product Photo";
+  }
+}
+
+/**
+ * Generate a descriptive filename for uploaded documents.
+ *
+ * Lot-level:     YYYY-MM-DD. {Product} - {Type} - {LotNumber}.{ext}
+ * Contract-level: YYYY-MM-DD. {Product} - {Contract} | {COO} | {Type}.{ext}
+ */
+export function generateDocFilename(opts: {
+  category: DocCategory;
+  productName: string;
+  originalName: string;
+  documentDate?: string; // YYYY-MM-DD; defaults to today
+  lotNumber?: string;
+  baseContract?: string;
+  countryOfOrigin?: string;
+  targetDir: string;
+}): string {
+  const date = opts.documentDate || new Date().toISOString().slice(0, 10);
+  const ext = getExtension(opts.originalName);
+  const typeLabel = getShortCategoryLabel(opts.category);
+  const product = sanitizeSegment(opts.productName);
+
+  let base: string;
+  if (opts.lotNumber) {
+    // Lot-level: YYYY-MM-DD. {Product} - {Type} - {LotNumber}
+    base = `${date}. ${product} - ${typeLabel} - ${opts.lotNumber}`;
+  } else if (opts.baseContract) {
+    // Contract-level: YYYY-MM-DD. {Product} - {Contract} | {COO} | {Type}
+    const coo = opts.countryOfOrigin || "Unknown";
+    base = `${date}. ${product} - ${opts.baseContract} | ${coo} | ${typeLabel}`;
+  } else {
+    // Fallback
+    base = `${date}. ${product} - ${typeLabel}`;
+  }
+
+  // Ensure uniqueness on disk
+  let filename = `${base}${ext}`;
+  if (existsSync(join(opts.targetDir, filename))) {
+    let counter = 2;
+    while (existsSync(join(opts.targetDir, `${base}-${counter}${ext}`))) {
+      counter++;
+    }
+    filename = `${base}-${counter}${ext}`;
+  }
+
+  return filename;
+}
+
+function getExtension(name: string): string {
+  const dot = name.lastIndexOf(".");
+  return dot >= 0 ? name.slice(dot).toLowerCase() : "";
+}
+
+/** Remove characters unsafe for filenames but keep spaces, dots, pipes, hyphens */
+function sanitizeSegment(s: string): string {
+  return s.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim();
+}
+
 /* ------------------------------------------------------------------ */
 /*  Read operations                                                    */
 /* ------------------------------------------------------------------ */
