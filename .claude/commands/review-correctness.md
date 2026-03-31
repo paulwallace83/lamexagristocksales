@@ -1,0 +1,73 @@
+# /review-correctness — Code Correctness Review
+
+## Context
+Read the batch document specified by the user (e.g., `docs/batches/B001-sync-data-quality.md`). If no batch is specified, check CLAUDE.md "Batch Queue" for the batch currently marked `in-progress`.
+
+## Description
+Run by a FRESH agent after implementation is complete. This agent has never seen the code before and has no attachment to it. Its only job is finding bugs.
+
+## Setup
+- This MUST be a new agent session — never the implementing agent
+- Do not read any previous review files — form your own independent assessment
+
+## Instructions
+
+Read these files first:
+1. `CLAUDE.md` (critical rules and architecture overview)
+2. The batch document (what was supposed to be built — acceptance criteria are your contract)
+3. `LESSONS.md` (hard-won patterns and past mistakes)
+
+Then review ALL files created or modified in this batch. Use `git diff main...HEAD` or check the batch's "Files to Touch" section.
+
+Focus EXCLUSIVELY on:
+- Bugs and incorrect logic
+- Unhandled edge cases (nulls, empty arrays, missing data, unexpected types)
+- Missing null/undefined checks
+- Error handling gaps (missing try/catch, swallowed errors, generic catches)
+- Off-by-one errors, wrong comparisons, inverted conditions
+- Deviations from the acceptance criteria in the batch document
+- Functions that fail silently instead of throwing or logging
+- SQLite queries that could fail on unexpected data (NULL handling, missing rows)
+- `better-sqlite3` calls used outside a server context (would crash client components)
+- JSON.parse without try/catch on user-supplied or DB-stored JSON
+- `getDb()` synchronous calls assumed to return valid data — check for empty result sets
+
+Do NOT comment on:
+- Code style, formatting, or naming preferences
+- Performance optimizations (unless it causes a bug)
+- Security concerns (that's `/review-security`)
+- Architecture decisions (that's `/review-integration`)
+
+For each finding, provide:
+- The exact file and line (or function name)
+- What the bug or issue is
+- What would trigger it (input, scenario, sequence)
+- Suggested fix
+
+## Output
+Save findings to `docs/reviews/{batch-id}-correctness.md` using this format:
+
+```markdown
+# Correctness Review — {Batch ID}
+
+**Reviewer:** Fresh agent session
+**Date:** {today}
+**Batch:** {batch document path}
+
+## Critical (must fix before merge)
+- **[file:line or function]** — [What the bug is]. Triggered by [scenario]. Fix: [suggestion].
+
+## Important (should fix, can be next batch)
+- **[file:line or function]** — [Issue]. [Why it matters].
+
+## Minor (nice to have)
+- **[file:line or function]** — [Issue].
+```
+
+## Rules
+- If no issues found in a category, write "None found" — do not skip the section
+- Every finding must be specific and actionable
+- Do not suggest fixes that change the architecture — only fix bugs within the current design
+- You are a reviewer, not a fixer — document findings only, do not modify code
+- Check every conditional, every error path, every return value
+- Run `npm test` and `npx tsc --noEmit` — report any failures as Critical findings

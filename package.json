@@ -13,7 +13,9 @@
     "import-excel": "tsx scripts/import-excel.ts",
     "update-pricing": "tsx scripts/update-pricing.ts",
     "backfill-coa": "tsx scripts/backfill-coa.ts",
-    "rename-uploads": "tsx scripts/rename-uploads.ts"
+    "rename-uploads": "tsx scripts/rename-uploads.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "repository": {
     "type": "git",
@@ -52,6 +54,8 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
-    "tsx": "^4.21.0"
+    "@vitest/coverage-v8": "^4.1.2",
+    "tsx": "^4.21.0",
+    "vitest": "^4.1.2"
   }
 }
