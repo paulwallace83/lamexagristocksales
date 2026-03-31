@@ -5,7 +5,8 @@ import { useState, useEffect } from "react";
 interface LotAvailability {
   lotNumber: string;
   hasCOA: boolean;
-  hasTestResults: boolean;
+  testResultTypes: string[];
+  coaFields: { label: string; value: string }[];
 }
 
 interface ContractAvailability {
@@ -69,7 +70,7 @@ export default function EnquiryForm({
 
   const hasAnyDocs =
     docsData &&
-    (docsData.lots.some((l) => l.hasCOA || l.hasTestResults) ||
+    (docsData.lots.some((l) => l.hasCOA || l.testResultTypes.length > 0 || l.coaFields.length > 0) ||
       docsData.contracts.some((c) => c.hasSpecs));
 
   const toggleSelection = (key: string) => {
@@ -316,64 +317,95 @@ export default function EnquiryForm({
           {showDocs && docsData && (
             <div className="px-4 py-4 space-y-4 border-t border-gray-200">
               {/* Lot-level docs */}
-              {docsData.lots.some((l) => l.hasCOA || l.hasTestResults) && (
+              {docsData.lots.some((l) => l.hasCOA || l.testResultTypes.length > 0 || l.coaFields.length > 0) && (
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
                     Certificates &amp; Test Results
                   </p>
                   <div className="space-y-2">
                     {docsData.lots
-                      .filter((l) => l.hasCOA || l.hasTestResults)
-                      .map((lot) => (
-                        <div
-                          key={lot.lotNumber}
-                          className="bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-100"
-                        >
-                          <p className="font-mono text-sm font-bold text-[#1a2b5f] mb-1.5">
-                            Lot {lot.lotNumber}
-                          </p>
-                          <div className="flex flex-wrap gap-3">
-                            {lot.hasCOA && (
-                              <label className="inline-flex items-center gap-2 cursor-pointer text-sm">
-                                <input
-                                  type="checkbox"
-                                  checked={selected.has(
-                                    `lot:${lot.lotNumber}:coa`
-                                  )}
-                                  onChange={() =>
-                                    toggleSelection(
+                      .filter((l) => l.hasCOA || l.testResultTypes.length > 0 || l.coaFields.length > 0)
+                      .map((lot) => {
+                        // Derive a single label for all test results on this lot.
+                        // The backend category is unified ("test-results") so one checkbox covers all types.
+                        const testLabel = lot.testResultTypes.length === 1
+                          ? lot.testResultTypes[0]
+                          : lot.testResultTypes.length > 1
+                            ? (() => {
+                                // Strip " Test Results" suffix or standalone "Test Results"; fall back to "Other"
+                                const names = lot.testResultTypes.map((t) => t.replace(/\s*Test Results$/i, "").trim() || "Other");
+                                return `${names.join(" & ")} Test Results`;
+                              })()
+                            : null;
+                        return (
+                          <div
+                            key={lot.lotNumber}
+                            className="bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-100"
+                          >
+                            <p className="font-mono text-sm font-bold text-[#1a2b5f] mb-1.5">
+                              Lot {lot.lotNumber}
+                            </p>
+                            {/* COA key aspects pills */}
+                            {lot.coaFields.length > 0 && (
+                              <div className="mb-2">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {lot.coaFields.map((f, i) => (
+                                    <span
+                                      key={`${f.label}-${i}`}
+                                      className="text-xs bg-[#1a2b5f]/5 text-[#1a2b5f]/70 px-1.5 py-0.5 rounded"
+                                    >
+                                      <span className="font-medium">{f.label}:</span> {f.value}
+                                    </span>
+                                  ))}
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-1 italic">
+                                  AI-extracted — may contain errors. Request official documents before contracting.
+                                </p>
+                              </div>
+                            )}
+                            <div className="flex flex-wrap gap-3">
+                              {lot.hasCOA && (
+                                <label className="inline-flex items-center gap-2 cursor-pointer text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={selected.has(
                                       `lot:${lot.lotNumber}:coa`
-                                    )
-                                  }
-                                  className="rounded border-gray-300 text-[#1a2b5f] focus:ring-[#4a90c4]"
-                                />
-                                <span className="text-gray-700">
-                                  Certificate of Analysis (COA)
-                                </span>
-                              </label>
-                            )}
-                            {lot.hasTestResults && (
-                              <label className="inline-flex items-center gap-2 cursor-pointer text-sm">
-                                <input
-                                  type="checkbox"
-                                  checked={selected.has(
-                                    `lot:${lot.lotNumber}:test-results`
-                                  )}
-                                  onChange={() =>
-                                    toggleSelection(
+                                    )}
+                                    onChange={() =>
+                                      toggleSelection(
+                                        `lot:${lot.lotNumber}:coa`
+                                      )
+                                    }
+                                    className="rounded border-gray-300 text-[#1a2b5f] focus:ring-[#4a90c4]"
+                                  />
+                                  <span className="text-gray-700">
+                                    Certificate of Analysis (COA)
+                                  </span>
+                                </label>
+                              )}
+                              {testLabel && (
+                                <label className="inline-flex items-center gap-2 cursor-pointer text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={selected.has(
                                       `lot:${lot.lotNumber}:test-results`
-                                    )
-                                  }
-                                  className="rounded border-gray-300 text-[#1a2b5f] focus:ring-[#4a90c4]"
-                                />
-                                <span className="text-gray-700">
-                                  Test Results
-                                </span>
-                              </label>
-                            )}
+                                    )}
+                                    onChange={() =>
+                                      toggleSelection(
+                                        `lot:${lot.lotNumber}:test-results`
+                                      )
+                                    }
+                                    className="rounded border-gray-300 text-[#1a2b5f] focus:ring-[#4a90c4]"
+                                  />
+                                  <span className="text-gray-700">
+                                    {testLabel}
+                                  </span>
+                                </label>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                   </div>
                 </div>
               )}

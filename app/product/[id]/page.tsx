@@ -262,7 +262,9 @@ function LotRow({ lot, unitType, documents, coaDataMap }: { lot: Lot; unitType: 
               ? "Heavy Metal Test Available"
               : name.includes("pesticide") || /\bpest\b/.test(name)
                 ? "Pesticide Test Available"
-                : "Test Results";
+                : /micro(?!so)/i.test(name)
+                  ? "Microbiological Test Available"
+                  : "Test Results Available";
             docLabels.add(label);
             return (
               <span key={d.id} className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
