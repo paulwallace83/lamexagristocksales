@@ -126,14 +126,29 @@ export function relinkCoaData(saved: ExportedCoaRow[]): { linked: number; orphan
 const KNOWN_FIELDS: Record<string, { label: string; unit?: string; order: number }> = {
   brix: { label: "Brix", unit: "Bx", order: 1 },
   acidity: { label: "Acidity", unit: "%", order: 2 },
+  acidity_malic_acid: { label: "Acidity Malic Acid", unit: "%", order: 2 },
+  acidity_citric_acid: { label: "Acidity Citric Acid", unit: "%", order: 2 },
+  lactic_acid: { label: "Lactic Acid", unit: "%", order: 2 },
   ph: { label: "pH", order: 3 },
   ratio: { label: "Ratio", order: 4 },
   color: { label: "Color", order: 5 },
   clarity: { label: "Clarity", order: 6 },
   ntu: { label: "NTU", unit: "NTU", order: 7 },
   defects: { label: "Defects", unit: "%", order: 8 },
+  crushed: { label: "Crushed", unit: "%", order: 8 },
+  crushed_broken: { label: "Crushed Broken", unit: "%", order: 8 },
   overripe: { label: "Overripe", unit: "%", order: 9 },
-  underripe: { label: "Underripe", unit: "%", order: 10 },
+  underripe: { label: "Underripe", unit: "%", order: 9 },
+  unripe: { label: "Unripe", unit: "%", order: 9 },
+  stem: { label: "Stem", unit: "%", order: 10 },
+  stem_defects: { label: "Stem Defects", unit: "%", order: 10 },
+  cap_stems_defects: { label: "Cap/Stems", unit: "%", order: 10 },
+  out_size_defects: { label: "Out of Size", unit: "%", order: 10 },
+  color_variation_defects: { label: "Color Variation", unit: "%", order: 10 },
+  damaged_blemished_defects: { label: "Damaged/Blemished", unit: "%", order: 10 },
+  serious_cracks_defects: { label: "Serious Cracks", unit: "%", order: 10 },
+  undeveloped_or_damaged: { label: "Undeveloped/Damaged", unit: "%", order: 10 },
+  underdeveloped_damaged: { label: "Underdeveloped/Damaged", unit: "%", order: 10 },
 };
 
 export interface FormattedCoaField {
@@ -144,19 +159,44 @@ export interface FormattedCoaField {
 /** Maximum number of COA pills to display per lot on the product detail page. */
 const MAX_DISPLAY_FIELDS = 6;
 
+const HEAVY_METAL_PATTERNS = ["lead", "pb_", "_pb", "arsenic", "as_", "_as", "cadmium", "cd_", "_cd", "mercury", "hg_", "_hg", "tin_sn"];
+const PESTICIDE_PATTERNS = ["pesticide", "residue", "chlorpyrifos", "glyphosate", "ddt", "organophosphate", "fungicide", "herbicide", "insecticide"];
+
+/** Fields that match heavy metal patterns but are NOT heavy metal test results. */
+const HEAVY_METAL_FALSE_POSITIVES = new Set(["metal_detection"]);
+
+/** Detect whether COA fields contain heavy metal or pesticide test data. */
+export function detectCoaTestTypes(fields: CoaFields): { hasHeavyMetals: boolean; hasPesticide: boolean } {
+  let hasHeavyMetals = false;
+  let hasPesticide = false;
+  for (const key of Object.keys(fields)) {
+    const normalized = key.toLowerCase().replace(/[\s.\-]/g, "_");
+    if (!hasHeavyMetals && !HEAVY_METAL_FALSE_POSITIVES.has(normalized) && HEAVY_METAL_PATTERNS.some((p) => normalized.includes(p))) hasHeavyMetals = true;
+    if (!hasPesticide && PESTICIDE_PATTERNS.some((p) => normalized.includes(p))) hasPesticide = true;
+    if (hasHeavyMetals && hasPesticide) break;
+  }
+  return { hasHeavyMetals, hasPesticide };
+}
+
 /** Fields excluded from public display — microorganism analysis, logistics, packaging. */
 const EXCLUDED_PATTERNS = [
   // Microorganism / microbiology
-  "aerobic", "coliform", "e_coli", "ecoli", "yeast", "mold", "mould",
+  "aerobic", "coliform", "e_coli", "ecoli", "escherichia", "yeast", "mold", "mould",
   "salmonella", "listeria", "staphylococcus", "total_count", "tpc",
-  "heat_resistant", "tab_lod", "acb_lod",
+  "total_plate_count", "heat_resistant", "tab_lod", "acb_lod", "alicyclobacillus",
+  // Heavy metals (with and without underscore prefix for symbol abbreviations)
+  "lead", "pb_", "_pb", "arsenic", "as_", "_as", "cadmium", "cd_", "_cd",
+  "mercury", "hg_", "_hg", "tin_sn",
+  // Mycotoxins
+  "patulin", "paluin", "aflatoxin", "ochratoxin",
   // Weight / packaging / logistics
   "net_weight", "gross_weight", "number_of_drums", "number_of_cartons",
   "number_of_cases", "unit_packaging", "quantity_kg",
   // Temperature / storage / shipping
   "storage_temperature", "shipping_temperature", "temperature",
   // Administrative
-  "fda_no", "quality_control", "batch_no", "product_date", "expiry_date",
+  "fda_no", "quality_control", "batch_no", "batch_code", "product_date",
+  "production_date", "expiry_date", "shelf_life", "metal_detection",
 ];
 
 function isExcludedField(key: string): boolean {
@@ -173,7 +213,18 @@ function isExcludedField(key: string): boolean {
 export function formatCoaFields(fields: CoaFields): FormattedCoaField[] {
   const entries: Array<FormattedCoaField & { order: number }> = [];
 
+  // Merge EVM sub-fields into a single "EVM" pill (show the minimum value)
+  const evmValues: number[] = [];
+  if (typeof fields.evm_leaves_caps_bracts === "number") evmValues.push(fields.evm_leaves_caps_bracts);
+  if (typeof fields.evm_weeds_grass === "number") evmValues.push(fields.evm_weeds_grass);
+  if (evmValues.length > 0) {
+    entries.push({ label: "EVM", value: String(Math.min(...evmValues)), order: 11 });
+  }
+
+  const EVM_KEYS = new Set(["evm_leaves_caps_bracts", "evm_weeds_grass"]);
+
   for (const [key, value] of Object.entries(fields)) {
+    if (EVM_KEYS.has(key)) continue;
     if (value === null || value === undefined || value === "" || typeof value === "object") continue;
     if (isExcludedField(key)) continue;
     const displayValue = typeof value === "number"

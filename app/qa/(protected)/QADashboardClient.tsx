@@ -203,11 +203,9 @@ export default function QADashboardClient({ statuses, today }: { statuses: Produ
                         <td colSpan={9} className="px-4 py-2 bg-gray-50/60">
                           <div className="flex flex-wrap gap-1.5">
                             {s.lots.map((lot) => {
-                              const pillColor = !lot.hasCOA
-                                ? "bg-red-50 text-red-700 border border-red-200"
-                                : s.complete
-                                  ? "bg-green-50 text-green-700 border border-green-200"
-                                  : "bg-amber-50 text-amber-700 border border-amber-200";
+                              const pillColor = lot.hasCOA
+                                ? "bg-green-50 text-green-700 border border-green-200"
+                                : "bg-red-50 text-red-700 border border-red-200";
                               return (
                                 <span
                                   key={lot.id}

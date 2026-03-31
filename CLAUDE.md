@@ -351,10 +351,13 @@ When a COA document is uploaded via `/api/upload` (QA portal) or via the agent's
 
 Product detail page (`app/product/[id]/page.tsx`) shows a third line below each lot's quantity/weight/BBD row with compact navy-tinted pills for selected parameters. Display rules:
 - **Maximum 6 pills** per lot.
-- **Priority order:** Known fields first (brix, acidity, pH, ratio, color, clarity, NTU, defects, overripe, underripe), then unknown fields alphabetically.
-- **Excluded from display:** Microorganism analysis (APC, coliform, E. coli, yeast, mold, salmonella, listeria, staphylococcus), weight/packaging (net weight, gross weight, drums, cartons, cases), temperature (storage, shipping), and administrative fields (FDA no, batch no, QC name, dates).
+- **Priority order:** Known fields first (brix, acidity variants, pH, ratio, color, clarity, NTU, defects variants, overripe/underripe, stem/cap/size defects, EVM), then unknown fields alphabetically. Known fields include percentage units for acidity, defect, and damage fields.
+- **EVM merge:** The two EVM sub-fields (`evm_leaves_caps_bracts`, `evm_weeds_grass`) are combined into a single "EVM" pill showing the minimum value.
+- **Excluded from display:** Microorganism analysis (APC, coliform, E. coli, escherichia, yeast, mold, salmonella, listeria, staphylococcus, alicyclobacillus, total plate count), heavy metals (lead/Pb, arsenic/As, cadmium/Cd, mercury/Hg, tin/Sn), mycotoxins (patulin, aflatoxin, ochratoxin), weight/packaging (net weight, gross weight, drums, cartons, cases), temperature (storage, shipping), and administrative fields (FDA no, batch no/code, QC name, dates, shelf life, metal detection).
 - **String values capped** at 50 characters for display.
 - **Field name normalization:** Spaces, dots, and hyphens in field names are normalized to underscores before exclusion matching (handles inconsistent AI-extracted keys).
+- **Test type badges:** Lots display "Heavy Metal Test Available" or "Pesticide Test Available" badges when: (a) a test-results document is uploaded with a matching filename (detected via keyword/regex matching on the filename), or (b) the COA-extracted data contains heavy metal or pesticide fields (detected via `detectCoaTestTypes()` in `lib/coa-data.ts`). Document-based badges take priority; COA-detected badges only appear if no matching document badge exists.
+- **Duplicate Organic badge prevention:** The certifications list on the product detail header filters out "Organic" since it's already shown as a dedicated badge.
 - **AI caveat:** Below the pills, a small italic disclaimer reads: *"AI-extracted — may contain errors. Request official documents before contracting."*
 - All extracted data remains stored in `coa_data` — only the public display is filtered.
 
@@ -364,7 +367,7 @@ COA data is exported (with lot numbers) before the sync transaction, deleted alo
 
 ### Key Files
 
-- `lib/coa-data.ts` — Types, query, upsert, export/relink, display formatting
+- `lib/coa-data.ts` — Types, query, upsert, export/relink, display formatting, `detectCoaTestTypes()` for badge detection
 - `lib/coa-extract.ts` — Claude vision extraction function
 - `lib/agent-db.ts` — `getCoaBackfillStatus()`, `getCoaBackfillDocuments()` query functions for backfill
 - `app/api/upload/route.ts` — Auto-extraction hook for QA portal COA uploads
@@ -399,7 +402,7 @@ COA data is exported (with lot numbers) before the sync transaction, deleted alo
 - **Columns:** Product, Lot COAs, Heavy Metals, Pesticide, Contract Specs, Contract Labels, Contract Photos, Status, Action.
 - **Heavy Metals column** — shows lot coverage for Juice Concentrate products (expected: heavy metal test per lot). Shows "N/A" for other product types.
 - **Pesticide column** — shows lot coverage for Organic products (expected: pesticide test per lot). Shows "N/A" for non-organic products. Juice Concentrate products show heavy metals instead (even if organic).
-- Lot pills reflect overall product status: green if product complete, amber if partial, red if lot has no COA.
+- Lot pills reflect individual lot COA status: green if the lot has a COA uploaded, red if the lot has no COA. The amber color is reserved for the product-level "Partial" status badge only.
 - Lot pills show `BBD: YYYY-MM-DD` — expired BBDs highlighted in amber, matching the public product detail page.
 - Coverage numbers (e.g., "3/14") use amber when partial (some but not all).
 - Filter is client-side only — does not persist across page loads.
@@ -673,43 +676,7 @@ The `/api/files/[...path]` route checks for restricted category names in the pat
 
 ## Security Hardening
 
-### HTTP Security Headers
-
-Configured in `next.config.ts` via the `headers()` function:
-- `X-Frame-Options: DENY` — prevents clickjacking
-- `X-Content-Type-Options: nosniff` — prevents MIME-type sniffing
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- `Permissions-Policy` — disables camera, microphone, geolocation
-- `Strict-Transport-Security` — forces HTTPS (1 year, includeSubDomains)
-- `Content-Security-Policy` — restricts resource loading to same origin; `frame-ancestors 'none'`
-
-### CSRF Protection
-
-`middleware.ts` validates the `Origin` header on all non-GET requests to `/api/*`. If the Origin host doesn't match the request Host, the request is rejected with 403. Requests without an Origin header (server-to-server, curl) pass through since they can't carry SameSite=Lax cookies.
-
-### Path Traversal Protection
-
-All user-supplied path segments (productId, lotNumber, baseContract, category, filename) are sanitized before use in filesystem operations. Two-layer defence:
-
-1. **Structural segments** (used in directory names) — passed through `safeSeg()` which strips `/\?%*<>` and control characters while preserving spaces and pipes valid in filenames.
-2. **Final resolved path check** — every file read and write asserts `resolve(filepath).startsWith(resolve(uploadsRoot) + "/")` before proceeding. Any path that resolves outside the uploads root is rejected without revealing details.
-
-`generateDocFilename()` additionally passes `lotNumber`, `baseContract`, and `countryOfOrigin` through `sanitizeSegment()` before embedding them in the filename string, preventing a `/` in a supplier-formatted lot number from being interpreted as a path separator.
-
-### Input & Error Hardening
-
-- **`lib/conversations.ts`** — `JSON.parse(file_names)` from the DB is wrapped in try-catch; malformed rows fall back to `[]` rather than crashing the conversation fetch.
-- **`lib/document-requests.ts`** — `JSON.parse(requested_docs)` wrapped in try-catch; malformed rows return an empty docs array.
-- **`app/api/document-requests/[id]/route.ts`** — `readFileSync` inside `existsSync` guard is wrapped in try-catch; a file deleted between the check and the read is logged and skipped, other attachments still send.
-- **`lib/auth.ts`** — database errors in `getUsers()` are logged to console; auth still fails securely (empty user list means no valid login).
-- **`lib/agent-tools.ts`** — both upload and COA backfill path traversal guards use `startsWith(uploadsRoot + "/")` with the trailing slash, preventing prefix-match bypass against sibling directories.
-
-### Key Files
-
-- `middleware.ts` — CSRF origin validation middleware
-- `next.config.ts` — Security headers configuration
-- `lib/country-flags.ts` — Country name → flag emoji mapping (shared by inventory table and product detail page)
-- `scripts/migrate-lot-dirs.ts` — One-time migration: renames upload directories from lot-ID to lot-number format, backfills `lot_numbers` column
+Full security documentation — HTTP headers, CSRF, path traversal, input hardening, COA data filtering, and the security review checklist — is maintained in **[security.md](security.md)**.
 
 ## Industry Context
 

@@ -18,7 +18,7 @@ import {
 } from "@/lib/documents";
 import type { DocumentEntry, DocCategory } from "@/lib/documents";
 import { countryFlag } from "@/lib/country-flags";
-import { getCoaDataForLots, formatCoaFields } from "@/lib/coa-data";
+import { getCoaDataForLots, formatCoaFields, detectCoaTestTypes } from "@/lib/coa-data";
 import type { CoaData } from "@/lib/coa-data";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +63,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 Conventional
               </span>
             )}
-            {product.certifications.map((c) => (
+            {product.certifications.filter((c) => c !== "Organic").map((c) => (
               <span key={c} className="bg-white/10 text-white/80 text-xs font-medium px-2.5 py-1 rounded border border-white/10">{c}</span>
             ))}
           </div>
@@ -223,6 +223,7 @@ function LotRow({ lot, unitType, documents, coaDataMap }: { lot: Lot; unitType: 
   const hasCOA = coaDocs.length > 0;
   const coaData = coaDataMap.get(lot.id);
   const formattedFields = coaData ? formatCoaFields(coaData.fields) : [];
+  const coaTestTypes = coaData ? detectCoaTestTypes(coaData.fields) : { hasHeavyMetals: false, hasPesticide: false };
 
   return (
     <div className="bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-100 border-l-4 border-l-[#1a2b5f]">
@@ -252,14 +253,50 @@ function LotRow({ lot, unitType, documents, coaDataMap }: { lot: Lot; unitType: 
             COA
           </span>
         )}
-        {testDocs.length > 0 && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-            <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-            </svg>
-            Test Results
-          </span>
-        )}
+        {(() => {
+          // Collect labels from uploaded test result documents
+          const docLabels = new Set<string>();
+          const docBadges = testDocs.map((d) => {
+            const name = (d.originalName || d.filename).toLowerCase();
+            const label = name.includes("heavy") || name.includes("metal") || /\bhm\b/.test(name)
+              ? "Heavy Metal Test Available"
+              : name.includes("pesticide") || /\bpest\b/.test(name)
+                ? "Pesticide Test Available"
+                : "Test Results";
+            docLabels.add(label);
+            return (
+              <span key={d.id} className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                </svg>
+                {label}
+              </span>
+            );
+          });
+          // Add badges from COA-extracted data (only if not already covered by a document badge)
+          const coaBadges: React.ReactNode[] = [];
+          if (coaTestTypes.hasHeavyMetals && !docLabels.has("Heavy Metal Test Available")) {
+            coaBadges.push(
+              <span key="coa-hm" className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                </svg>
+                Heavy Metal Test Available
+              </span>
+            );
+          }
+          if (coaTestTypes.hasPesticide && !docLabels.has("Pesticide Test Available")) {
+            coaBadges.push(
+              <span key="coa-pest" className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                </svg>
+                Pesticide Test Available
+              </span>
+            );
+          }
+          return [...docBadges, ...coaBadges];
+        })()}
       </div>
 
       {/* Line 2: Quantity, weight, BBD */}
