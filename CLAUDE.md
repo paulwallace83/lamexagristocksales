@@ -72,6 +72,7 @@ Where to look for what:
 | Agent operating protocol and task lifecycle | [`docs/workflow.md`](docs/workflow.md) |
 | Universal security rules (always active) | [`.claude/rules/security.md`](.claude/rules/security.md) |
 | Universal data privacy rules (always active) | [`.claude/rules/data-privacy.md`](.claude/rules/data-privacy.md) |
+| What to do when something breaks during a batch | [`.claude/failure-recovery.md`](.claude/failure-recovery.md) |
 | Context after compaction events | [`.claude/context-essentials.md`](.claude/context-essentials.md) |
 
 ## Agent Docs (load when relevant)
@@ -102,6 +103,8 @@ Where to look for what:
 - `docs/Architecture.md` — system topology, tech decisions, sync pipeline, storage, auth, constraints
 - `docs/epics.md` — 8 epics derived from roadmap with priority order
 - Batch planning complete: template + 3 batch docs ready for execution
+- Sprint execution skills: `/review-correctness`, `/review-security`, `/review-integration`
+- Failure Recovery Playbook: `.claude/failure-recovery.md`
 
 ### Batch Queue
 | Batch | Epic | Size | Status |

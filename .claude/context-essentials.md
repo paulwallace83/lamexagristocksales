@@ -23,8 +23,17 @@ Next.js inventory marketing system for Lamex Agri Stock Sales. Deployed on Railw
 - `npm run import-excel -- <path>` — ERP Excel import
 - `npm run dev` — dev server port 3000
 
+## If Something Breaks
+Read `.claude/failure-recovery.md` — covers test failures, type errors, build failures, sync breakage, partial implementations, and review rework. Decision tree at the bottom.
+
 ## Agent Docs
 For detailed workflows, load the relevant file from `agent_docs/`:
 - weekly-sync.md, documents.md, coa-data.md, discount.md
 - agent-tdpaib.md, email-marketing.md, document-requests.md
 - db-schema.md, public-pages.md
+
+## Batch Execution
+- Current batch queue is in CLAUDE.md under "Batch Queue"
+- Batch documents in `docs/batches/`
+- After implementation: run `/review-correctness`, `/review-security`, `/review-integration` in fresh sessions
+- If stuck or out of context: run `/handoff`
