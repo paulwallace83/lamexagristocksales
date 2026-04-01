@@ -137,6 +137,21 @@ Rows with descriptions starting `"DFRM "` are prepayment/finance rows from Teno 
 
 ---
 
+## UI Components
+
+### Nav links are duplicated across 7 layout files
+The `AdminHeader` component is shared, but each of the 7 admin layout files defines its own `navLinks` array independently. When adding a cross-cutting nav feature (badge, new link, rename), all 7 must be updated:
+- `app/qa/(protected)/layout.tsx`
+- `app/admin/requests/layout.tsx`
+- `app/admin/tools/layout.tsx`
+- `app/review/layout.tsx`
+- `app/admin/email/layout.tsx`
+- `app/admin/discount/layout.tsx`
+- `app/admin/agent/layout.tsx`
+**Risk if ignored:** Inconsistent UX — feature appears on some pages but not others (B002 initially missed 5 of 7 layouts).
+
+---
+
 ## Deployment (Railway)
 
 ### Volume path is not available during `next build`

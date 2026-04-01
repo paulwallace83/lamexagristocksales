@@ -28,6 +28,7 @@ Organized by status. Updated as priorities shift.
 | v0.10.4 | Enquiry Workflow | Remove table/header enquiry buttons; clickable rows with chevron; funnel enquiries through product detail page |
 | v0.11.0 | Governance & CI | Agentic coding governance (CLAUDE.md refactor, `agent_docs/`, `.claude/rules/`), unit test suite (59 vitest tests), CI pipeline (type check + vitest on push/PR), `LESSONS.md`, project brief, Architecture doc, epics + batch planning, failure recovery playbook |
 | v0.11.1 | Data Quality (B001) | Unit type validation + change detection, duplicate product detection in `validateBusinessRules()`. 17 new tests. |
+| v0.11.2 | Pending Request Badge (B002) | Live pending-request count badge on "Requests" nav link across all 7 admin layouts. Badge capped at 99+. |
 
 ---
 
@@ -37,7 +38,7 @@ Organized by status. Updated as priorities shift.
 |-------|-------------|-------|
 | Agent-powered sync | Paste pivot data in agent chat → auto-parse and sync. Removes need for Claude Code session for routine weekly updates. | Operational efficiency |
 | Enquiry tracking | Persist all enquiries to DB (not just doc requests). Sales gets visibility into lead volume, response times, product interest. | Sales insight |
-| Pending request badge | Show document request count on "Requests" nav link across all admin pages. QA spots new requests without navigating there. | QA workflow |
+| ~~Pending request badge~~ | ~~Show document request count on "Requests" nav link across all admin pages.~~ ✓ B002 | QA workflow |
 | Automated email scheduling | Schedule weekly marketing emails to send automatically after sync, with manual override. Removes the "remember to send" step. | Consistency |
 | Supplier document portal | Let suppliers upload their own COAs and test results via a shared link (no login). Auto-matches to contracts. Reduces QA chasing. | Operational efficiency |
 

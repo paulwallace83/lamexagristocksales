@@ -58,7 +58,7 @@ export default function AdminHeader({
                   {link.label}
                   {link.badge != null && link.badge > 0 && (
                     <span className="ml-1 bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
-                      {link.badge}
+                      {link.badge > 99 ? "99+" : link.badge}
                     </span>
                   )}
                 </Link>

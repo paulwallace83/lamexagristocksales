@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AdminHeader from "@/components/AdminHeader";
+import { getPendingRequestCount } from "@/lib/document-requests";
 
 export default async function AgentLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -14,6 +15,7 @@ export default async function AgentLayout({ children }: { children: React.ReactN
   }
 
   const isReviewer = session.user.role === "reviewer";
+  const pendingCount = getPendingRequestCount();
 
   const navLinks = [
     { href: "/qa", label: "Documents" },
@@ -24,7 +26,7 @@ export default async function AgentLayout({ children }: { children: React.ReactN
           { href: "/admin/email", label: "Email" },
         ]
       : []),
-    { href: "/admin/requests", label: "Requests" },
+    { href: "/admin/requests", label: "Requests", badge: pendingCount },
     { href: "/admin/agent", label: "AI Assistant" },
     { href: "/", label: "Public Site" },
   ];

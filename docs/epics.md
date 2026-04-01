@@ -31,12 +31,12 @@ Logical clusters of related work. Each epic maps to a theme from the roadmap. Ba
 ---
 
 ## E3 — QA Workflow: Document Management Improvements
-**Status:** `next`
+**Status:** `active` (B002 done — pending request badge; QA panel doc actions next)
 **Value:** QA can manage the full document lifecycle from the `/qa` portal without needing the agent or admin tools.
 **Roadmap items:**
 - Delete/upload docs from expanded QA panel (Medium-Term)
 - Filter by supplier or doc status on QA dashboard (Medium-Term)
-- Pending request badge on nav (Near-Term)
+- ~~Pending request badge on nav~~ ✓ B002
 - QA upload progress: spinner/toast during COA extraction (UX Polish)
 - Agent doc gap report: automated email after sync listing lots missing COAs (Operational Improvements)
 

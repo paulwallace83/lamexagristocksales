@@ -107,11 +107,11 @@ Where to look for what:
 - Full batch lifecycle skills: `/plan-batch`, `/retro`, `/review-correctness`, `/review-security`, `/review-integration`, `/refactor`, `/close-batch`
 - Failure Recovery Playbook: `.claude/failure-recovery.md`
 - B001: Sync data quality — unit type validation, unit type change detection, duplicate product detection (`lib/sync.ts`, `tests/sync-validation.test.ts`)
+- B002: Pending request badge — live badge count on "Requests" nav link across all 7 admin layouts (`components/AdminHeader.tsx`, all layout files)
 
 ### Batch Queue
 | Batch | Epic | Size | Status |
 |-------|------|------|--------|
-| [B002](docs/batches/B002-pending-request-badge.md) | E3 QA Workflow | Small | `ready` |
 | [B003](docs/batches/B003-qa-panel-doc-actions.md) | E3 QA Workflow | Medium | `ready` |
 
 ### In Progress
