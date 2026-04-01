@@ -94,6 +94,14 @@ If you see `Error: cannot open database` or native module errors in tests, this 
 ### Next.js 16 removed `next lint`
 Do not add `npx next lint` to CI or scripts — the command was removed in Next.js 16. Run TypeScript type checks instead: `npx tsc --noEmit`.
 
+### Guard `.toLowerCase()` on JSON-sourced string fields — TypeScript types don't guarantee runtime values
+**What happened:** B001 correctness review caught that `product.unitType.toLowerCase()` would crash if `unitType` was `null` at runtime despite being typed as `string`. JSON data from `inventory.json` can contain nulls that TypeScript doesn't catch.
+**Pattern:** Use `(field || "").toLowerCase()` or `typeof field === "string"` before calling string methods on any field sourced from parsed JSON. The type annotation is a compile-time contract, not a runtime guarantee.
+**Risk if ignored:** Uncaught TypeError crashes the sync diff report generation.
+
+### `CANONICAL_UNIT_TYPES` lives in `lib/sync.ts` — update when ERP adds new unit types
+The set contains: `cases, lbs, kgs, pallets, drums, totes, bags, boxes, mt`. If a new legitimate unit type appears in the ERP data, add it to this set or every sync will produce a non-blocking warning for affected products.
+
 ---
 
 ## Inventory Rules
@@ -126,6 +134,21 @@ If a supplier's country of origin cannot be auto-resolved from `suppliers.json`,
 
 ### The `DFRM ` pattern is a non-inventory row
 Rows with descriptions starting `"DFRM "` are prepayment/finance rows from Teno Norte, not real stock. They are silently dropped by `nonInventoryPatterns` in `exclusion-rules.json`. Do not count them in reconciliation.
+
+---
+
+## UI Components
+
+### Nav links are duplicated across 7 layout files
+The `AdminHeader` component is shared, but each of the 7 admin layout files defines its own `navLinks` array independently. When adding a cross-cutting nav feature (badge, new link, rename), all 7 must be updated:
+- `app/qa/(protected)/layout.tsx`
+- `app/admin/requests/layout.tsx`
+- `app/admin/tools/layout.tsx`
+- `app/review/layout.tsx`
+- `app/admin/email/layout.tsx`
+- `app/admin/discount/layout.tsx`
+- `app/admin/agent/layout.tsx`
+**Risk if ignored:** Inconsistent UX — feature appears on some pages but not others (B002 initially missed 5 of 7 layouts).
 
 ---
 

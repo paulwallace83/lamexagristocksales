@@ -1,7 +1,7 @@
 # B001 — Sync Data Quality: Unit Type Validation & Duplicate Detection
 
 **Epic:** E2 — Data Quality: Sync Validation Completions
-**Status:** Ready
+**Status:** `done`
 **Estimated size:** Medium (2–3 hours agent time)
 
 ---

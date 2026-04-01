@@ -35,5 +35,5 @@ For detailed workflows, load the relevant file from `agent_docs/`:
 ## Batch Execution
 - Current batch queue is in CLAUDE.md under "Batch Queue"
 - Batch documents in `docs/batches/`
-- After implementation: run `/review-correctness`, `/review-security`, `/review-integration` in fresh sessions
+- Full lifecycle: `/plan-batch` → implement → `/retro` (same session, before compaction) → `/review-correctness`, `/review-security`, `/review-integration` (fresh sessions) → `/refactor` → `/close-batch`
 - If stuck or out of context: run `/handoff`

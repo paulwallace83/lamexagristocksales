@@ -7,8 +7,7 @@ The repository uses a two-role model:
 This separation keeps product decisions explicit and implementation changes controlled.
 ## Source Of Truth
 Use these files consistently:
-- AGENTS.md: repository operating protocol for planner and implementation agent behavior.
-- CLAUDE.md: business rules, inventory rules, QA portal rules, sync workflow, and publishing constraints.
+- CLAUDE.md: master instruction file — business rules, inventory rules, QA portal rules, sync workflow, publishing constraints, and agent operating protocol.
 - docs/roadmap.md: prioritized upcoming work.
 - CHANGELOG.md: released changes only.
 - secrets.md: credentials and secrets (gitignored, never committed).
@@ -42,13 +41,85 @@ If new suppliers are found, Claude asks the user for COO before proceeding. If n
 Rollback: copy any snapshot from data/snapshots/ back to data/inventory.json and run `npm run seed`.
 
 ## Delivery Flow
-1. Planner defines a task with goal, scope, constraints, acceptance criteria, and verification.
-2. Claude Code reviews the task and relevant project docs.
-4. Claude Code inspects the current codebase before making changes.
-5. Claude Code implements the smallest complete solution.
-6. Claude Code verifies the result.
-7. Claude Code completes the Documentation Checklist (see Definition Of Done).
-8. Claude Code reports the implementation outcome, verification status, and open risks.
+
+Every batch follows a 7-step lifecycle with dedicated skills for each phase. Steps are sequential — each depends on the output of the previous step.
+
+```
+/plan-batch → implement → /retro → /review-* → /refactor → /close-batch
+    1              2          3         4            5           6
+```
+
+### Step 1: Plan (`/plan-batch`)
+**Who:** Claude Code (implementing agent)
+**Input:** Batch document from `docs/batches/`
+**Process:**
+1. Research: read `CLAUDE.md`, `LESSONS.md`, batch doc, referenced files, relevant `agent_docs/`
+2. Report understanding, flag ambiguities, wait for user confirmation
+3. Create step-by-step implementation plan with risk assessment
+4. Convert plan into testable requirements checklist → `docs/batches/{batch-id}-requirements.md`
+5. Wait for user approval before implementing
+
+**Gate:** User approves the plan. Creates feature branch `batch/{batch-id}`.
+
+### Step 2: Implement
+**Who:** Claude Code (implementing agent)
+**Process:**
+1. Implement the smallest complete solution following the approved plan
+2. Run `npm test` and `npx tsc --noEmit` — both must pass
+3. Verify acceptance criteria from the batch document
+
+**Gate:** Tests pass, types clean, acceptance criteria met.
+
+### Step 3: Retro (`/retro`)
+**Who:** Claude Code (implementing agent — same session, BEFORE context compaction)
+**Process:**
+1. Self-review every file touched: confidence rating, uncertainties, shortcuts, edge cases
+2. Lamex-specific checks: sync survival, data privacy, client/server boundary, path safety
+3. Flag anything rated below 7 for immediate attention
+4. Save to `docs/reviews/{batch-id}-retro.md`
+
+**Gate:** All items rated below 7 are flagged.
+
+### Step 4: Review (`/review-correctness`, `/review-security`, `/review-integration`)
+**Who:** Fresh agent sessions (NOT the implementing agent)
+**Process:** Three independent reviews, each saving to `docs/reviews/`:
+- **Correctness** (`{batch-id}-correctness.md`): bugs, logic errors, unhandled edge cases, AC deviations
+- **Security** (`{batch-id}-security.md`): injection, auth gaps, data exposure, path traversal, file upload validation
+- **Integration** (`{batch-id}-integration.md`): pattern consistency, duplication, naming, sync survival, test coverage, doc accuracy
+
+Each review classifies findings as Critical / Important / Minor.
+
+**Gate:** All three review files exist in `docs/reviews/`.
+
+### Step 5: Refactor (`/refactor`)
+**Who:** Claude Code (can be implementing agent or fresh session)
+**Process:**
+1. Read all four review files (retro + 3 reviews)
+2. Fix all Critical findings immediately (show before/after)
+3. Fix or defer Important findings (deferred items → `docs/reviews/{batch-id}-deferred.md` + TODO in code)
+4. Fix or TODO Minor findings
+5. Run `npm test` and `npx tsc --noEmit` — both must pass
+6. Confirm every finding addressed
+
+**Gate:** Zero unresolved Critical findings. Tests pass.
+
+### Step 6: Close (`/close-batch`)
+**Who:** Claude Code
+**Process:**
+1. Final test run (`npm test` + `npx tsc --noEmit`)
+2. Update documentation: `CLAUDE.md`, `docs/roadmap.md`, `docs/Architecture.md`, `LESSONS.md`, `docs/epics.md`
+3. Check for doc drift — no contradictions between docs and implementation
+4. Clean up: resolve batch-specific TODOs, verify deferred doc exists if needed
+5. Print summary: what was built, docs updated, deferred items, next batch context
+
+**Gate:** Tests pass, docs accurate, no Critical findings open.
+
+### Step 7: Merge & Release
+**Who:** Paul (planner)
+**Process:** Review summary, merge feature branch, tag release if applicable.
+
+### Emergency: Handoff (`/handoff`)
+If a batch is abandoned mid-way (context exhaustion, blocker, need to stop), run `/handoff` to capture session state. See `.claude/failure-recovery.md` for the full decision tree.
 ## Slice Standards
 Every slice should be small enough to complete and verify in one focused pass.
 Use slices when work affects any of the following:
@@ -86,13 +157,13 @@ After every completed slice, Claude Code must verify each applicable item before
 | 4 | **docs/user-guide.md** | User-facing workflow, "What You Can Do" table, file upload section, admin reference tables | Any change visible to QA/reviewer/admin users |
 | 5 | **Agent system prompt** | Tool list in rule 1 (confirmation), batch rules, matching rules, new capabilities | Any agent tool or behavior change |
 | 6 | **docs/workflow.md** | Source of truth list, sync procedure, delivery flow | Process or protocol changes |
-| 7 | **AGENTS.md** | Role definitions, task lifecycle | Role or responsibility changes |
+| 7 | **docs/epics.md** | Epic status and upcoming work scope | Any batch that completes or changes an epic |
 
-**Cross-check step:** After updating docs, grep for stale counts and references:
-- `grep -r "N tools" *.md docs/*.md` — verify tool counts match current total
-- `grep -r "read-only.*action" *.md docs/*.md` — verify read-only/action split
-- Check that all action tools appear in the system prompt rule 1 confirmation list
-- Check that CLAUDE.md key files sections reference any new or renamed files
+**Cross-check step:** After updating docs, check for stale references:
+- `grep -r "AGENTS.md" *.md docs/*.md` — should return zero results
+- Check that `CLAUDE.md` "Batch Queue" table reflects current batch status
+- Check that `CLAUDE.md` key files sections reference any new or renamed files
+- Check that all action tools appear in the agent system prompt confirmation list (if agent tools changed)
 ## Decision Boundaries
 Use this rule to resolve ambiguity:
 - Product, workflow, and data-policy decisions belong to the planner.

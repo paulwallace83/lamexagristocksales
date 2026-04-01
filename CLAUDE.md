@@ -74,6 +74,7 @@ Where to look for what:
 | Universal data privacy rules (always active) | [`.claude/rules/data-privacy.md`](.claude/rules/data-privacy.md) |
 | What to do when something breaks during a batch | [`.claude/failure-recovery.md`](.claude/failure-recovery.md) |
 | Context after compaction events | [`.claude/context-essentials.md`](.claude/context-essentials.md) |
+| Batch lifecycle skills (plan → retro → review → refactor → close) | [`.claude/commands/`](.claude/commands/) |
 
 ## Agent Docs (load when relevant)
 
@@ -92,25 +93,25 @@ Where to look for what:
 
 ## Current Sprint Context
 
-**Last updated:** 2026-03-31
+**Last updated:** 2026-04-01
 
 ### Completed
 - Agentic coding governance migration (CLAUDE.md refactor, agent_docs/, .claude/rules/, /handoff skill, PostCompact hook)
-- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts` — 59 tests
+- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts`, `sync-validation.test.ts` — 76 tests
 - CI pipeline: `.github/workflows/ci.yml` — TypeScript type check + vitest on push/PR to main
 - `LESSONS.md` created with accumulated project knowledge
 - `docs/project-brief.md` — product context, personas, constraints, glossary
 - `docs/Architecture.md` — system topology, tech decisions, sync pipeline, storage, auth, constraints
 - `docs/epics.md` — 8 epics derived from roadmap with priority order
 - Batch planning complete: template + 3 batch docs ready for execution
-- Sprint execution skills: `/review-correctness`, `/review-security`, `/review-integration`
+- Full batch lifecycle skills: `/plan-batch`, `/retro`, `/review-correctness`, `/review-security`, `/review-integration`, `/refactor`, `/close-batch`
 - Failure Recovery Playbook: `.claude/failure-recovery.md`
+- B001: Sync data quality — unit type validation, unit type change detection, duplicate product detection (`lib/sync.ts`, `tests/sync-validation.test.ts`)
+- B002: Pending request badge — live badge count on "Requests" nav link across all 7 admin layouts (`components/AdminHeader.tsx`, all layout files)
 
 ### Batch Queue
 | Batch | Epic | Size | Status |
 |-------|------|------|--------|
-| [B001](docs/batches/B001-sync-data-quality.md) | E2 Data Quality | Medium | `ready` |
-| [B002](docs/batches/B002-pending-request-badge.md) | E3 QA Workflow | Small | `ready` |
 | [B003](docs/batches/B003-qa-panel-doc-actions.md) | E3 QA Workflow | Medium | `ready` |
 
 ### In Progress
