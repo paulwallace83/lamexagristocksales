@@ -59,3 +59,4 @@ Describe the test file(s) to create or extend. Include a bootstrap snippet if th
 - [ ] `npm test` passes
 - [ ] `npx tsc --noEmit` clean
 - [ ] No unrelated changes introduced
+- [ ] Documentation Checklist complete — see `docs/workflow.md` (CLAUDE.md, roadmap.md, Architecture.md, LESSONS.md, epics.md as applicable)

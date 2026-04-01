@@ -26,14 +26,8 @@ Organized by status. Updated as priorities shift.
 | v0.10.2 | Batch Document Upload | `batch_lot_lookup` + `batch_upload_documents`, 24+ files in one drop |
 | v0.10.3 | COA Backfill & Tools | Backfill agent tools, `/admin/tools` UI, backfill API, pill filtering, AI caveat |
 | v0.10.4 | Enquiry Workflow | Remove table/header enquiry buttons; clickable rows with chevron; funnel enquiries through product detail page |
-
----
-
-## Active Priorities
-
-### Data Quality (remaining)
-- Validate unit types are correctly identified per product during sync.
-- Flag potential duplicate products with similar names/specs.
+| v0.11.0 | Governance & CI | Agentic coding governance (CLAUDE.md refactor, `agent_docs/`, `.claude/rules/`), unit test suite (59 vitest tests), CI pipeline (type check + vitest on push/PR), `LESSONS.md`, project brief, Architecture doc, epics + batch planning, failure recovery playbook |
+| v0.11.1 | Data Quality (B001) | Unit type validation + change detection, duplicate product detection in `validateBusinessRules()`. 17 new tests. |
 
 ---
 

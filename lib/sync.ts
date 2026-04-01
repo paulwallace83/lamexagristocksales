@@ -93,7 +93,9 @@ export interface PendingWarehouse {
 export type SyncWarningType =
   | "missing-coo"
   | "unknown-warehouse"
-  | "ambiguous-unit-type"
+  | "invalid-unit-type"
+  | "unit-type-changed"
+  | "probable-duplicate"
   | "customer-name-detected"
   | "missing-bbd"
   | "new-supplier"
@@ -106,6 +108,13 @@ export interface SyncWarning {
   message: string;
   requiresAction: boolean;
 }
+
+// ─── Constants ──────────────────────────────────────────────────
+
+/** Valid unit type values (lowercase). Compared case-insensitively. */
+export const CANONICAL_UNIT_TYPES = new Set([
+  "cases", "lbs", "kgs", "pallets", "drums", "totes", "bags", "boxes", "mt",
+]);
 
 // ─── JSON shapes for reference data ──────────────────────────────
 
@@ -398,7 +407,7 @@ export function computeDiff(
   });
 
   // Business rule validation warnings
-  warnings.push(...validateBusinessRules(proposed, suppliersFile, warehousesFile));
+  warnings.push(...validateBusinessRules(proposed, suppliersFile, warehousesFile, current));
 
   // Add warnings for new references
   for (const s of newSuppliers) {
@@ -448,7 +457,8 @@ export function computeDiff(
 export function validateBusinessRules(
   proposed: InventoryData,
   suppliers: SuppliersFile,
-  warehouses: WarehousesFile
+  warehouses: WarehousesFile,
+  current?: InventoryData
 ): SyncWarning[] {
   const warnings: SyncWarning[] = [];
   const warehouseMap = new Map((warehouses.warehouses || []).map((w) => [w.name, w]));
@@ -477,6 +487,67 @@ export function validateBusinessRules(
           });
         }
       }
+    }
+  }
+
+  // ── Unit type validation ──────────────────────────────────────
+  for (const product of proposed.products || []) {
+    const ut = (product.unitType || "").trim();
+    if (!ut || !CANONICAL_UNIT_TYPES.has(ut.toLowerCase())) {
+      warnings.push({
+        type: "invalid-unit-type",
+        productId: product.id,
+        message: `Invalid unit type "${ut || "(empty)"}" on "${product.product}" (${product.id})`,
+        requiresAction: false,
+      });
+    }
+  }
+
+  // ── Unit type change detection ────────────────────────────────
+  if (current) {
+    const currentUnitTypes = new Map(
+      (current.products || []).map((p) => [p.id, p.unitType])
+    );
+    for (const product of proposed.products || []) {
+      const prev = currentUnitTypes.get(product.id);
+      if (typeof prev === "string" && prev && (product.unitType || "").toLowerCase() !== prev.toLowerCase()) {
+        warnings.push({
+          type: "unit-type-changed",
+          productId: product.id,
+          message: `Unit type changed for "${product.product}" (${product.id}): "${prev}" → "${product.unitType}"`,
+          requiresAction: false,
+        });
+      }
+    }
+  }
+
+  // ── Probable duplicate detection ──────────────────────────────
+  const dupeGroups = new Map<string, { id: string; name: string }[]>();
+  for (const product of proposed.products || []) {
+    // TODO: "|" separator could cause false collisions if field values contain "|".
+    // Switch to JSON.stringify([...]) if this ever becomes an issue. (B001 review finding)
+    const key = [
+      (product.commodity || "").toLowerCase(),
+      (product.format || "").toLowerCase(),
+      (product.specification ?? "").toLowerCase(),
+      String(product.organic),
+    ].join("|");
+    const group = dupeGroups.get(key);
+    const entry = { id: product.id, name: product.product };
+    if (group) {
+      group.push(entry);
+    } else {
+      dupeGroups.set(key, [entry]);
+    }
+  }
+  for (const group of dupeGroups.values()) {
+    if (group.length >= 2) {
+      const ids = group.map((g) => `"${g.name}" (${g.id})`).join(", ");
+      warnings.push({
+        type: "probable-duplicate",
+        message: `Probable duplicate products: ${ids}`,
+        requiresAction: false,
+      });
     }
   }
 

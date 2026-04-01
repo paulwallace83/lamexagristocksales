@@ -19,11 +19,11 @@ Logical clusters of related work. Each epic maps to a theme from the roadmap. Ba
 ---
 
 ## E2 — Data Quality: Sync Validation Completions
-**Status:** `next`
+**Status:** `active` (B001 done — unit type + duplicate checks; COA review queue remaining)
 **Value:** Closes the remaining gaps in the weekly sync validation layer. Bad data is caught before publication.
 **Roadmap items:**
-- Validate unit types are correctly identified per product during sync (Active Priorities)
-- Flag potential duplicate products with similar names/specs (Active Priorities)
+- ~~Validate unit types are correctly identified per product during sync~~ ✓ B001
+- ~~Flag potential duplicate products with similar names/specs~~ ✓ B001
 - COA extraction review queue — flag lots for QA verification before going public (Medium-Term)
 
 **Acceptance shape:** Sync output includes a validation summary that flags unit type anomalies and probable duplicates. Lots with unreviewed auto-extracted COA data are marked pending.
