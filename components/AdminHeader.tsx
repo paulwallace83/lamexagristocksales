@@ -4,6 +4,7 @@ import Link from "next/link";
 interface NavLink {
   href: string;
   label: string;
+  badge?: number;
 }
 
 interface AdminHeaderProps {
@@ -55,6 +56,11 @@ export default function AdminHeader({
                   }`}
                 >
                   {link.label}
+                  {link.badge != null && link.badge > 0 && (
+                    <span className="ml-1 bg-amber-100 text-amber-800 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                      {link.badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
