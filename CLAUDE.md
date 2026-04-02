@@ -93,11 +93,11 @@ Where to look for what:
 
 ## Current Sprint Context
 
-**Last updated:** 2026-04-01
+**Last updated:** 2026-04-02
 
 ### Completed
 - Agentic coding governance migration (CLAUDE.md refactor, agent_docs/, .claude/rules/, /handoff skill, PostCompact hook)
-- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts`, `sync-validation.test.ts` — 76 tests
+- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts`, `sync-validation.test.ts` — 78 tests
 - CI pipeline: `.github/workflows/ci.yml` — TypeScript type check + vitest on push/PR to main
 - `LESSONS.md` created with accumulated project knowledge
 - `docs/project-brief.md` — product context, personas, constraints, glossary
@@ -108,11 +108,11 @@ Where to look for what:
 - Failure Recovery Playbook: `.claude/failure-recovery.md`
 - B001: Sync data quality — unit type validation, unit type change detection, duplicate product detection (`lib/sync.ts`, `tests/sync-validation.test.ts`)
 - B002: Pending request badge — live badge count on "Requests" nav link across all 7 admin layouts (`components/AdminHeader.tsx`, all layout files)
+- B003: QA panel doc actions — inline delete and upload from expanded QA dashboard panel (`app/api/documents/[productId]/route.ts`, `app/qa/(protected)/QADashboardClient.tsx`)
 
 ### Batch Queue
 | Batch | Epic | Size | Status |
 |-------|------|------|--------|
-| [B003](docs/batches/B003-qa-panel-doc-actions.md) | E3 QA Workflow | Medium | `ready` |
 
 ### In Progress
 - Nothing active
