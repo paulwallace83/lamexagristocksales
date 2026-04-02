@@ -46,6 +46,11 @@ const safe = input.replace(/[^a-zA-Z0-9_\-\.]/g, "_");
 ```
 `generateDocFilename()` in `lib/documents.ts` does this — use it rather than constructing filenames manually.
 
+### Use `getUploadDir()` for path construction — never build upload paths manually
+**What happened:** B003 review found that the DELETE route's local `safePath` used a permissive blocklist (`/[/\\?%*<>"\x00-\x1f]/g`) while the upload route and `lib/documents.ts` use a strict allowlist (`/[^a-zA-Z0-9._-]/g` via `safeSeg`). When a product ID or lot number contained spaces, the two sanitizers produced different paths — delete couldn't find the file, leaving orphans on disk.
+**Pattern:** Always use `getUploadDir()` from `lib/documents.ts` to construct upload directory paths. Never replicate path construction logic in route handlers. The canonical `safeSeg()` function in `lib/documents.ts` is the single source of truth for path segment sanitization.
+**Risk if ignored:** Silent file orphaning — DB record deleted but physical file remains because the path doesn't match where the file was originally stored.
+
 ### Old-format files use a unix timestamp prefix
 Files uploaded before the descriptive naming convention use `{unix-timestamp}-{original-filename}`. The rename utility (`npm run rename-uploads` or `/admin/tools`) handles batch migration. Always check which format a file is in before building display logic around filenames.
 
@@ -98,6 +103,11 @@ Do not add `npx next lint` to CI or scripts — the command was removed in Next.
 **What happened:** B001 correctness review caught that `product.unitType.toLowerCase()` would crash if `unitType` was `null` at runtime despite being typed as `string`. JSON data from `inventory.json` can contain nulls that TypeScript doesn't catch.
 **Pattern:** Use `(field || "").toLowerCase()` or `typeof field === "string"` before calling string methods on any field sourced from parsed JSON. The type annotation is a compile-time contract, not a runtime guarantee.
 **Risk if ignored:** Uncaught TypeError crashes the sync diff report generation.
+
+### `extractBaseContract()` is server-only — client-side must duplicate the logic
+**What happened:** B003 needed base contract extraction in a `"use client"` component. `extractBaseContract()` in `lib/inventory.ts` cannot be imported client-side because it transitively imports `better-sqlite3`. The client reimplemented the logic but initially used `lastIndexOf("-")` instead of `indexOf("-")`, which would produce different results for contracts with multiple hyphens (e.g., `ABC-123-04`).
+**Pattern:** When duplicating server-only logic client-side, always add a comment referencing the canonical function (file + line). Use `indexOf("-")` (first hyphen) to match `extractBaseContract()`.
+**Risk if ignored:** Silent data mismatch — client groups documents under the wrong base contract.
 
 ### `CANONICAL_UNIT_TYPES` lives in `lib/sync.ts` — update when ERP adds new unit types
 The set contains: `cases, lbs, kgs, pallets, drums, totes, bags, boxes, mt`. If a new legitimate unit type appears in the ERP data, add it to this set or every sync will produce a non-blocking warning for affected products.

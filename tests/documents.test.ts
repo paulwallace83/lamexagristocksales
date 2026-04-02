@@ -10,7 +10,9 @@ import {
   getShortCategoryLabel,
   getRequiredDocs,
   generateDocFilename,
+  removeDocument,
 } from "../lib/documents";
+import { getDb } from "../lib/db";
 import type { Product } from "../lib/inventory";
 
 // ─── getCategoryLabel ─────────────────────────────────────────────────────────
@@ -191,5 +193,30 @@ describe("generateDocFilename", () => {
       targetDir: FAKE_DIR,
     });
     expect(name).toContain("Unknown");
+  });
+});
+
+// ─── removeDocument ──────────────────────────────────────────────────────────
+
+describe("removeDocument", () => {
+  it("returns true when a matching row is deleted", () => {
+    const mockRun = vi.fn().mockReturnValue({ changes: 1 });
+    const mockPrepare = vi.fn().mockReturnValue({ run: mockRun });
+    const mockPragma = vi.fn();
+    vi.mocked(getDb).mockReturnValue({ prepare: mockPrepare, pragma: mockPragma } as never);
+
+    expect(removeDocument("prod-1", "doc-abc")).toBe(true);
+    expect(mockPragma).toHaveBeenCalledWith("foreign_keys = ON");
+    expect(mockPrepare).toHaveBeenCalledWith("DELETE FROM documents WHERE product_id = ? AND id = ?");
+    expect(mockRun).toHaveBeenCalledWith("prod-1", "doc-abc");
+  });
+
+  it("returns false when no matching row exists", () => {
+    const mockRun = vi.fn().mockReturnValue({ changes: 0 });
+    const mockPrepare = vi.fn().mockReturnValue({ run: mockRun });
+    const mockPragma = vi.fn();
+    vi.mocked(getDb).mockReturnValue({ prepare: mockPrepare, pragma: mockPragma } as never);
+
+    expect(removeDocument("prod-1", "nonexistent")).toBe(false);
   });
 });

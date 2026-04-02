@@ -29,6 +29,7 @@ Organized by status. Updated as priorities shift.
 | v0.11.0 | Governance & CI | Agentic coding governance (CLAUDE.md refactor, `agent_docs/`, `.claude/rules/`), unit test suite (59 vitest tests), CI pipeline (type check + vitest on push/PR), `LESSONS.md`, project brief, Architecture doc, epics + batch planning, failure recovery playbook |
 | v0.11.1 | Data Quality (B001) | Unit type validation + change detection, duplicate product detection in `validateBusinessRules()`. 17 new tests. |
 | v0.11.2 | Pending Request Badge (B002) | Live pending-request count badge on "Requests" nav link across all 7 admin layouts. Badge capped at 99+. |
+| v0.11.3 | QA Panel Doc Actions (B003) | Inline delete + upload from expanded QA dashboard panel. All 5 categories rendered. Auth hardened (401→404). DELETE handler uses `getUploadDir()` for consistent path construction. |
 
 ---
 
@@ -48,7 +49,7 @@ Organized by status. Updated as priorities shift.
 
 | Slice | Description | Value |
 |-------|-------------|-------|
-| QA Dashboard enhancements | Delete/upload docs from expanded panel, filter by supplier or doc status. | QA workflow |
+| QA Dashboard enhancements | ~~Delete/upload docs from expanded panel~~ ✓ B003, filter by supplier or doc status. | QA workflow |
 | Admin dashboard homepage | `/admin` landing page: pending requests, missing docs, agent usage, last sync, quick links. | Overview |
 | COA extraction review queue | Flag lots for QA review after auto-extraction. Values verified before going public. | Data quality |
 | Reporting & analytics | Inventory trends from snapshots, doc completion velocity, agent usage and cost trends. | Business insight |

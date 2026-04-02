@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unlinkSync, existsSync } from "fs";
-import { join, resolve } from "path";
+import { resolve } from "path";
 import { auth } from "@/lib/auth";
-import { getDocumentsForProduct, removeDocument, getDocumentUrl } from "@/lib/documents";
-import { getUploadsRoot } from "@/lib/paths";
+import { getDocumentsForProduct, removeDocument, getDocumentUrl, getUploadDir } from "@/lib/documents";
+import type { DocCategory } from "@/lib/documents";
 
-/** Sanitize path segments to prevent directory traversal.
- *  Strips path-traversal characters while preserving spaces, pipes, and
- *  other characters valid in filenames. The resolve().startsWith() guard
- *  is the real security backstop.
- */
-function safePath(segment: string): string {
-  return segment.replace(/[/\\?%*<>"\x00-\x1f]/g, "_");
-}
+const VALID_CATEGORIES: DocCategory[] = ["coa", "test-results", "specs", "labels", "photos"];
 
 export async function GET(
   _req: NextRequest,
@@ -20,7 +13,7 @@ export async function GET(
 ) {
   const session = await auth();
   if (!session?.user || (session.user.role !== "qa" && session.user.role !== "reviewer")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const { productId } = await params;
@@ -43,7 +36,7 @@ export async function DELETE(
 ) {
   const session = await auth();
   if (!session?.user || (session.user.role !== "qa" && session.user.role !== "reviewer")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const { productId } = await params;
@@ -51,40 +44,39 @@ export async function DELETE(
   const documentId = searchParams.get("documentId");
   const filename = searchParams.get("filename");
   const category = searchParams.get("category");
-  const lotId = searchParams.get("lotId");
+  const lotNumber = searchParams.get("lotNumber");
   const baseContract = searchParams.get("baseContract");
 
   if (!documentId || !filename || !category) {
     return NextResponse.json({ error: "Missing documentId, filename, or category" }, { status: 400 });
   }
 
-  // Sanitize all path segments to prevent directory traversal
-  const safeProductId = safePath(productId);
-  const safeFilename = safePath(filename);
-  const safeCategory = safePath(category);
-  const uploadsRoot = resolve(getUploadsRoot());
-
-  let filepath: string;
-  if (lotId) {
-    filepath = join(uploadsRoot, safeProductId, "lots", safePath(lotId), safeCategory, safeFilename);
-  } else if (baseContract) {
-    filepath = join(uploadsRoot, safeProductId, "contracts", safePath(baseContract), safeCategory, safeFilename);
-  } else {
-    filepath = join(uploadsRoot, safeProductId, safeCategory, safeFilename);
+  if (!VALID_CATEGORIES.includes(category as DocCategory)) {
+    return NextResponse.json({ error: "Invalid category" }, { status: 400 });
   }
 
-  // Final guard: ensure resolved path stays within uploads directory
-  if (!resolve(filepath).startsWith(uploadsRoot + "/")) {
-    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
-  }
-
-  if (existsSync(filepath)) {
-    unlinkSync(filepath);
-  }
-
+  // Remove DB record first — only delete the physical file if the record existed
   const removed = removeDocument(productId, documentId);
   if (!removed) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
+  }
+
+  // Use getUploadDir() for path construction — same function used by upload route
+  // to guarantee consistent sanitization (safeSeg allowlist)
+  try {
+    const dir = getUploadDir(productId, category, {
+      lotNumber: lotNumber ?? undefined,
+      baseContract: baseContract ?? undefined,
+    });
+    // Sanitize filename with the same allowlist pattern as safeSeg
+    const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const filepath = resolve(dir, safeFilename);
+    if (filepath.startsWith(resolve(dir) + "/") && existsSync(filepath)) {
+      unlinkSync(filepath);
+    }
+  } catch {
+    // Path construction failed (e.g., traversal attempt) — DB record already removed,
+    // log and continue. The orphaned file is preferable to an error after DB commit.
   }
 
   return NextResponse.json({ success: true });

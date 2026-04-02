@@ -19,6 +19,7 @@ interface DocEntry {
   lotNumbers: string[];
 }
 
+// TODO: Extract to shared lib/constants.ts (no server deps) to deduplicate with lib/documents.ts
 const CATEGORY_LABELS: Record<string, string> = {
   coa: "COA",
   "test-results": "Test Results",
@@ -28,6 +29,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_ORDER = ["coa", "test-results", "specs", "labels", "photos"];
+const LOT_LEVEL_CATS = new Set(["coa", "test-results"]);
 
 function getCategory(s: ProductDocStatus): "complete" | "partial" | "missing" {
   if (s.complete) return "complete";
@@ -70,6 +72,22 @@ export default function QADashboardClient({ statuses, today }: { statuses: Produ
       setLoadingDocs(null);
     }
   }, [expandedProductId, docsCache]);
+
+  const refreshDocs = useCallback(async (productId: string) => {
+    try {
+      const res = await fetch(`/api/documents/${encodeURIComponent(productId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDocsCache((prev) => ({ ...prev, [productId]: data.documents ?? [] }));
+      } else {
+        // Clear cache so re-expand triggers a fresh fetch
+        setDocsCache((prev) => { const next = { ...prev }; delete next[productId]; return next; });
+      }
+    } catch {
+      // Clear cache so re-expand triggers a fresh fetch
+      setDocsCache((prev) => { const next = { ...prev }; delete next[productId]; return next; });
+    }
+  }, []);
 
   const counts = useMemo(() => {
     const c = { all: statuses.length, missing: 0, partial: 0, complete: 0 };
@@ -242,6 +260,7 @@ export default function QADashboardClient({ statuses, today }: { statuses: Produ
                             loading={loadingDocs === s.productId}
                             lots={s.lots}
                             today={today}
+                            onRefresh={() => refreshDocs(s.productId)}
                           />
                         </td>
                       </tr>
@@ -263,13 +282,35 @@ function DocumentsPanel({
   loading,
   lots,
   today,
+  onRefresh,
 }: {
   productId: string;
   docs: DocEntry[] | undefined;
   loading: boolean;
-  lots: Array<{ lotNumber: string; bbd: string }>;
+  lots: Array<{ id: number; lotNumber: string; bbd: string; contracts: string[] }>;
   today: string;
+  onRefresh: () => void;
 }) {
+  const [deleting, setDeleting] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  const [uploadCategory, setUploadCategory] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [selectedLots, setSelectedLots] = useState<Set<number>>(new Set());
+  const [selectedContract, setSelectedContract] = useState<string>("");
+
+  // Mirrors extractBaseContract() in lib/inventory.ts — must use indexOf (first hyphen)
+  // to match server-side logic. Cannot import directly (server-only module).
+  const baseContracts = useMemo(() => {
+    const set = new Set<string>();
+    for (const lot of lots) {
+      for (const c of lot.contracts) {
+        const dash = c.indexOf("-");
+        set.add(dash > 0 ? c.substring(0, dash) : c);
+      }
+    }
+    return Array.from(set);
+  }, [lots]);
+
   const bbdByLot = useMemo(() => {
     const m: Record<string, string> = {};
     for (const lot of lots) {
@@ -277,19 +318,85 @@ function DocumentsPanel({
     }
     return m;
   }, [lots]);
+
+  const handleDelete = async (doc: DocEntry) => {
+    if (!window.confirm(`Delete ${doc.originalName}? This cannot be undone.`)) return;
+    setDeleting((prev) => new Set(prev).add(doc.id));
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        documentId: doc.id,
+        filename: doc.filename,
+        category: doc.category,
+      });
+      if (doc.lotNumbers.length > 0) {
+        params.set("lotNumber", doc.lotNumbers[0]);
+      } else if (doc.baseContract) {
+        params.set("baseContract", doc.baseContract);
+      }
+      const res = await fetch(
+        `/api/documents/${encodeURIComponent(productId)}?${params}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to delete document");
+        return;
+      }
+      onRefresh();
+    } catch {
+      setError("Failed to delete document");
+    } finally {
+      setDeleting((prev) => { const next = new Set(prev); next.delete(doc.id); return next; });
+    }
+  };
+
+  const handleUpload = async (category: string, file: File) => {
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("productId", productId);
+      formData.append("category", category);
+
+      if (LOT_LEVEL_CATS.has(category)) {
+        const lotIds = Array.from(selectedLots);
+        if (lotIds.length === 0) {
+          setError("Select at least one lot");
+          setUploading(false);
+          return;
+        }
+        formData.append("lotIds", lotIds.join(","));
+      } else {
+        const contract = selectedContract || baseContracts[0];
+        if (!contract) {
+          setError("No contracts available");
+          setUploading(false);
+          return;
+        }
+        formData.append("baseContract", contract);
+      }
+
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Upload failed");
+        return;
+      }
+      setUploadCategory(null);
+      setSelectedLots(new Set());
+      setSelectedContract("");
+      onRefresh();
+    } catch {
+      setError("Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading || !docs) {
     return <p className="text-sm text-gray-400 py-1">Loading documents...</p>;
-  }
-
-  if (docs.length === 0) {
-    return (
-      <p className="text-sm text-gray-400 py-1">
-        No documents uploaded.{" "}
-        <Link href={`/qa/upload/${productId}`} className="text-blue-600 hover:underline">
-          Upload documents
-        </Link>
-      </p>
-    );
   }
 
   const grouped: Record<string, DocEntry[]> = {};
@@ -299,47 +406,181 @@ function DocumentsPanel({
 
   return (
     <div className="space-y-3">
-      {CATEGORY_ORDER.filter((cat) => grouped[cat]).map((cat) => (
-        <div key={cat}>
-          <h4 className="text-sm font-semibold text-gray-600 mb-1">
-            {CATEGORY_LABELS[cat] ?? cat}
-          </h4>
-          <div className="space-y-1 pl-3">
-            {grouped[cat].map((d) => (
-              <div key={d.id} className="flex items-center gap-3 text-sm">
-                <a
-                  href={d.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline truncate max-w-sm"
-                  title={d.originalName}
-                >
-                  {d.originalName}
-                </a>
-                {d.lotNumbers.length > 0 && (
-                  <span className="text-gray-400 font-mono text-xs">
-                    Lot {d.lotNumbers.join(", ")}
-                  </span>
-                )}
-                {d.lotNumbers.length > 0 && (() => {
-                  const bbd = bbdByLot[d.lotNumbers[0]];
-                  if (!bbd) return null;
-                  return bbd < today ? (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-1 rounded font-medium">BBD: {bbd}</span>
-                  ) : (
-                    <span className="text-gray-400 text-xs">BBD: {bbd}</span>
-                  );
-                })()}
-                {d.baseContract && (
-                  <span className="text-gray-400 font-mono text-xs">
-                    Contract {d.baseContract}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+      {error && (
+        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-1.5">
+          {error}
         </div>
-      ))}
+      )}
+      {CATEGORY_ORDER.map((cat) => {
+        const catDocs = grouped[cat] ?? [];
+        const isLotLevel = LOT_LEVEL_CATS.has(cat);
+        return (
+          <div key={cat}>
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="text-sm font-semibold text-gray-600">
+                {CATEGORY_LABELS[cat] ?? cat}
+              </h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setUploadCategory(uploadCategory === cat ? null : cat);
+                  setSelectedLots(new Set());
+                  setSelectedContract(baseContracts[0] || "");
+                  setError(null);
+                }}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                {uploadCategory === cat ? "Cancel" : "+ Upload"}
+              </button>
+            </div>
+
+            {/* Inline upload form */}
+            {uploadCategory === cat && (
+              <form
+                className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded space-y-2"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const fileInput = e.currentTarget.querySelector(
+                    'input[type="file"]'
+                  ) as HTMLInputElement;
+                  const file = fileInput?.files?.[0];
+                  if (!file) return;
+                  await handleUpload(cat, file);
+                }}
+              >
+                {isLotLevel ? (
+                  <div>
+                    <p className="text-xs font-medium text-gray-600 mb-1">Select lot(s):</p>
+                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                      {lots.map((lot) => (
+                        <label
+                          key={lot.id}
+                          className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded border cursor-pointer transition-colors ${
+                            selectedLots.has(lot.id)
+                              ? "bg-blue-100 border-blue-400 text-blue-800"
+                              : "bg-white border-gray-200 text-gray-600 hover:border-gray-400"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={selectedLots.has(lot.id)}
+                            onChange={() => {
+                              setSelectedLots((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(lot.id)) next.delete(lot.id);
+                                else next.add(lot.id);
+                                return next;
+                              });
+                            }}
+                          />
+                          <span className="font-mono">{lot.lotNumber}</span>
+                          {lot.bbd && (
+                            lot.bbd < today ? (
+                              <span className="text-[10px] bg-amber-100 text-amber-700 px-1 rounded">
+                                BBD: {lot.bbd}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] opacity-50">BBD: {lot.bbd}</span>
+                            )
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  baseContracts.length > 1 && (
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">
+                        Contract:
+                        <select
+                          className="ml-2 text-xs border border-gray-300 rounded px-2 py-1"
+                          value={selectedContract}
+                          onChange={(e) => setSelectedContract(e.target.value)}
+                        >
+                          {baseContracts.map((bc) => (
+                            <option key={bc} value={bc}>{bc}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  )
+                )}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                    className="text-xs"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={uploading || (isLotLevel && selectedLots.size === 0)}
+                    className="text-xs font-semibold px-3 py-1 rounded bg-[#1a2b5f] text-white hover:bg-[#4a90c4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploading ? "Uploading..." : "Upload"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Document list */}
+            {catDocs.length > 0 ? (
+              <div className="space-y-1 pl-3">
+                {catDocs.map((d) => (
+                  <div key={d.id} className="flex items-center gap-3 text-sm">
+                    <a
+                      href={d.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline truncate max-w-sm"
+                      title={d.originalName}
+                    >
+                      {d.originalName}
+                    </a>
+                    {d.lotNumbers.length > 0 && (
+                      <span className="text-gray-400 font-mono text-xs">
+                        Lot {d.lotNumbers.join(", ")}
+                      </span>
+                    )}
+                    {d.lotNumbers.length > 0 && (() => {
+                      const bbd = bbdByLot[d.lotNumbers[0]];
+                      if (!bbd) return null;
+                      return bbd < today ? (
+                        <span className="text-xs bg-amber-100 text-amber-700 px-1 rounded font-medium">BBD: {bbd}</span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">BBD: {bbd}</span>
+                      );
+                    })()}
+                    {d.baseContract && (
+                      <span className="text-gray-400 font-mono text-xs">
+                        Contract {d.baseContract}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(d)}
+                      disabled={deleting.has(d.id)}
+                      className="text-red-400 hover:text-red-600 transition-colors disabled:opacity-50 flex-shrink-0"
+                      title="Delete document"
+                    >
+                      {deleting.has(d.id) ? (
+                        <span className="text-xs">...</span>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 pl-3">No documents uploaded.</p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
