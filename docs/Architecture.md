@@ -77,8 +77,9 @@ ERP (Excel pivot table)
                                  data/import-review.json
   → diff review + approval   →  human sign-off
   → scripts/sync-inventory.ts →  data/inventory.json (overwritten)
+     (delegates to lib/sync-apply.ts applySync())
                                   data/snapshots/inventory-YYYY-MM-DD.json
-  → lib/db.ts autoSeed()     →  SQLite: products/listings/lots wiped + re-inserted
+  → applySync() seed txn     →  SQLite: products/listings/lots wiped + re-inserted
   → relinkDocumentLots()     →  document_lots rows re-created by lot number
   → relinkCoaData()          →  coa_data.lot_id updated by lot number
   → deductDiscountLots()     →  discount lots removed from regular inventory
@@ -93,8 +94,8 @@ ERP (Excel pivot table)
 | 2. Compute diff | `lib/sync.ts computeDiff()` | `SyncDiff` markdown report | — |
 | 3. Validate rules | `lib/sync.ts validateBusinessRules()` | Blocking/non-blocking warnings array | — |
 | 4. Human approval | Manual / `/review` portal | Go / no-go | — |
-| 5. Snapshot + overwrite | `scripts/sync-inventory.ts` | `inventory.json`, dated snapshot | Snapshot only |
-| 6. Re-seed SQLite | `lib/db.ts autoSeed()` | All inventory tables re-inserted | `documents`, `users`, `discount_items`, `product_flags`, `conversations`, `api_usage`, `document_requests` |
+| 5. Snapshot + overwrite | `lib/sync-apply.ts applySync()` (CLI: `scripts/sync-inventory.ts`) | `inventory.json`, dated snapshot | Snapshot only |
+| 6. Re-seed SQLite | `lib/sync-apply.ts applySync()` seed transaction | All inventory tables re-inserted (incl. lots) | `documents`, `users`, `discount_items`, `product_flags`, `conversations`, `api_usage`, `document_requests` |
 | 7. Re-link documents | `lib/documents.ts relinkDocumentLots()` | `document_lots` rows re-created | — |
 | 8. Re-link COA data | `lib/coa-data.ts relinkCoaData()` | `coa_data.lot_id` updated | — |
 | 9. Deduct discounts | `lib/discount.ts deductDiscountLots()` | Active discount lots removed from `lots`, `lot_contracts`, `document_lots` | `discount_items` |
@@ -116,7 +117,7 @@ ERP (Excel pivot table)
 
 **Path resolution:** `lib/paths.ts getDataDir()` checks `RAILWAY_VOLUME_PATH` + `existsSync()`. Falls back to `process.cwd()` locally and during build (volume not mounted at build time — do not read from the volume at build time).
 
-**First-deploy bootstrap:** On first access, `getDb()` detects an empty `products` table and runs `autoSeed()`. `copyUploadsToVolume()` copies `public/uploads/` from the build image to the volume once.
+**First-deploy bootstrap:** On first access, `getDb()` detects an empty `products` table and runs `autoSeed()`. `copyUploadsToVolume()` copies `public/uploads/` from the build image to the volume once. After first deploy, all weekly syncs use `lib/sync-apply.ts applySync()` (called from CLI or future route handlers) — `autoSeed()` does not re-run once products exist.
 
 **Upload directory structure:**
 

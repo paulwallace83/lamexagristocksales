@@ -31,6 +31,7 @@ Organized by status. Updated as priorities shift.
 | v0.11.2 | Pending Request Badge (B002) | Live pending-request count badge on "Requests" nav link across all 7 admin layouts. Badge capped at 99+. |
 | v0.11.3 | QA Panel Doc Actions (B003) | Inline delete + upload from expanded QA dashboard panel. All 5 categories rendered. Auth hardened (401→404). DELETE handler uses `getUploadDir()` for consistent path construction. |
 | v0.11.4 | Post-Sync Email Suggestion (B008) | `get_new_arrivals` + `clear_new_arrivals` agent tools. System prompt rule 13 guides post-sync new-arrival workflow with email composer link. |
+| v0.11.5 | Sync-Apply Library (B004) | Extracted 480-line sync script into reusable `applySync()` in `lib/sync-apply.ts`. Atomic file lock (O_CREAT\|O_EXCL), structured `SyncApplyResult`, lot insertion fix (pre-existing gap), parameterized `rootDir`. Foundation for agent-powered sync (B005–B007). 9 tests. |
 
 ---
 
@@ -38,7 +39,7 @@ Organized by status. Updated as priorities shift.
 
 | Slice | Description | Value |
 |-------|-------------|-------|
-| Agent-powered sync | Paste pivot data in agent chat → auto-parse and sync. Removes need for Claude Code session for routine weekly updates. | Operational efficiency |
+| Agent-powered sync | Paste pivot data in agent chat → auto-parse and sync. Removes need for Claude Code session for routine weekly updates. Foundation: B004 (sync-apply library). Remaining: B005 (read tools), B006 (write tools), B007 (dry-run). | Operational efficiency |
 | Enquiry tracking | Persist all enquiries to DB (not just doc requests). Sales gets visibility into lead volume, response times, product interest. | Sales insight |
 | ~~Pending request badge~~ | ~~Show document request count on "Requests" nav link across all admin pages.~~ ✓ B002 | QA workflow |
 | Automated email scheduling | Schedule weekly marketing emails to send automatically after sync, with manual override. Removes the "remember to send" step. | Consistency |
