@@ -97,22 +97,27 @@ Where to look for what:
 
 ### Completed
 - Agentic coding governance migration (CLAUDE.md refactor, agent_docs/, .claude/rules/, /handoff skill, PostCompact hook)
-- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts`, `sync-validation.test.ts` — 78 tests
+- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts`, `sync-validation.test.ts`, `agent-sync-tools.test.ts` — 82 tests
 - CI pipeline: `.github/workflows/ci.yml` — TypeScript type check + vitest on push/PR to main
 - `LESSONS.md` created with accumulated project knowledge
 - `docs/project-brief.md` — product context, personas, constraints, glossary
 - `docs/Architecture.md` — system topology, tech decisions, sync pipeline, storage, auth, constraints
 - `docs/epics.md` — 8 epics derived from roadmap with priority order
-- Batch planning complete: template + 3 batch docs ready for execution
+- Batch planning complete: template + 8 batch docs (B001–B008)
 - Full batch lifecycle skills: `/plan-batch`, `/retro`, `/review-correctness`, `/review-security`, `/review-integration`, `/refactor`, `/close-batch`
 - Failure Recovery Playbook: `.claude/failure-recovery.md`
 - B001: Sync data quality — unit type validation, unit type change detection, duplicate product detection (`lib/sync.ts`, `tests/sync-validation.test.ts`)
 - B002: Pending request badge — live badge count on "Requests" nav link across all 7 admin layouts (`components/AdminHeader.tsx`, all layout files)
 - B003: QA panel doc actions — inline delete and upload from expanded QA dashboard panel (`app/api/documents/[productId]/route.ts`, `app/qa/(protected)/QADashboardClient.tsx`)
+- B008: Post-sync email suggestion — `get_new_arrivals` + `clear_new_arrivals` agent tools, system prompt rule 13 (`lib/agent-tools.ts`, `lib/product-flags.ts`, `app/api/agent/chat/route.ts`)
 
 ### Batch Queue
 | Batch | Epic | Size | Status |
 |-------|------|------|--------|
+| B004 | E1 — Agent-Powered Sync | Medium | `ready` |
+| B005 | E1 — Agent-Powered Sync | Medium | `ready` |
+| B006 | E1 — Agent-Powered Sync | Medium | `ready` (depends B004+B005) |
+| B007 | E1 — Agent-Powered Sync | Medium | `ready` (depends B004) |
 
 ### In Progress
 - Nothing active

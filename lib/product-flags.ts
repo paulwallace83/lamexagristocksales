@@ -130,6 +130,29 @@ export function setNewArrivals(productIds: string[]): number {
   return productIds.length;
 }
 
+/** Get new-arrival flags with product names (inner join excludes orphans). */
+export function getNewArrivalsWithNames(): Array<{
+  productId: string;
+  productName: string;
+  flaggedAt: string;
+}> {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT pf.product_id, p.product, pf.set_at
+       FROM product_flags pf
+       JOIN products p ON p.id = pf.product_id
+       WHERE pf.flag = ?
+       ORDER BY pf.set_at DESC`,
+    )
+    .all("new_arrival") as Array<{ product_id: string; product: string; set_at: string }>;
+  return rows.map((r) => ({
+    productId: r.product_id,
+    productName: r.product,
+    flaggedAt: r.set_at,
+  }));
+}
+
 /** Get a Set of product IDs that have a given flag. */
 export function getFlaggedProductIds(flag: FlagType): Set<string> {
   const db = getDb();

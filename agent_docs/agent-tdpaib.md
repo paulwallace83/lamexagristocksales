@@ -12,12 +12,13 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 - **COA data management:** Review, correct, or supplement auto-extracted COA parameters via `save_coa_data` tool.
 - **COA data backfill:** Re-extract parameters in bulk for COAs uploaded before auto-extraction existed. Uses `get_coa_backfill_status` then `backfill_coa_data` (up to 50 documents per call).
 - **Import review:** View soft-excluded items from the last Excel import.
+- **New arrivals:** Check for products flagged as new arrivals after sync, suggest sending a marketing email via `/admin/email`, and clear flags when dismissed.
 - **Markdown responses + true streaming:** Output renders with full markdown. Responses stream token-by-token via the Anthropic streaming API.
 
 ## Architecture
 
-- Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 17 tools (11 read-only, 6 action).
-- Action tools (`upload_document`, `batch_upload_documents`, `create_discount_item`, `restore_discount_item`, `save_coa_data`, `backfill_coa_data`) require conversational confirmation before execution — enforced via system prompt.
+- Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 19 tools (12 read-only, 7 action).
+- Action tools (`upload_document`, `batch_upload_documents`, `create_discount_item`, `restore_discount_item`, `save_coa_data`, `backfill_coa_data`, `clear_new_arrivals`) require conversational confirmation before execution — enforced via system prompt.
 - Files are uploaded in-band with the chat message (multipart form data) and persisted to a per-user temp directory (`.agent-uploads/{user}/`) — auto-cleaned after 30 min.
 - Responses stream via SSE with tool activity indicators. Max 10 tool-use iterations per request with a user-visible warning if the limit is reached.
 - Requires `ANTHROPIC_API_KEY` in `.env.local`.
