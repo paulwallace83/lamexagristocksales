@@ -16,6 +16,7 @@ import { getProductById } from "./inventory-db";
 import { getDb } from "./db";
 import { getDocumentStatus, addDocument, getUploadDir, getDocumentUrl, generateDocFilename } from "./documents";
 import { getDiscountItems, addDiscountItemsFromLots, restoreToInventory } from "./discount";
+import { clearFlags, getNewArrivalsWithNames } from "./product-flags";
 import { getUploadsRoot } from "./paths";
 import type { DocCategory } from "./documents";
 import type { DiscountReason, DiscountStatus } from "./discount";
@@ -306,6 +307,18 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
       },
       required: ["lotNumber", "productId", "fields"],
     },
+  },
+  {
+    name: "get_new_arrivals",
+    description:
+      "Get the list of products currently flagged as new arrivals. These flags are set automatically during each weekly sync for products that appear for the first time.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "clear_new_arrivals",
+    description:
+      "Clear all new-arrival flags. Use this when the user decides not to send a marketing email for the current new arrivals. ALWAYS confirm with the user before calling this tool.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
   },
 ];
 
@@ -598,6 +611,11 @@ export async function executeTool(
     case "get_coa_backfill_status":
       return getCoaBackfillStatus();
 
+    case "get_new_arrivals": {
+      const arrivals = getNewArrivalsWithNames();
+      return { arrivals, count: arrivals.length };
+    }
+
     /* ── Batch read-only tools ──────────────────────────────────── */
 
     case "batch_lot_lookup": {
@@ -800,6 +818,11 @@ export async function executeTool(
           totalLotsUpdated,
         },
       };
+    }
+
+    case "clear_new_arrivals": {
+      const cleared = clearFlags("new_arrival");
+      return { success: true, cleared };
     }
 
     case "create_discount_item": {

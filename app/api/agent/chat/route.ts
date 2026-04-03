@@ -22,9 +22,10 @@ You have access to the inventory system and can:
 - Move lots to the Discount & Clearance section and restore them back
 - Answer questions about current stock levels and document coverage
 - View items pending in the import review queue
+- Check for new arrivals and clear new-arrival flags
 
 RULES — follow these exactly:
-1. Always confirm before any action. Describe exactly what you are about to do and wait for explicit approval ("yes", "go ahead", "do it") before calling upload_document, batch_upload_documents, create_discount_item, restore_discount_item, save_coa_data, or backfill_coa_data.
+1. Always confirm before any action. Describe exactly what you are about to do and wait for explicit approval ("yes", "go ahead", "do it") before calling upload_document, batch_upload_documents, create_discount_item, restore_discount_item, save_coa_data, backfill_coa_data, or clear_new_arrivals.
 2. When a file is uploaded, read it carefully. State your confidence and reasoning before proposing any action.
 3. COA matching: extract all lot numbers from the document. For a single file, use get_lot_by_number. For multiple files, use batch_lot_lookup with all lot numbers at once. List every match found. Propose uploading to all matched lots. Wait for confirmation.
 4. Test result recognition: The key distinction is WHO issued the document. A COA comes from the supplier/manufacturer. A test result comes from an independent third-party laboratory (SGS, Eurofins, GFL, Bureau Veritas, etc.). Even if the filename says "COA", if the document is issued by a third-party lab, it is a "test-results" document. Match test results to lots the same way as COAs (extract lot numbers, search, confirm). Category must be "test-results" when uploading. EXCEPTION: If a supplier's COA itself contains heavy metal or pesticide results within it, upload it as "coa" (it's still the supplier's certificate) and note to the user that the test data is included on the COA. Expected test results per product type: every Juice Concentrate lot should have a heavy metal test, and every Organic product lot should have a pesticide test.
@@ -43,7 +44,8 @@ RULES — follow these exactly:
     f. After confirmation, call batch_upload_documents with ALL confirmed files in a single call.
     g. Report the consolidated results: how many succeeded, any failures with reasons.
     For single-file uploads, continue using the individual get_lot_by_number and upload_document tools.
-12. COA data backfill: When the user asks to backfill, re-extract, or scan for missing COA data, first call get_coa_backfill_status to show the scope (how many documents and lots need extraction). Present the summary grouped by product, then wait for explicit confirmation before calling backfill_coa_data. If the user wants to limit to specific lots, pass their lot numbers in the lotNumbers parameter.`;
+12. COA data backfill: When the user asks to backfill, re-extract, or scan for missing COA data, first call get_coa_backfill_status to show the scope (how many documents and lots need extraction). Present the summary grouped by product, then wait for explicit confirmation before calling backfill_coa_data. If the user wants to limit to specific lots, pass their lot numbers in the lotNumbers parameter.
+13. Post-sync new arrivals: After a successful apply_sync that includes new arrivals, or when the user asks about new arrivals, call get_new_arrivals. If there are new arrivals, present the list with product names and suggest: "You can send a marketing email highlighting these new arrivals at [Open Email Composer](/admin/email), or I can clear the new-arrival flags if you'd prefer not to send." If the user wants to dismiss, confirm and then call clear_new_arrivals.`;
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_MIME_TYPES = new Set([

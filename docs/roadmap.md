@@ -30,6 +30,7 @@ Organized by status. Updated as priorities shift.
 | v0.11.1 | Data Quality (B001) | Unit type validation + change detection, duplicate product detection in `validateBusinessRules()`. 17 new tests. |
 | v0.11.2 | Pending Request Badge (B002) | Live pending-request count badge on "Requests" nav link across all 7 admin layouts. Badge capped at 99+. |
 | v0.11.3 | QA Panel Doc Actions (B003) | Inline delete + upload from expanded QA dashboard panel. All 5 categories rendered. Auth hardened (401→404). DELETE handler uses `getUploadDir()` for consistent path construction. |
+| v0.11.4 | Post-Sync Email Suggestion (B008) | `get_new_arrivals` + `clear_new_arrivals` agent tools. System prompt rule 13 guides post-sync new-arrival workflow with email composer link. |
 
 ---
 
