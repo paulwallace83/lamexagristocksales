@@ -23,6 +23,16 @@ Accumulated lessons from building Lamex Agri Stock Sales. Read this before makin
 ### Lot numbers are supplier-defined strings, not auto-incremented IDs
 Lot numbers (e.g., `25AJCA207B`) come from the supplier and appear in COA documents. They must be preserved as-is. Do not slugify or normalise lot numbers — they are used as the stable key for re-linking documents and COA data after each sync.
 
+### The sync seed must insert lots — `autoSeed()` only runs on first DB creation
+**What happened:** The original `scripts/sync-inventory.ts` (and `lib/sync-apply.ts` before B004 refactor) deleted `lots` and `lot_contracts` but never re-inserted them. Only `autoSeed()` in `lib/db.ts` handles lot insertion — and it only runs when the `products` table is empty (first deploy). After every weekly sync, `lots` was empty. This caused `relinkDocumentLots()`, `relinkCoaData()`, and `deductDiscountLots()` to effectively no-op.
+**Fix (B004 refactor):** `applySync()` now inserts lots using the same `findLot`/`updateLot`/`insertLot` pattern from `autoSeed()`, including duplicate lot number handling within a listing.
+**Risk if ignored:** All lot-level features (COA re-linking, document-lot associations, discount lot deduction) silently fail after every weekly sync.
+
+### Reference file generators must accept an output directory — never hardcode `process.cwd()`
+**What happened:** `regenerateSuppliersMd()` and `regenerateWarehousesMd()` in `lib/sync-apply.ts` originally wrote to `process.cwd()`. During test execution, this overwrote the real tracked `suppliers.md` and `warehouses.md` with minimal test fixtures, corrupting production reference data.
+**Pattern:** Both functions accept a `rootDir` parameter. `applySync()` accepts `options.rootDir` (defaults to `process.cwd()`). Tests pass the temp directory as `rootDir`.
+**Risk if ignored:** Every test run and CI run silently corrupts reference files.
+
 ---
 
 ## File Uploads & Storage
