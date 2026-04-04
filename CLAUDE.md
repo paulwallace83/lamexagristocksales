@@ -114,11 +114,12 @@ Where to look for what:
 - B005: Agent sync read tools — `get_reference_data`, `save_proposed_inventory`, `run_sync_diff` agent tools + system prompt sync workflow rule 14 (`lib/agent-tools.ts`, `app/api/agent/chat/route.ts`, `tests/agent-sync-tools.test.ts`)
 - B006: Agent sync write tools — `apply_sync` + `get_reconciliation` agent tools, system prompt rule 14 steps h–j, reviewer-only role gate on sync-action tools (`lib/agent-tools.ts`, `app/api/agent/chat/route.ts`, `tests/agent-sync-tools.test.ts`)
 - B007: Sync dry-run mode — `dryRun` option on `applySync()`, `--dry-run` CLI flag, `dry_run_sync` agent tool, 4-file pre-validation on all sync agent tools (`lib/sync-apply.ts`, `scripts/sync-inventory.ts`, `lib/agent-tools.ts`, `app/api/agent/chat/route.ts`)
+- B009: Agent CSV/Excel file import — `import_inventory_file` agent tool, `importFromBuffer()` in `lib/excel-import.ts`, CSV/XLSX MIME types in agent upload pipeline, system prompt file-upload sync workflow (`lib/agent-tools.ts`, `lib/excel-import.ts`, `app/api/agent/chat/route.ts`, `app/admin/agent/AgentChat.tsx`)
 
 ### Batch Queue
 | Batch | Epic | Size | Status |
 |-------|------|------|--------|
-| — | — | — | No batches queued |
+| B009 | E1 | Medium | in-progress |
 
 ### Do Not Touch
 - `data/inventory.json` — live inventory data; only `npm run sync` should write this

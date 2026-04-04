@@ -19,6 +19,7 @@ import { getDiscountItems, addDiscountItemsFromLots, restoreToInventory } from "
 import { clearFlags, getNewArrivalsWithNames } from "./product-flags";
 import { computeDiff, formatDiffReport, reconciliationReport } from "./sync";
 import { applySync } from "./sync-apply";
+import { importFromBuffer, formatReviewSummary } from "./excel-import";
 import { getUploadsRoot } from "./paths";
 import type { DocCategory } from "./documents";
 import type { DiscountReason, DiscountStatus } from "./discount";
@@ -368,6 +369,21 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
       "Run a dry-run sync to validate that the proposed inventory would sync successfully without modifying any data. Returns the counts that would result from a real sync (products, listings, contracts, lots, warehouses, suppliers). No snapshot is created, no files are written, and the database is untouched. Use this to give the user confidence before calling apply_sync.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
+  {
+    name: "import_inventory_file",
+    description:
+      "Import an uploaded Excel (.xlsx/.xls) or CSV file from the ERP system. Parses the spreadsheet, applies hard/soft exclusion rules, normalizes warehouses and suppliers using reference data, and writes data/inventory-proposed.json (plus data/import-review.json if soft-excluded items exist). Returns import stats, warnings, and a review summary. Use this instead of manual pivot table parsing when the user uploads a file. ALWAYS confirm with the user before calling this tool.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        fileName: {
+          type: "string",
+          description: "Name of the uploaded file to import (must be in the current file attachments)",
+        },
+      },
+      required: ["fileName"],
+    },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -571,7 +587,7 @@ function triggerCoaExtraction(result: UploadSuccess): void {
 /* ------------------------------------------------------------------ */
 
 // Tools that require the "reviewer" role (sync-action tools)
-const REVIEWER_ONLY_TOOLS = new Set(["save_proposed_inventory", "apply_sync"]);
+const REVIEWER_ONLY_TOOLS = new Set(["save_proposed_inventory", "apply_sync", "import_inventory_file"]);
 
 export async function executeTool(
   toolName: string,
@@ -1061,6 +1077,89 @@ export async function executeTool(
         }
         console.error("[agent] dry_run_sync error:", err);
         return { error: "Dry-run failed" };
+      }
+    }
+
+    case "import_inventory_file": {
+      const fileName = String(input.fileName ?? "");
+      if (!fileName) {
+        return { error: "fileName is required" };
+      }
+
+      // Resolve file from fileMap with fuzzy matching (same pattern as upload_document)
+      let fileData = fileMap.get(fileName);
+      if (!fileData) {
+        const lower = fileName.toLowerCase();
+        for (const [key, data] of fileMap) {
+          if (key.toLowerCase() === lower || data.name.toLowerCase() === lower) {
+            fileData = data;
+            break;
+          }
+        }
+      }
+      if (!fileData) {
+        const available = Array.from(fileMap.keys()).join(", ");
+        return { error: `File '${fileName}' not found. Available files: ${available || "(none)"}` };
+      }
+
+      const dataDir = join(process.cwd(), "data");
+
+      try {
+        const result = importFromBuffer(fileData.buffer, dataDir);
+        const { included, review, warnings, stats } = result;
+
+        // Write inventory-proposed.json
+        const proposedPath = join(dataDir, "inventory-proposed.json");
+        writeFileSync(proposedPath, JSON.stringify(included, null, 2));
+
+        // Write import-review.json if there are soft-excluded items
+        const reviewPath = join(dataDir, "import-review.json");
+        if (review.length > 0) {
+          const sanitizedReview = review.map((r) => ({
+            reason: r.reason,
+            ruleType: r.ruleType,
+            product: r.row.Stock_Description,
+            specification: r.row.Stock_Specification,
+            warehouse: r.row.Stock_Cold_Store,
+            supplier: r.row.Stock_Contract_Supplier,
+            origin: r.row.Stock_Origin_Country,
+            contract: r.row.Stock_Contract,
+            cases: r.row.Qty_Cases,
+            weight: r.row.Qty_Weight_Net_Bal,
+            unit: r.row.Unit,
+            reserved: r.row.Stock_Reserved,
+            bbd: r.row.Stock_BestBefore,
+            lotNumber: r.row.SML_LotNumber,
+          }));
+          writeFileSync(reviewPath, JSON.stringify(sanitizedReview, null, 2));
+        }
+
+        // Build review summary for the agent to present
+        const reviewSummary = review.length > 0 ? formatReviewSummary(review) : null;
+
+        return {
+          success: true,
+          stats: {
+            totalRows: stats.totalRows,
+            hardExcluded: stats.hardExcluded,
+            softExcluded: stats.softExcluded,
+            includedRows: stats.includedRows,
+            includedProducts: stats.includedProducts,
+            includedListings: stats.includedListings,
+            includedWeightLbs: stats.includedWeightLbs,
+            includedQuantity: stats.includedQuantity,
+            hardExclusionBreakdown: stats.hardExclusionBreakdown,
+            softExclusionBreakdown: stats.softExclusionBreakdown,
+          },
+          warnings: warnings.map((w) => ({ type: w.type, message: w.message, requiresAction: w.requiresAction })),
+          reviewSummary,
+          proposedPath: "data/inventory-proposed.json",
+          reviewPath: review.length > 0 ? "data/import-review.json" : null,
+        };
+      } catch (err) {
+        console.error("[agent] import_inventory_file error:", err);
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        return { error: `Failed to parse file: ${msg}` };
       }
     }
 

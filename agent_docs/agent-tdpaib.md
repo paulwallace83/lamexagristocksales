@@ -13,13 +13,13 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 - **COA data backfill:** Re-extract parameters in bulk for COAs uploaded before auto-extraction existed. Uses `get_coa_backfill_status` then `backfill_coa_data` (up to 50 documents per call).
 - **Import review:** View soft-excluded items from the last Excel import.
 - **New arrivals:** Check for products flagged as new arrivals after sync, suggest sending a marketing email via `/admin/email`, and clear flags when dismissed.
-- **Weekly sync workflow:** Read supplier/warehouse reference data, save a proposed inventory from parsed pivot table data, run the sync diff engine, apply approved syncs, and generate reconciliation reports — completing the full sync end-to-end within the chat.
+- **Weekly sync workflow:** Import ERP data via CSV/Excel file upload (preferred) or by pasting pivot table data. File uploads are processed through the import pipeline (exclusion rules, warehouse/supplier normalization) automatically. Then run the sync diff engine, apply approved syncs, and generate reconciliation reports — completing the full sync end-to-end within the chat.
 - **Markdown responses + true streaming:** Output renders with full markdown. Responses stream token-by-token via the Anthropic streaming API.
 
 ## Architecture
 
 - Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 24 tools (15 read-only, 9 action).
-- Action tools (`upload_document`, `batch_upload_documents`, `create_discount_item`, `restore_discount_item`, `save_coa_data`, `backfill_coa_data`, `clear_new_arrivals`, `save_proposed_inventory`, `apply_sync`) require conversational confirmation before execution — enforced via system prompt.
+- Action tools (`upload_document`, `batch_upload_documents`, `create_discount_item`, `restore_discount_item`, `save_coa_data`, `backfill_coa_data`, `clear_new_arrivals`, `save_proposed_inventory`, `apply_sync`, `import_inventory_file`) require conversational confirmation before execution — enforced via system prompt.
 - Files are uploaded in-band with the chat message (multipart form data) and persisted to a per-user temp directory (`.agent-uploads/{user}/`) — auto-cleaned after 30 min.
 - Responses stream via SSE with tool activity indicators. Max 10 tool-use iterations per request with a user-visible warning if the limit is reached.
 - Requires `ANTHROPIC_API_KEY` in `.env.local`.
@@ -45,7 +45,7 @@ Agent chat sessions are saved to SQLite and survive page reloads.
 ## Security
 
 - Auth required: `qa` or `reviewer` role
-- File validation: 50 MB limit, MIME type checks (PDF, JPEG, PNG, GIF, WebP)
+- File validation: 50 MB limit, MIME type checks (PDF, JPEG, PNG, GIF, WebP, CSV, XLSX, XLS)
 - Path traversal protection: `resolve(filepath).startsWith(uploadsRoot + "/")` guard on every write and read path
 - Per-user temp file isolation: uploaded files scoped by user email, auto-expire after 30 min
 - Error messages sanitized — internal errors logged server-side, generic messages sent to client

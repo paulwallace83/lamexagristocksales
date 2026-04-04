@@ -1,22 +1,31 @@
 # Weekly Inventory Sync
 
-Each week, the user pastes raw pivot table data in chat. Claude processes it through this workflow:
+Each week, the user provides ERP inventory data. The **preferred** method is uploading a CSV or Excel file; the fallback is pasting raw pivot table text.
 
-1. **Parse** — Claude parses the raw pivot table into structured inventory (using `suppliers.json` and `warehouses.json` for auto-resolution of COO, city/state)
-2. **Write proposed** — Claude writes the parsed data to `data/inventory-proposed.json`
-3. **Diff** — Claude runs `computeDiff()` from `lib/sync.ts` to compare proposed vs current `data/inventory.json`
-4. **Present report** — Claude shows additions, removals, changes, and any warnings (missing COO, unknown warehouses, etc.)
+### File Upload Path (Preferred)
+
+1. **Upload** — User drags a `.csv`, `.xlsx`, or `.xls` file onto the agent chat
+2. **Import** — Claude calls `import_inventory_file` which runs the file through the import pipeline: parses rows, applies exclusion rules, normalizes warehouses/suppliers, and writes `data/inventory-proposed.json` (plus `data/import-review.json` for soft-excluded items)
+3. **Review stats** — Claude presents import stats (products, weight, exclusions, warnings) and review items
+4. **Diff** — Claude runs `computeDiff()` from `lib/sync.ts` to compare proposed vs current `data/inventory.json`
 5. **Resolve warnings** — User confirms COO for new suppliers, city/state for new warehouses, etc.
-6. **Apply** — `npm run sync` (runs `scripts/sync-inventory.ts`):
+6. **Apply** — `apply_sync` (or `npm run sync` from CLI):
    - Snapshots current `inventory.json` → `data/snapshots/inventory-YYYY-MM-DD.json`
    - Overwrites `inventory.json` with approved data
    - Re-seeds SQLite (preserving documents + users)
    - Regenerates `suppliers.md` and `warehouses.md`
-7. **Reconcile** — Claude presents a per-product totals table (quantity + weight) for the user to cross-check against the raw pivot data. Sync is not complete until reconciliation is signed off.
+7. **Reconcile** — Claude presents a per-product totals table (quantity + weight) for the user to cross-check against the raw ERP data. Sync is not complete until reconciliation is signed off.
+
+### Paste Path (Fallback)
+
+1. **Parse** — Claude parses the raw pivot table into structured inventory (using `suppliers.json` and `warehouses.json` for auto-resolution of COO, city/state)
+2. **Write proposed** — Claude writes the parsed data to `data/inventory-proposed.json`
+3. Steps 4–7 same as file upload path above.
 
 ### Key files
 - `lib/sync.ts` — Diff engine, business rule validation, report formatting, reconciliation
-- `lib/excel-import.ts` — Excel import parser, exclusion engine, warehouse/supplier normalization
+- `lib/excel-import.ts` — Excel/CSV import parser (`importExcel()` for file paths, `importFromBuffer()` for in-memory buffers), exclusion engine, warehouse/supplier normalization
+- `lib/agent-tools.ts` — `import_inventory_file` tool (calls `importFromBuffer()` for agent file uploads)
 - `scripts/sync-inventory.ts` — Apply script (snapshot → overwrite → doc-preserving seed → regen reference files)
 - `scripts/import-excel.ts` — CLI script for importing raw ERP Excel exports
 - `scripts/seed.ts` — Full destructive seed for fresh installs only (clears documents + users)

@@ -259,7 +259,12 @@ export default function AgentChat() {
     }
   };
 
-  const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp"]);
+  const ALLOWED_TYPES = new Set([
+    "application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp",
+    "text/csv",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+    "application/vnd.ms-excel", // .xls
+  ]);
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
@@ -499,7 +504,7 @@ export default function AgentChat() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16v-8m0 0l-3 3m3-3l3 3M3 16.5V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18v-1.5m-18 0V7.875c0-.621.504-1.125 1.125-1.125h3.026a1.125 1.125 0 01.79.327l1.697 1.697a1.125 1.125 0 00.79.327h5.597c.621 0 1.125.504 1.125 1.125V16.5" />
             </svg>
             <p className="text-sm font-medium text-indigo-600">Drop files here</p>
-            <p className="text-xs text-indigo-400 mt-0.5">PDF or image files</p>
+            <p className="text-xs text-indigo-400 mt-0.5">PDF, image, CSV, or Excel files</p>
           </div>
         </div>
       )}
@@ -758,7 +763,7 @@ export default function AgentChat() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".pdf,image/jpeg,image/png,image/gif,image/webp"
+              accept=".pdf,.csv,.xlsx,.xls,image/jpeg,image/png,image/gif,image/webp"
               className="hidden"
               onChange={(e) => {
                 const newFiles = Array.from(e.target.files ?? []);

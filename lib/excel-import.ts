@@ -585,8 +585,12 @@ function checkSoftExclusion(
 
 // ─── Main Import Function ─────────────────────────────────────────
 
-export function importExcel(
-  excelPath: string,
+/**
+ * Shared core: processes parsed rows through exclusion rules and builds inventory.
+ * Called by both importExcel() (file path) and importFromBuffer() (in-memory buffer).
+ */
+function importRows(
+  allRows: ExcelRow[],
   dataDir: string
 ): ImportResult {
   // Load reference data
@@ -603,11 +607,6 @@ export function importExcel(
   // Build lookups
   const warehouseLookup = buildWarehouseLookup(warehousesFile.warehouses);
   const supplierLookup = buildSupplierLookup(suppliersFile.suppliers);
-
-  // Read Excel
-  const wb = XLSX.readFile(excelPath);
-  const sheetName = wb.SheetNames[0];
-  const allRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]) as ExcelRow[];
 
   const excluded: ExcludedRow[] = [];
   const review: ExcludedRow[] = [];
@@ -855,6 +854,30 @@ export function importExcel(
     warnings,
     stats,
   };
+}
+
+export function importExcel(
+  excelPath: string,
+  dataDir: string
+): ImportResult {
+  const wb = XLSX.readFile(excelPath);
+  const sheetName = wb.SheetNames[0];
+  const allRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]) as ExcelRow[];
+  return importRows(allRows, dataDir);
+}
+
+/**
+ * Import from an in-memory buffer (Excel or CSV).
+ * Used by the agent's import_inventory_file tool.
+ */
+export function importFromBuffer(
+  buffer: Buffer,
+  dataDir: string
+): ImportResult {
+  const wb = XLSX.read(buffer, { type: "buffer" });
+  const sheetName = wb.SheetNames[0];
+  const allRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]) as ExcelRow[];
+  return importRows(allRows, dataDir);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────
