@@ -32,6 +32,8 @@ Organized by status. Updated as priorities shift.
 | v0.11.3 | QA Panel Doc Actions (B003) | Inline delete + upload from expanded QA dashboard panel. All 5 categories rendered. Auth hardened (401→404). DELETE handler uses `getUploadDir()` for consistent path construction. |
 | v0.11.4 | Post-Sync Email Suggestion (B008) | `get_new_arrivals` + `clear_new_arrivals` agent tools. System prompt rule 13 guides post-sync new-arrival workflow with email composer link. |
 | v0.11.5 | Sync-Apply Library (B004) | Extracted 480-line sync script into reusable `applySync()` in `lib/sync-apply.ts`. Atomic file lock (O_CREAT\|O_EXCL), structured `SyncApplyResult`, lot insertion fix (pre-existing gap), parameterized `rootDir`. Foundation for agent-powered sync (B005–B007). 9 tests. |
+| v0.11.6 | Agent Sync Read Tools (B005) | 3 new TDPAIB agent tools (`get_reference_data`, `save_proposed_inventory`, `run_sync_diff`). System prompt rule 14 with 8-step sync workflow. 15 tests. No new routes or tables. |
+| v0.11.7 | Agent Sync Write Tools (B006) | 2 new TDPAIB agent tools (`apply_sync`, `get_reconciliation`). System prompt rule 14 steps h–j (apply → reconcile → sign-off). Reviewer-only role gate on sync-action tools. 9 tests (6 tool + 3 role gate). End-to-end sync workflow now completable within `/admin/agent`. |
 
 ---
 
@@ -39,7 +41,7 @@ Organized by status. Updated as priorities shift.
 
 | Slice | Description | Value |
 |-------|-------------|-------|
-| Agent-powered sync | Paste pivot data in agent chat → auto-parse and sync. Removes need for Claude Code session for routine weekly updates. Foundation: B004 (sync-apply library). Remaining: B005 (read tools), B006 (write tools), B007 (dry-run). | Operational efficiency |
+| Agent-powered sync | Paste pivot data in agent chat → auto-parse and sync. Removes need for Claude Code session for routine weekly updates. Foundation: B004 (sync-apply library). ~~B005 (read tools)~~ ✓. ~~B006 (write tools)~~ ✓. Remaining: B007 (dry-run). | Operational efficiency |
 | Enquiry tracking | Persist all enquiries to DB (not just doc requests). Sales gets visibility into lead volume, response times, product interest. | Sales insight |
 | ~~Pending request badge~~ | ~~Show document request count on "Requests" nav link across all admin pages.~~ ✓ B002 | QA workflow |
 | Automated email scheduling | Schedule weekly marketing emails to send automatically after sync, with manual override. Removes the "remember to send" step. | Consistency |

@@ -7,11 +7,12 @@ Logical clusters of related work. Each epic maps to a theme from the roadmap. Ba
 ---
 
 ## E1 — Operational Efficiency: Agent-Powered Sync
-**Status:** `active` (B004+B008 done; B005–B007 remaining)
+**Status:** `active` (B004+B005+B006+B008 done; B007 remaining)
 **Value:** Removes the need for a Claude Code session to run routine weekly inventory updates. Paste pivot data directly in the TDPAIB agent chat → auto-parse → sync to DB.
 **Roadmap items:**
 - ~~Sync-apply library extraction + lot insertion fix~~ ✓ B004
-- Agent-powered sync read tools (B005), write tools (B006) (Near-Term)
+- ~~Agent-powered sync read tools~~ ✓ B005
+- ~~Agent-powered sync write tools~~ ✓ B006
 - Sync dry-run `--dry-run` flag (B007) (Operational Improvements)
 - ~~Post-sync email suggestion: new-arrival tools + system prompt~~ ✓ B008
 - Automated email scheduling after sync (Near-Term)
