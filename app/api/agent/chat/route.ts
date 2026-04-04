@@ -150,6 +150,7 @@ export async function POST(req: NextRequest) {
   // Process uploaded files — build file map and content blocks
   const fileMap = new Map<string, FileData>();
   const fileContentBlocks: Anthropic.ContentBlockParam[] = [];
+  const nonRenderableFileNames: string[] = [];
 
   for (const file of uploadedFiles) {
     if (file.size > MAX_FILE_SIZE || !ALLOWED_MIME_TYPES.has(file.type)) continue;
@@ -169,7 +170,10 @@ export async function POST(req: NextRequest) {
 
     // Only build content blocks for types Claude can render (PDF, images).
     // Spreadsheets are accessed by tools via fileMap — not sent to Claude.
-    if (!RENDERABLE_MIME_TYPES.has(file.type)) continue;
+    if (!RENDERABLE_MIME_TYPES.has(file.type)) {
+      nonRenderableFileNames.push(file.name);
+      continue;
+    }
 
     const base64 = buffer.toString("base64");
 
@@ -209,15 +213,23 @@ export async function POST(req: NextRequest) {
     }
   } catch { /* ignore */ }
 
-  // Attach file content blocks to the last user message of this turn
-  if (fileContentBlocks.length > 0 && apiMessages.length > 0) {
+  // Attach file content blocks and non-renderable file hints to the last user message
+  if ((fileContentBlocks.length > 0 || nonRenderableFileNames.length > 0) && apiMessages.length > 0) {
     const lastMsg = apiMessages[apiMessages.length - 1];
     if (lastMsg.role === "user") {
       const existing =
         typeof lastMsg.content === "string"
           ? [{ type: "text" as const, text: lastMsg.content }]
           : (lastMsg.content as Anthropic.ContentBlockParam[]);
-      lastMsg.content = [...existing, ...fileContentBlocks];
+      const extras: Anthropic.ContentBlockParam[] = [...fileContentBlocks];
+      // Tell Claude about uploaded spreadsheets it can't see directly
+      if (nonRenderableFileNames.length > 0) {
+        extras.push({
+          type: "text" as const,
+          text: `[Uploaded file${nonRenderableFileNames.length > 1 ? "s" : ""}: ${nonRenderableFileNames.join(", ")}. Use the import_inventory_file tool to process.]`,
+        });
+      }
+      lastMsg.content = [...existing, ...extras];
     }
   }
 
