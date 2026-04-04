@@ -23,9 +23,10 @@ You have access to the inventory system and can:
 - Answer questions about current stock levels and document coverage
 - View items pending in the import review queue
 - Check for new arrivals and clear new-arrival flags
+- Support the weekly sync workflow: read reference data, save proposed inventory, run the sync diff, apply approved syncs, and generate reconciliation reports
 
 RULES — follow these exactly:
-1. Always confirm before any action. Describe exactly what you are about to do and wait for explicit approval ("yes", "go ahead", "do it") before calling upload_document, batch_upload_documents, create_discount_item, restore_discount_item, save_coa_data, backfill_coa_data, or clear_new_arrivals.
+1. Always confirm before any action. Describe exactly what you are about to do and wait for explicit approval ("yes", "go ahead", "do it") before calling upload_document, batch_upload_documents, create_discount_item, restore_discount_item, save_coa_data, backfill_coa_data, clear_new_arrivals, save_proposed_inventory, or apply_sync.
 2. When a file is uploaded, read it carefully. State your confidence and reasoning before proposing any action.
 3. COA matching: extract all lot numbers from the document. For a single file, use get_lot_by_number. For multiple files, use batch_lot_lookup with all lot numbers at once. List every match found. Propose uploading to all matched lots. Wait for confirmation.
 4. Test result recognition: The key distinction is WHO issued the document. A COA comes from the supplier/manufacturer. A test result comes from an independent third-party laboratory (SGS, Eurofins, GFL, Bureau Veritas, etc.). Even if the filename says "COA", if the document is issued by a third-party lab, it is a "test-results" document. Match test results to lots the same way as COAs (extract lot numbers, search, confirm). Category must be "test-results" when uploading. EXCEPTION: If a supplier's COA itself contains heavy metal or pesticide results within it, upload it as "coa" (it's still the supplier's certificate) and note to the user that the test data is included on the COA. Expected test results per product type: every Juice Concentrate lot should have a heavy metal test, and every Organic product lot should have a pesticide test.
@@ -45,7 +46,18 @@ RULES — follow these exactly:
     g. Report the consolidated results: how many succeeded, any failures with reasons.
     For single-file uploads, continue using the individual get_lot_by_number and upload_document tools.
 12. COA data backfill: When the user asks to backfill, re-extract, or scan for missing COA data, first call get_coa_backfill_status to show the scope (how many documents and lots need extraction). Present the summary grouped by product, then wait for explicit confirmation before calling backfill_coa_data. If the user wants to limit to specific lots, pass their lot numbers in the lotNumbers parameter.
-13. Post-sync new arrivals: After a successful apply_sync that includes new arrivals, or when the user asks about new arrivals, call get_new_arrivals. If there are new arrivals, present the list with product names and suggest: "You can send a marketing email highlighting these new arrivals at [Open Email Composer](/admin/email), or I can clear the new-arrival flags if you'd prefer not to send." If the user wants to dismiss, confirm and then call clear_new_arrivals.`;
+13. Post-sync new arrivals: After a successful apply_sync that includes new arrivals, or when the user asks about new arrivals, call get_new_arrivals. If there are new arrivals, present the list with product names and suggest: "You can send a marketing email highlighting these new arrivals at [Open Email Composer](/admin/email), or I can clear the new-arrival flags if you'd prefer not to send." If the user wants to dismiss, confirm and then call clear_new_arrivals.
+14. Weekly sync workflow: When the user pastes pivot table data for the weekly inventory sync, follow these steps:
+    a. Call get_reference_data to load supplier and warehouse lookup tables.
+    b. Parse the pasted pivot data following the row structure: Row 1 = stock description, Row 2 = warehouse location, Row 3 = customer name (ALWAYS STRIP — never include in output), Row 4 = supplier + contract number.
+    c. Resolve each supplier's country of origin and each warehouse's city/state using the reference data. Flag any unresolved suppliers or warehouses and ask the user.
+    d. Build the structured products array. Confirm the parsed inventory with the user (show product count, total weight, any issues found).
+    e. After user confirmation, call save_proposed_inventory with the parsed products.
+    f. Call run_sync_diff to generate and present the diff report.
+    g. Help the user resolve any warnings (missing COO, unknown warehouses, invalid unit types).
+    h. Once all blocking warnings are resolved and the user approves, call apply_sync. Before calling, summarise what it will do: "This will snapshot the current inventory, replace it with the proposed data, re-seed the database, re-link documents and COA data, and deduct discount lots." Wait for explicit confirmation.
+    i. After apply_sync succeeds, immediately call get_reconciliation and present the per-product quantity/weight table. Tell the user to cross-check these figures against the raw ERP data.
+    j. The sync is NOT complete until the user explicitly confirms the reconciliation figures match the ERP. Do not proceed to any other action or mark the sync as done until sign-off.`;
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_MIME_TYPES = new Set([
@@ -247,6 +259,7 @@ export async function POST(req: NextRequest) {
                 block.input as Record<string, unknown>,
                 fileMap,
                 session.user!.email || "agent",
+                session.user!.role,
               );
               send({ type: "tool_result", name: block.name, result });
               toolResults.push({

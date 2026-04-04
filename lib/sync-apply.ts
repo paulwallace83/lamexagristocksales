@@ -49,7 +49,7 @@ export interface SyncApplyOptions {
   rootDir?: string;
 }
 
-// TODO: When exposing SyncApplyResult via API, consider whether originalName (user-supplied filename) should be sanitised
+// originalName is intentionally exposed via apply_sync tool — only visible to authenticated admin users (qa/reviewer roles)
 export interface OrphanedDoc {
   id: string;
   productId: string;

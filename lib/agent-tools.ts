@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { writeFileSync, unlinkSync, existsSync, readFileSync, mkdirSync } from "fs";
-import { join, resolve } from "path";
+import { basename, join, resolve } from "path";
 import {
   getProductSummaries,
   findLotsByNumber,
@@ -17,6 +17,8 @@ import { getDb } from "./db";
 import { getDocumentStatus, addDocument, getUploadDir, getDocumentUrl, generateDocFilename } from "./documents";
 import { getDiscountItems, addDiscountItemsFromLots, restoreToInventory } from "./discount";
 import { clearFlags, getNewArrivalsWithNames } from "./product-flags";
+import { computeDiff, formatDiffReport, reconciliationReport } from "./sync";
+import { applySync } from "./sync-apply";
 import { getUploadsRoot } from "./paths";
 import type { DocCategory } from "./documents";
 import type { DiscountReason, DiscountStatus } from "./discount";
@@ -320,6 +322,46 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
       "Clear all new-arrival flags. Use this when the user decides not to send a marketing email for the current new arrivals. ALWAYS confirm with the user before calling this tool.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
+  {
+    name: "get_reference_data",
+    description:
+      "Get the full supplier and warehouse reference data used during weekly sync. Returns suppliers (with COO, trading company flags) and warehouses (with city/state). Use this to resolve supplier countries of origin and warehouse locations when parsing pasted pivot table data.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "save_proposed_inventory",
+    description:
+      "Write a parsed inventory to data/inventory-proposed.json. This is the agent's equivalent of writing the proposed file during the weekly sync workflow. The products array should contain fully structured product objects. ALWAYS confirm with the user before calling this tool.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        products: {
+          type: "array",
+          items: { type: "object" },
+          description: "Array of product objects to write as proposed inventory",
+        },
+      },
+      required: ["products"],
+    },
+  },
+  {
+    name: "run_sync_diff",
+    description:
+      "Run the sync diff engine to compare data/inventory-proposed.json against the current data/inventory.json. Returns a formatted markdown diff report, raw warnings array, and summary statistics. Both files must exist before calling this tool.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "get_reconciliation",
+    description:
+      "Generate a per-product quantity and weight reconciliation table from the current inventory.json. Use this after apply_sync to present the cross-check table for the user to verify against the raw ERP data. Sync is not complete until reconciliation is signed off.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "apply_sync",
+    description:
+      "Apply the approved sync: snapshot current inventory, overwrite with proposed data, re-seed the database, re-link documents and COA data, and deduct discount lots. This is the most consequential action in the system — it replaces the entire inventory. ALWAYS show the diff report first, summarise what will happen, and wait for explicit user approval before calling this tool.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -522,12 +564,19 @@ function triggerCoaExtraction(result: UploadSuccess): void {
 /*  Tool execution                                                    */
 /* ------------------------------------------------------------------ */
 
+// Tools that require the "reviewer" role (sync-action tools)
+const REVIEWER_ONLY_TOOLS = new Set(["save_proposed_inventory", "apply_sync"]);
+
 export async function executeTool(
   toolName: string,
   input: Record<string, unknown>,
   fileMap: Map<string, FileData>,
   uploaderEmail: string,
+  userRole?: string,
 ): Promise<unknown> {
+  if (REVIEWER_ONLY_TOOLS.has(toolName) && userRole !== "reviewer") {
+    return { error: "This tool requires the reviewer role" };
+  }
   switch (toolName) {
     /* ── Read-only tools ─────────────────────────────────────────── */
 
@@ -610,6 +659,68 @@ export async function executeTool(
 
     case "get_coa_backfill_status":
       return getCoaBackfillStatus();
+
+    case "get_reference_data": {
+      const dataDir = join(process.cwd(), "data");
+      try {
+        const suppliers = JSON.parse(readFileSync(join(dataDir, "suppliers.json"), "utf-8"));
+        if (!suppliers || typeof suppliers !== "object") {
+          return { error: "suppliers.json has unexpected format" };
+        }
+        const warehouses = JSON.parse(readFileSync(join(dataDir, "warehouses.json"), "utf-8"));
+        if (!warehouses || typeof warehouses !== "object") {
+          return { error: "warehouses.json has unexpected format" };
+        }
+        return { suppliers: suppliers.suppliers || [], warehouses: warehouses.warehouses || [] };
+      } catch (err) {
+        console.error("[agent] get_reference_data error:", err);
+        return { error: "Failed to read reference data" };
+      }
+    }
+
+    case "run_sync_diff": {
+      const dataDir = join(process.cwd(), "data");
+      const inventoryPath = join(dataDir, "inventory.json");
+      const proposedPath = join(dataDir, "inventory-proposed.json");
+      const suppliersPath = join(dataDir, "suppliers.json");
+      const warehousesPath = join(dataDir, "warehouses.json");
+
+      if (!existsSync(proposedPath)) {
+        return { error: "No inventory-proposed.json found. Save a proposed inventory first using save_proposed_inventory." };
+      }
+      if (!existsSync(inventoryPath)) {
+        return { error: "No inventory.json found. Cannot compute diff without current inventory." };
+      }
+      if (!existsSync(suppliersPath)) {
+        return { error: "No suppliers.json found. Reference data is missing." };
+      }
+      if (!existsSync(warehousesPath)) {
+        return { error: "No warehouses.json found. Reference data is missing." };
+      }
+
+      try {
+        const diff = computeDiff(inventoryPath, proposedPath, suppliersPath, warehousesPath);
+        const report = formatDiffReport(diff);
+        return { report, warnings: diff.warnings, summary: diff.summary };
+      } catch (err) {
+        console.error("[agent] run_sync_diff error:", err);
+        return { error: "Diff computation failed" };
+      }
+    }
+
+    case "get_reconciliation": {
+      const inventoryPath = join(process.cwd(), "data", "inventory.json");
+      if (!existsSync(inventoryPath)) {
+        return { error: "No inventory.json found. Run a sync first." };
+      }
+      try {
+        const report = reconciliationReport(inventoryPath);
+        return { report };
+      } catch (err) {
+        console.error("[agent] get_reconciliation error:", err);
+        return { error: "Failed to generate reconciliation report" };
+      }
+    }
 
     case "get_new_arrivals": {
       const arrivals = getNewArrivalsWithNames();
@@ -818,6 +929,67 @@ export async function executeTool(
           totalLotsUpdated,
         },
       };
+    }
+
+    case "save_proposed_inventory": {
+      const products = input.products;
+      if (!Array.isArray(products)) {
+        return { error: "products must be an array" };
+      }
+      if (products.length === 0) {
+        return { error: "products array must not be empty" };
+      }
+
+      const dataDir = join(process.cwd(), "data");
+      const proposedPath = join(dataDir, "inventory-proposed.json");
+      const data = { products, lastUpdated: new Date().toISOString().slice(0, 10) };
+
+      try {
+        writeFileSync(proposedPath, JSON.stringify(data, null, 2));
+        return { success: true, productCount: products.length, path: "data/inventory-proposed.json" };
+      } catch (err) {
+        console.error("[agent] save_proposed_inventory error:", err);
+        return { error: "Failed to write inventory-proposed.json" };
+      }
+    }
+
+    case "apply_sync": {
+      const dataDir = join(process.cwd(), "data");
+      try {
+        const result = applySync({
+          proposedPath: join(dataDir, "inventory-proposed.json"),
+          inventoryPath: join(dataDir, "inventory.json"),
+          dataDir,
+        });
+        // Sanitise snapshotPath to relative — never expose absolute filesystem paths
+        const relativeSnapshot = "data/snapshots/" + basename(result.snapshotPath);
+        return {
+          success: true,
+          result: {
+            snapshotPath: relativeSnapshot,
+            productCount: result.productCount,
+            listingCount: result.listingCount,
+            contractCount: result.contractCount,
+            lotCount: result.lotCount,
+            warehouseCount: result.warehouseCount,
+            supplierCount: result.supplierCount,
+            documentsPreserved: result.documentsPreserved,
+            orphanedDocs: result.orphanedDocs,
+            relinkReport: result.relinkReport,
+            coaRelinkReport: result.coaRelinkReport,
+            deductionReport: result.deductionReport,
+            validationReport: result.validationReport,
+            newArrivals: result.newArrivals,
+          },
+        };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        if (msg === "Sync already in progress") {
+          return { error: "Sync already in progress" };
+        }
+        console.error("[agent] apply_sync error:", err);
+        return { error: "Sync failed" };
+      }
     }
 
     case "clear_new_arrivals": {

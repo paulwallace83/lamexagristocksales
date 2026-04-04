@@ -93,11 +93,11 @@ Where to look for what:
 
 ## Current Sprint Context
 
-**Last updated:** 2026-04-03
+**Last updated:** 2026-04-04
 
 ### Completed
 - Agentic coding governance migration (CLAUDE.md refactor, agent_docs/, .claude/rules/, /handoff skill, PostCompact hook)
-- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts`, `sync-validation.test.ts`, `agent-sync-tools.test.ts`, `sync-apply.test.ts` — 91 tests
+- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts`, `sync-validation.test.ts`, `agent-sync-tools.test.ts`, `sync-apply.test.ts` — 115 tests
 - CI pipeline: `.github/workflows/ci.yml` — TypeScript type check + vitest on push/PR to main
 - `LESSONS.md` created with accumulated project knowledge
 - `docs/project-brief.md` — product context, personas, constraints, glossary
@@ -111,12 +111,12 @@ Where to look for what:
 - B003: QA panel doc actions — inline delete and upload from expanded QA dashboard panel (`app/api/documents/[productId]/route.ts`, `app/qa/(protected)/QADashboardClient.tsx`)
 - B008: Post-sync email suggestion — `get_new_arrivals` + `clear_new_arrivals` agent tools, system prompt rule 13 (`lib/agent-tools.ts`, `lib/product-flags.ts`, `app/api/agent/chat/route.ts`)
 - B004: Sync-apply library — `applySync()` reusable pipeline with atomic file lock, structured result, lot insertion fix (`lib/sync-apply.ts`, `scripts/sync-inventory.ts` thin wrapper, `tests/sync-apply.test.ts`)
+- B005: Agent sync read tools — `get_reference_data`, `save_proposed_inventory`, `run_sync_diff` agent tools + system prompt sync workflow rule 14 (`lib/agent-tools.ts`, `app/api/agent/chat/route.ts`, `tests/agent-sync-tools.test.ts`)
+- B006: Agent sync write tools — `apply_sync` + `get_reconciliation` agent tools, system prompt rule 14 steps h–j, reviewer-only role gate on sync-action tools (`lib/agent-tools.ts`, `app/api/agent/chat/route.ts`, `tests/agent-sync-tools.test.ts`)
 
 ### Batch Queue
 | Batch | Epic | Size | Status |
 |-------|------|------|--------|
-| B005 | E1 — Agent-Powered Sync | Medium | `ready` |
-| B006 | E1 — Agent-Powered Sync | Medium | `ready` (depends B005) |
 | B007 | E1 — Agent-Powered Sync | Medium | `ready` |
 
 ### In Progress
