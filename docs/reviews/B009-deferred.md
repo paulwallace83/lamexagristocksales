@@ -1,0 +1,7 @@
+# Deferred Findings — Batch B009
+
+| # | Source | Severity | File | Finding | Reason Deferred | Target Batch | Status |
+|---|--------|----------|------|---------|----------------|-------------|--------|
+| 1 | retro+security+integration | Important | lib/agent-tools.ts:1119, lib/excel-import.ts:579,583 | Customer names embedded in `reason` field of `import-review.json` (e.g., `"direct-customer: KRAFT HEINZ CO"`). File readable by `/review` portal which parses this exact format. | Pre-existing pattern from CLI script — not introduced by B009. Changing `reason` format would break `/review` portal's parsing logic. Needs coordinated fix across `checkSoftExclusion()`, CLI script, agent tool, and review portal. | TBD | OPEN |
+| 2 | integration | Minor | lib/excel-import.ts:904-998 | `formatReviewSummary()` and `formatReviewSummarySanitized()` share ~80% structure (identical grouping logic, different table columns). | Extracting a shared helper for two functions with different grouping strategies (by-customer vs by-product) would add abstraction complexity for marginal deduplication. Current separate implementations are clearer. | TBD | OPEN |
+| 3 | correctness | Minor | tests/ | No integration test exercising `importFromBuffer()` with a real XLSX buffer end-to-end. All tests mock it. | Requires creating a test fixture XLSX file and a separate integration test file. Out of scope for refactor pass. | TBD | OPEN |

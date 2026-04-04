@@ -766,7 +766,7 @@ export default function AgentChat() {
               accept=".pdf,.csv,.xlsx,.xls,image/jpeg,image/png,image/gif,image/webp"
               className="hidden"
               onChange={(e) => {
-                const newFiles = Array.from(e.target.files ?? []);
+                const newFiles = Array.from(e.target.files ?? []).filter((f) => ALLOWED_TYPES.has(f.type));
                 setPendingFiles((prev) => [...prev, ...newFiles]);
                 e.target.value = "";
               }}

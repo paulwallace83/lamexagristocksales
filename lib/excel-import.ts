@@ -875,8 +875,14 @@ export function importFromBuffer(
   dataDir: string
 ): ImportResult {
   const wb = XLSX.read(buffer, { type: "buffer" });
+  if (!wb.SheetNames.length) {
+    throw new Error("Workbook contains no sheets");
+  }
   const sheetName = wb.SheetNames[0];
   const allRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]) as ExcelRow[];
+  if (allRows.length === 0) {
+    throw new Error("Spreadsheet contains no data rows");
+  }
   return importRows(allRows, dataDir);
 }
 
@@ -895,6 +901,47 @@ function inferPackSize(format: string, unitType: string): string {
   if (format === "Puree") return "54 gal drums";
   if (format === "IQF") return "30 lb cases";
   return "";
+}
+
+/**
+ * Sanitize excluded rows for export to import-review.json.
+ * Strips sensitive fields (customer name, pricing) — keeps only what
+ * the /review portal needs to display and merge.
+ */
+export interface SanitizedReviewRow {
+  reason: string;
+  ruleType: "hard" | "soft";
+  product: string;
+  specification: string;
+  warehouse: string;
+  supplier: string;
+  origin: string;
+  contract: string;
+  cases: number;
+  weight: number;
+  unit: string;
+  reserved: string;
+  bbd: string | number;
+  lotNumber: string;
+}
+
+export function sanitizeReviewForExport(review: ExcludedRow[]): SanitizedReviewRow[] {
+  return review.map((r) => ({
+    reason: r.reason,
+    ruleType: r.ruleType,
+    product: r.row.Stock_Description,
+    specification: r.row.Stock_Specification,
+    warehouse: r.row.Stock_Cold_Store,
+    supplier: r.row.Stock_Contract_Supplier,
+    origin: r.row.Stock_Origin_Country,
+    contract: r.row.Stock_Contract,
+    cases: r.row.Qty_Cases,
+    weight: r.row.Qty_Weight_Net_Bal,
+    unit: r.row.Unit,
+    reserved: r.row.Stock_Reserved,
+    bbd: r.row.Stock_BestBefore,
+    lotNumber: r.row.SML_LotNumber,
+  }));
 }
 
 /**

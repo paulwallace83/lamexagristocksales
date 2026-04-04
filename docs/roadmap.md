@@ -35,6 +35,7 @@ Organized by status. Updated as priorities shift.
 | v0.11.6 | Agent Sync Read Tools (B005) | 3 new TDPAIB agent tools (`get_reference_data`, `save_proposed_inventory`, `run_sync_diff`). System prompt rule 14 with 8-step sync workflow. 15 tests. No new routes or tables. |
 | v0.11.7 | Agent Sync Write Tools (B006) | 2 new TDPAIB agent tools (`apply_sync`, `get_reconciliation`). System prompt rule 14 steps h–j (apply → reconcile → sign-off). Reviewer-only role gate on sync-action tools. 9 tests (6 tool + 3 role gate). End-to-end sync workflow now completable within `/admin/agent`. |
 | v0.11.8 | Sync Dry-Run Mode (B007) | `dryRun` option on `applySync()`, `--dry-run` CLI flag, `dry_run_sync` agent tool. Validates entire sync pipeline without writing data. 4-file pre-validation on all sync agent tools (`apply_sync`, `dry_run_sync`). System prompt step g2 suggests dry-run when user is uncertain. 10 new tests. |
+| v0.11.9 | Agent CSV/Excel File Import (B009) | `import_inventory_file` agent tool accepts CSV/XLSX/XLS file uploads via drag-and-drop. `importFromBuffer()` in `lib/excel-import.ts` shares parsing pipeline with CLI. Spreadsheets excluded from Claude content blocks via `RENDERABLE_MIME_TYPES` gate. `sanitizeReviewForExport()` shared function eliminates code duplication. `formatReviewSummarySanitized()` strips customer names for agent path. 135 tests. |
 
 ---
 
@@ -42,7 +43,7 @@ Organized by status. Updated as priorities shift.
 
 | Slice | Description | Value |
 |-------|-------------|-------|
-| ~~Agent-powered sync~~ | ~~Paste pivot data in agent chat → auto-parse and sync. Removes need for Claude Code session for routine weekly updates.~~ ✓ B004–B008 complete. Full workflow: paste → parse → save → diff → dry-run → apply → reconcile → sign-off. | Operational efficiency |
+| ~~Agent-powered sync~~ | ~~Paste pivot data or upload CSV/Excel file in agent chat → auto-parse and sync. Removes need for Claude Code session for routine weekly updates.~~ ✓ B004–B009 complete. Full workflow: upload file (or paste) → import → save → diff → dry-run → apply → reconcile → sign-off. | Operational efficiency |
 | Enquiry tracking | Persist all enquiries to DB (not just doc requests). Sales gets visibility into lead volume, response times, product interest. | Sales insight |
 | ~~Pending request badge~~ | ~~Show document request count on "Requests" nav link across all admin pages.~~ ✓ B002 | QA workflow |
 | Automated email scheduling | Schedule weekly marketing emails to send automatically after sync, with manual override. Removes the "remember to send" step. | Consistency |

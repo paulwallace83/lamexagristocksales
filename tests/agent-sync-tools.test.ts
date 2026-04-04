@@ -45,6 +45,7 @@ vi.mock("../lib/sync-apply", () => ({
 vi.mock("../lib/excel-import", () => ({
   importFromBuffer: vi.fn(),
   formatReviewSummarySanitized: vi.fn(() => "## Items for Review\n..."),
+  sanitizeReviewForExport: vi.fn((review: any[]) => review.map((r: any) => ({ reason: r.reason, product: r.row?.Stock_Description }))),
 }));
 vi.mock("fs", async (importOriginal) => {
   const actual = await importOriginal<typeof import("fs")>();
@@ -716,7 +717,7 @@ describe("import_inventory_file", () => {
     const result = await executeTool("import_inventory_file", { fileName: "missing.xlsx" }, emptyFileMap, "test@lamex.com", "reviewer") as any;
 
     expect(result.error).toContain("File 'missing.xlsx' not found");
-    expect(result.error).toContain("Available files:");
+    expect(result.error).toContain("none — please re-upload");
     expect(importFromBuffer).not.toHaveBeenCalled();
   });
 
@@ -740,8 +741,7 @@ describe("import_inventory_file", () => {
 
     const result = await executeTool("import_inventory_file", { fileName: "bad.xlsx" }, fileMap, "test@lamex.com", "reviewer") as any;
 
-    expect(result.error).toContain("Failed to parse file:");
-    expect(result.error).toContain("Invalid file format");
+    expect(result.error).toBe("Failed to parse uploaded file. Ensure it is a valid Excel or CSV spreadsheet.");
   });
 
   it("requires reviewer role", async () => {
@@ -756,5 +756,46 @@ describe("import_inventory_file", () => {
 
     expect(result.error).toBe("This tool requires the reviewer role");
     expect(importFromBuffer).not.toHaveBeenCalled();
+  });
+
+  it("returns error when reference data is missing", async () => {
+    vi.mocked(existsSync).mockImplementation((p: any) => {
+      if (String(p).endsWith("suppliers.json")) return false;
+      return true;
+    });
+
+    const fileMap = new Map<string, FileData>();
+    fileMap.set("Book1.xlsx", {
+      buffer: Buffer.from("fake-data"),
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      name: "Book1.xlsx",
+    });
+
+    const result = await executeTool("import_inventory_file", { fileName: "Book1.xlsx" }, fileMap, "test@lamex.com", "reviewer") as any;
+
+    expect(result.error).toContain("suppliers.json not found");
+    expect(importFromBuffer).not.toHaveBeenCalled();
+  });
+
+  it("writes empty products array when all rows excluded", async () => {
+    const emptyProductsResult = {
+      ...mockImportResult,
+      included: { lastUpdated: "2026-04-04", products: [] },
+      stats: { ...mockImportResult.stats, includedProducts: 0, includedListings: 0, includedWeightLbs: 0, includedQuantity: 0 },
+    };
+    vi.mocked(importFromBuffer).mockReturnValue(emptyProductsResult as any);
+
+    const fileMap = new Map<string, FileData>();
+    fileMap.set("Book1.xlsx", {
+      buffer: Buffer.from("fake-data"),
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      name: "Book1.xlsx",
+    });
+
+    const result = await executeTool("import_inventory_file", { fileName: "Book1.xlsx" }, fileMap, "test@lamex.com", "reviewer") as any;
+
+    expect(result.success).toBe(true);
+    expect(result.stats.includedProducts).toBe(0);
+    expect(writeFileSync).toHaveBeenCalledTimes(1); // proposed only
   });
 });

@@ -97,7 +97,7 @@ Where to look for what:
 
 ### Completed
 - Agentic coding governance migration (CLAUDE.md refactor, agent_docs/, .claude/rules/, /handoff skill, PostCompact hook)
-- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts`, `sync-validation.test.ts`, `agent-sync-tools.test.ts`, `sync-apply.test.ts` — 125 tests
+- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts`, `sync-validation.test.ts`, `agent-sync-tools.test.ts`, `sync-apply.test.ts` — 135 tests
 - CI pipeline: `.github/workflows/ci.yml` — TypeScript type check + vitest on push/PR to main
 - `LESSONS.md` created with accumulated project knowledge
 - `docs/project-brief.md` — product context, personas, constraints, glossary
@@ -119,7 +119,7 @@ Where to look for what:
 ### Batch Queue
 | Batch | Epic | Size | Status |
 |-------|------|------|--------|
-| B009 | E1 | Medium | in-progress |
+| (none currently queued) | | | |
 
 ### Do Not Touch
 - `data/inventory.json` — live inventory data; only `npm run sync` should write this

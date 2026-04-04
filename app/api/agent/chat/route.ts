@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
     // Persist to user-scoped temp so the file survives across conversation turns
     const metaPath = join(userTempDir, `${safeName}.json`);
     const dataPath = join(userTempDir, safeName);
-    if (resolve(dataPath).startsWith(resolve(userTempDir))) {
+    if (resolve(dataPath).startsWith(resolve(userTempDir) + "/")) {
       writeFileSync(dataPath, buffer);
       writeFileSync(metaPath, JSON.stringify({ mimeType: file.type, name: file.name }));
     }

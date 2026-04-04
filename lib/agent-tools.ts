@@ -19,7 +19,7 @@ import { getDiscountItems, addDiscountItemsFromLots, restoreToInventory } from "
 import { clearFlags, getNewArrivalsWithNames } from "./product-flags";
 import { computeDiff, formatDiffReport, reconciliationReport } from "./sync";
 import { applySync } from "./sync-apply";
-import { importFromBuffer, formatReviewSummarySanitized } from "./excel-import";
+import { importFromBuffer, formatReviewSummarySanitized, sanitizeReviewForExport } from "./excel-import";
 import { getUploadsRoot } from "./paths";
 import type { DocCategory } from "./documents";
 import type { DiscountReason, DiscountStatus } from "./discount";
@@ -1086,7 +1086,7 @@ export async function executeTool(
         return { error: "fileName is required" };
       }
 
-      // Resolve file from fileMap with fuzzy matching (same pattern as upload_document)
+      // Resolve file from fileMap with case-insensitive exact matching
       let fileData = fileMap.get(fileName);
       if (!fileData) {
         const lower = fileName.toLowerCase();
@@ -1099,10 +1099,21 @@ export async function executeTool(
       }
       if (!fileData) {
         const available = Array.from(fileMap.keys()).join(", ");
-        return { error: `File '${fileName}' not found. Available files: ${available || "(none)"}` };
+        return { error: `File '${fileName}' not found. Available files: ${available || "none — please re-upload"}.` };
       }
 
       const dataDir = join(process.cwd(), "data");
+
+      // Pre-check reference data (same pattern as run_sync_diff / apply_sync)
+      if (!existsSync(join(dataDir, "suppliers.json"))) {
+        return { error: "suppliers.json not found. Run get_reference_data first." };
+      }
+      if (!existsSync(join(dataDir, "warehouses.json"))) {
+        return { error: "warehouses.json not found. Run get_reference_data first." };
+      }
+      if (!existsSync(join(dataDir, "exclusion-rules.json"))) {
+        return { error: "exclusion-rules.json not found. Reference data is missing." };
+      }
 
       try {
         const result = importFromBuffer(fileData.buffer, dataDir);
@@ -1115,23 +1126,7 @@ export async function executeTool(
         // Write import-review.json if there are soft-excluded items
         const reviewPath = join(dataDir, "import-review.json");
         if (review.length > 0) {
-          const sanitizedReview = review.map((r) => ({
-            reason: r.reason,
-            ruleType: r.ruleType,
-            product: r.row.Stock_Description,
-            specification: r.row.Stock_Specification,
-            warehouse: r.row.Stock_Cold_Store,
-            supplier: r.row.Stock_Contract_Supplier,
-            origin: r.row.Stock_Origin_Country,
-            contract: r.row.Stock_Contract,
-            cases: r.row.Qty_Cases,
-            weight: r.row.Qty_Weight_Net_Bal,
-            unit: r.row.Unit,
-            reserved: r.row.Stock_Reserved,
-            bbd: r.row.Stock_BestBefore,
-            lotNumber: r.row.SML_LotNumber,
-          }));
-          writeFileSync(reviewPath, JSON.stringify(sanitizedReview, null, 2));
+          writeFileSync(reviewPath, JSON.stringify(sanitizeReviewForExport(review), null, 2));
         }
 
         // Build review summary for the agent to present (sanitized — no customer names)
@@ -1158,8 +1153,7 @@ export async function executeTool(
         };
       } catch (err) {
         console.error("[agent] import_inventory_file error:", err);
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        return { error: `Failed to parse file: ${msg}` };
+        return { error: "Failed to parse uploaded file. Ensure it is a valid Excel or CSV spreadsheet." };
       }
     }
 

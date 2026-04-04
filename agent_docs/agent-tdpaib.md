@@ -18,7 +18,7 @@ An embedded Claude-powered chat interface for QA and operations staff. Branded a
 
 ## Architecture
 
-- Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 24 tools (15 read-only, 9 action).
+- Claude runs server-side via `@anthropic-ai/sdk` with streaming (`messages.stream()`), 26 tools (16 read-only, 10 action).
 - Action tools (`upload_document`, `batch_upload_documents`, `create_discount_item`, `restore_discount_item`, `save_coa_data`, `backfill_coa_data`, `clear_new_arrivals`, `save_proposed_inventory`, `apply_sync`, `import_inventory_file`) require conversational confirmation before execution — enforced via system prompt.
 - Files are uploaded in-band with the chat message (multipart form data) and persisted to a per-user temp directory (`.agent-uploads/{user}/`) — auto-cleaned after 30 min.
 - Responses stream via SSE with tool activity indicators. Max 10 tool-use iterations per request with a user-visible warning if the limit is reached.
