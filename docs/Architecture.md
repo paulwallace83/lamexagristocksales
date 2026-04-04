@@ -72,11 +72,13 @@
 **Source of truth hierarchy:**
 
 ```
-ERP (Excel pivot table)
-  → scripts/import-excel.ts  →  data/inventory-proposed.json
-                                 data/import-review.json
-  → diff review + approval   →  human sign-off
-  → scripts/sync-inventory.ts →  data/inventory.json (overwritten)
+ERP (Excel pivot table / CSV export)
+  → scripts/import-excel.ts       ←  CLI path
+  → import_inventory_file tool     ←  Agent path (file upload in /admin/agent)
+  Both produce:                   →  data/inventory-proposed.json
+                                     data/import-review.json
+  → diff review + approval        →  human sign-off
+  → scripts/sync-inventory.ts     →  data/inventory.json (overwritten)
      (delegates to lib/sync-apply.ts applySync())
                                   data/snapshots/inventory-YYYY-MM-DD.json
   → applySync() seed txn     →  SQLite: products/listings/lots wiped + re-inserted
@@ -90,7 +92,7 @@ ERP (Excel pivot table)
 
 | Step | Script / function | Outputs | Preserves across sync |
 |------|------------------|---------|----------------------|
-| 1. Import Excel | `scripts/import-excel.ts` | `inventory-proposed.json`, `import-review.json` | — |
+| 1. Import Excel | `scripts/import-excel.ts` (CLI) or `import_inventory_file` agent tool (file upload) | `inventory-proposed.json`, `import-review.json` | — |
 | 2. Compute diff | `lib/sync.ts computeDiff()` | `SyncDiff` markdown report | — |
 | 3. Validate rules | `lib/sync.ts validateBusinessRules()` | Blocking/non-blocking warnings array | — |
 | 4. Human approval | Manual / `/review` portal | Go / no-go | — |

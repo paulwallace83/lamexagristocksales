@@ -15,7 +15,7 @@
 
 import { writeFileSync } from "fs";
 import { join, resolve } from "path";
-import { importExcel, formatReviewSummary } from "../lib/excel-import.js";
+import { importExcel, formatReviewSummary, sanitizeReviewForExport } from "../lib/excel-import.js";
 
 const dataDir = join(import.meta.dirname!, "..", "data");
 
@@ -50,27 +50,8 @@ writeFileSync(proposedPath, JSON.stringify(included, null, 2), "utf-8");
 console.log(`Wrote ${proposedPath}`);
 
 if (review.length > 0) {
-  // Write review file with sanitized data (strip sensitive fields)
-  const sanitizedReview = review.map((r) => ({
-    reason: r.reason,
-    ruleType: r.ruleType,
-    product: r.row.Stock_Description,
-    specification: r.row.Stock_Specification,
-    warehouse: r.row.Stock_Cold_Store,
-    supplier: r.row.Stock_Contract_Supplier,
-    origin: r.row.Stock_Origin_Country,
-    contract: r.row.Stock_Contract,
-    cases: r.row.Qty_Cases,
-    weight: r.row.Qty_Weight_Net_Bal,
-    unit: r.row.Unit,
-    reserved: r.row.Stock_Reserved,
-    bbd: r.row.Stock_BestBefore,
-    lotNumber: r.row.SML_LotNumber,
-    // Sensitive fields intentionally omitted
-  }));
-
   const reviewPath = join(dataDir, "import-review.json");
-  writeFileSync(reviewPath, JSON.stringify(sanitizedReview, null, 2), "utf-8");
+  writeFileSync(reviewPath, JSON.stringify(sanitizeReviewForExport(review), null, 2), "utf-8");
   console.log(`Wrote ${reviewPath}`);
 }
 

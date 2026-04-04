@@ -585,8 +585,12 @@ function checkSoftExclusion(
 
 // ─── Main Import Function ─────────────────────────────────────────
 
-export function importExcel(
-  excelPath: string,
+/**
+ * Shared core: processes parsed rows through exclusion rules and builds inventory.
+ * Called by both importExcel() (file path) and importFromBuffer() (in-memory buffer).
+ */
+function importRows(
+  allRows: ExcelRow[],
   dataDir: string
 ): ImportResult {
   // Load reference data
@@ -603,11 +607,6 @@ export function importExcel(
   // Build lookups
   const warehouseLookup = buildWarehouseLookup(warehousesFile.warehouses);
   const supplierLookup = buildSupplierLookup(suppliersFile.suppliers);
-
-  // Read Excel
-  const wb = XLSX.readFile(excelPath);
-  const sheetName = wb.SheetNames[0];
-  const allRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]) as ExcelRow[];
 
   const excluded: ExcludedRow[] = [];
   const review: ExcludedRow[] = [];
@@ -857,6 +856,36 @@ export function importExcel(
   };
 }
 
+export function importExcel(
+  excelPath: string,
+  dataDir: string
+): ImportResult {
+  const wb = XLSX.readFile(excelPath);
+  const sheetName = wb.SheetNames[0];
+  const allRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]) as ExcelRow[];
+  return importRows(allRows, dataDir);
+}
+
+/**
+ * Import from an in-memory buffer (Excel or CSV).
+ * Used by the agent's import_inventory_file tool.
+ */
+export function importFromBuffer(
+  buffer: Buffer,
+  dataDir: string
+): ImportResult {
+  const wb = XLSX.read(buffer, { type: "buffer" });
+  if (!wb.SheetNames.length) {
+    throw new Error("Workbook contains no sheets");
+  }
+  const sheetName = wb.SheetNames[0];
+  const allRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]) as ExcelRow[];
+  if (allRows.length === 0) {
+    throw new Error("Spreadsheet contains no data rows");
+  }
+  return importRows(allRows, dataDir);
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────
 
 function titleCase(str: string): string {
@@ -875,7 +904,49 @@ function inferPackSize(format: string, unitType: string): string {
 }
 
 /**
+ * Sanitize excluded rows for export to import-review.json.
+ * Strips sensitive fields (customer name, pricing) — keeps only what
+ * the /review portal needs to display and merge.
+ */
+export interface SanitizedReviewRow {
+  reason: string;
+  ruleType: "hard" | "soft";
+  product: string;
+  specification: string;
+  warehouse: string;
+  supplier: string;
+  origin: string;
+  contract: string;
+  cases: number;
+  weight: number;
+  unit: string;
+  reserved: string;
+  bbd: string | number;
+  lotNumber: string;
+}
+
+export function sanitizeReviewForExport(review: ExcludedRow[]): SanitizedReviewRow[] {
+  return review.map((r) => ({
+    reason: r.reason,
+    ruleType: r.ruleType,
+    product: r.row.Stock_Description,
+    specification: r.row.Stock_Specification,
+    warehouse: r.row.Stock_Cold_Store,
+    supplier: r.row.Stock_Contract_Supplier,
+    origin: r.row.Stock_Origin_Country,
+    contract: r.row.Stock_Contract,
+    cases: r.row.Qty_Cases,
+    weight: r.row.Qty_Weight_Net_Bal,
+    unit: r.row.Unit,
+    reserved: r.row.Stock_Reserved,
+    bbd: r.row.Stock_BestBefore,
+    lotNumber: r.row.SML_LotNumber,
+  }));
+}
+
+/**
  * Summarize review items grouped by customer + product for display.
+ * CLI-only — includes customer names. Never use in agent tool results.
  */
 export function formatReviewSummary(review: ExcludedRow[]): string {
   const lines: string[] = [];
@@ -920,6 +991,52 @@ export function formatReviewSummary(review: ExcludedRow[]): string {
           `| ${cust} | ${prod} | ${fmtNum(agg.qty)} | ${fmtNum(Math.round(agg.weight))} | ${[...agg.wh].join(", ")} |`
         );
       }
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Sanitized review summary — no customer names.
+ * Safe for agent tool results and any output that reaches the chat UI.
+ */
+export function formatReviewSummarySanitized(review: ExcludedRow[]): string {
+  const lines: string[] = [];
+  lines.push("## Items for Review");
+  lines.push("");
+
+  // Group by reason category
+  const byReason = new Map<string, ExcludedRow[]>();
+  for (const r of review) {
+    const cat = r.reason.split(":")[0];
+    if (!byReason.has(cat)) byReason.set(cat, []);
+    byReason.get(cat)!.push(r);
+  }
+
+  for (const [cat, rows] of byReason) {
+    const heading = cat === "direct-customer" ? "Direct Customer Stock" : cat === "reserved-stock" ? "Reserved Stock" : cat;
+    lines.push(`### ${heading} (${rows.length} rows)`);
+    lines.push("");
+
+    // Aggregate by product only — no customer grouping
+    const byProd = new Map<string, { qty: number; weight: number; wh: Set<string> }>();
+    for (const r of rows) {
+      const prod = r.row.Stock_Description;
+      if (!byProd.has(prod)) byProd.set(prod, { qty: 0, weight: 0, wh: new Set() });
+      const p = byProd.get(prod)!;
+      p.qty += Math.abs(Number(r.row.Qty_Cases) || 0);
+      p.weight += Number(r.row.Qty_Weight_Net_Bal) || 0;
+      if (r.row.Stock_Cold_Store) p.wh.add(r.row.Stock_Cold_Store);
+    }
+
+    lines.push("| Product | Qty | Weight (lbs) | Warehouse |");
+    lines.push("|---------|-----|-------------|-----------|");
+    for (const [prod, agg] of byProd) {
+      lines.push(
+        `| ${prod} | ${fmtNum(agg.qty)} | ${fmtNum(Math.round(agg.weight))} | ${[...agg.wh].join(", ")} |`
+      );
     }
     lines.push("");
   }
