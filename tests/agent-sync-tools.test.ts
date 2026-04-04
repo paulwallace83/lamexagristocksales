@@ -355,10 +355,12 @@ describe("run_sync_diff", () => {
 describe("apply_sync", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(existsSync).mockReturnValue(true);
   });
 
   it("returns success with sanitised result on happy path", async () => {
     const mockResult = {
+      dryRun: false,
       snapshotPath: "/Users/paul/projects/lamexinventory/data/snapshots/inventory-2026-04-04.json",
       productCount: 12,
       listingCount: 30,
@@ -456,5 +458,127 @@ describe("get_reconciliation", () => {
 
     expect(result.error).toBe("Failed to generate reconciliation report");
     expect(JSON.stringify(result)).not.toContain("Unexpected token");
+  });
+});
+
+// ─── dry_run_sync ──────────────────────────────────────────────────────────
+
+describe("dry_run_sync", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("returns dryRun: true with counts on happy path", async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(applySync).mockReturnValue({
+      dryRun: true,
+      snapshotPath: "(dry run)",
+      productCount: 10,
+      listingCount: 25,
+      contractCount: 20,
+      lotCount: 60,
+      warehouseCount: 4,
+      supplierCount: 7,
+      documentsPreserved: 0,
+      orphanedDocs: [],
+      relinkReport: { linked: 0, orphaned: 0 },
+      coaRelinkReport: { linked: 0, orphaned: 0 },
+      deductionReport: { lotsRemoved: 0, listingsEmptied: 0, productsRemoved: 0, missing: 0, details: [] },
+      validationReport: null,
+      newArrivals: [],
+      cleanedUp: false,
+      referenceFilesRegenerated: false,
+    });
+
+    const result = await executeTool("dry_run_sync", {}, emptyFileMap, "test@lamex.com") as any;
+
+    expect(result.dryRun).toBe(true);
+    expect(result.result.productCount).toBe(10);
+    expect(result.result.listingCount).toBe(25);
+    expect(result.result.contractCount).toBe(20);
+    expect(result.result.lotCount).toBe(60);
+    expect(result.result.warehouseCount).toBe(4);
+    expect(result.result.supplierCount).toBe(7);
+    expect(applySync).toHaveBeenCalledWith(
+      expect.objectContaining({ dryRun: true }),
+    );
+  });
+
+  it("returns error when inventory-proposed.json is missing", async () => {
+    vi.mocked(existsSync).mockImplementation((filePath: any) => {
+      const p = String(filePath);
+      if (p.endsWith("inventory-proposed.json")) return false;
+      return true;
+    });
+
+    const result = await executeTool("dry_run_sync", {}, emptyFileMap, "test@lamex.com") as any;
+
+    expect(result.error).toContain("No inventory-proposed.json found");
+    expect(applySync).not.toHaveBeenCalled();
+  });
+
+  it("returns error when inventory.json is missing", async () => {
+    vi.mocked(existsSync).mockImplementation((filePath: any) => {
+      const p = String(filePath);
+      if (p.endsWith("inventory-proposed.json")) return true;
+      if (p.endsWith("inventory.json")) return false;
+      return true;
+    });
+
+    const result = await executeTool("dry_run_sync", {}, emptyFileMap, "test@lamex.com") as any;
+
+    expect(result.error).toContain("No inventory.json found");
+    expect(applySync).not.toHaveBeenCalled();
+  });
+
+  it("returns specific error when lock file exists", async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(applySync).mockImplementation(() => {
+      throw new Error("Sync already in progress");
+    });
+
+    const result = await executeTool("dry_run_sync", {}, emptyFileMap, "test@lamex.com") as any;
+
+    expect(result.error).toBe("Sync already in progress");
+  });
+
+  it("returns generic error on unexpected failures", async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(applySync).mockImplementation(() => {
+      throw new Error("Cannot read file: /internal/path/data.json");
+    });
+
+    const result = await executeTool("dry_run_sync", {}, emptyFileMap, "test@lamex.com") as any;
+
+    expect(result.error).toBe("Dry-run failed");
+    expect(JSON.stringify(result)).not.toContain("/internal/");
+  });
+
+  it("is accessible to qa role (not reviewer-only)", async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(applySync).mockReturnValue({
+      dryRun: true,
+      snapshotPath: "(dry run)",
+      productCount: 5,
+      listingCount: 10,
+      contractCount: 8,
+      lotCount: 20,
+      warehouseCount: 3,
+      supplierCount: 4,
+      documentsPreserved: 0,
+      orphanedDocs: [],
+      relinkReport: { linked: 0, orphaned: 0 },
+      coaRelinkReport: { linked: 0, orphaned: 0 },
+      deductionReport: { lotsRemoved: 0, listingsEmptied: 0, productsRemoved: 0, missing: 0, details: [] },
+      validationReport: null,
+      newArrivals: [],
+      cleanedUp: false,
+      referenceFilesRegenerated: false,
+    });
+
+    const result = await executeTool("dry_run_sync", {}, emptyFileMap, "test@lamex.com", "qa") as any;
+
+    expect(result.dryRun).toBe(true);
+    expect(result.result.productCount).toBe(5);
   });
 });

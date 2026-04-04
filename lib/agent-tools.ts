@@ -362,6 +362,12 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
       "Apply the approved sync: snapshot current inventory, overwrite with proposed data, re-seed the database, re-link documents and COA data, and deduct discount lots. This is the most consequential action in the system — it replaces the entire inventory. ALWAYS show the diff report first, summarise what will happen, and wait for explicit user approval before calling this tool.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
+  {
+    name: "dry_run_sync",
+    description:
+      "Run a dry-run sync to validate that the proposed inventory would sync successfully without modifying any data. Returns the counts that would result from a real sync (products, listings, contracts, lots, warehouses, suppliers). No snapshot is created, no files are written, and the database is untouched. Use this to give the user confidence before calling apply_sync.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -955,10 +961,28 @@ export async function executeTool(
 
     case "apply_sync": {
       const dataDir = join(process.cwd(), "data");
+      const proposedPath = join(dataDir, "inventory-proposed.json");
+      const inventoryPath = join(dataDir, "inventory.json");
+      const suppliersPath = join(dataDir, "suppliers.json");
+      const warehousesPath = join(dataDir, "warehouses.json");
+
+      if (!existsSync(proposedPath)) {
+        return { error: "No inventory-proposed.json found. Save a proposed inventory first using save_proposed_inventory." };
+      }
+      if (!existsSync(inventoryPath)) {
+        return { error: "No inventory.json found. Cannot sync without current inventory." };
+      }
+      if (!existsSync(suppliersPath)) {
+        return { error: "No suppliers.json found. Reference data is missing." };
+      }
+      if (!existsSync(warehousesPath)) {
+        return { error: "No warehouses.json found. Reference data is missing." };
+      }
+
       try {
         const result = applySync({
-          proposedPath: join(dataDir, "inventory-proposed.json"),
-          inventoryPath: join(dataDir, "inventory.json"),
+          proposedPath,
+          inventoryPath,
           dataDir,
         });
         // Sanitise snapshotPath to relative — never expose absolute filesystem paths
@@ -989,6 +1013,54 @@ export async function executeTool(
         }
         console.error("[agent] apply_sync error:", err);
         return { error: "Sync failed" };
+      }
+    }
+
+    case "dry_run_sync": {
+      const dataDir = join(process.cwd(), "data");
+      const proposedPath = join(dataDir, "inventory-proposed.json");
+      const inventoryPath = join(dataDir, "inventory.json");
+      const suppliersPath = join(dataDir, "suppliers.json");
+      const warehousesPath = join(dataDir, "warehouses.json");
+
+      if (!existsSync(proposedPath)) {
+        return { error: "No inventory-proposed.json found. Save a proposed inventory first using save_proposed_inventory." };
+      }
+      if (!existsSync(inventoryPath)) {
+        return { error: "No inventory.json found. Cannot run dry-run without current inventory." };
+      }
+      if (!existsSync(suppliersPath)) {
+        return { error: "No suppliers.json found. Reference data is missing." };
+      }
+      if (!existsSync(warehousesPath)) {
+        return { error: "No warehouses.json found. Reference data is missing." };
+      }
+
+      try {
+        const result = applySync({
+          proposedPath,
+          inventoryPath,
+          dataDir,
+          dryRun: true,
+        });
+        return {
+          dryRun: true,
+          result: {
+            productCount: result.productCount,
+            listingCount: result.listingCount,
+            contractCount: result.contractCount,
+            lotCount: result.lotCount,
+            warehouseCount: result.warehouseCount,
+            supplierCount: result.supplierCount,
+          },
+        };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        if (msg === "Sync already in progress") {
+          return { error: "Sync already in progress" };
+        }
+        console.error("[agent] dry_run_sync error:", err);
+        return { error: "Dry-run failed" };
       }
     }
 

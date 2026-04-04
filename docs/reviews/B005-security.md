@@ -1,0 +1,32 @@
+# Security Review — B005
+
+**Reviewer:** Fresh agent session
+**Date:** 2026-04-03
+**Batch:** docs/batches/B005-agent-sync-read-tools.md
+
+## Critical (must fix before merge)
+
+None found.
+
+## Important (should fix, can be next batch)
+
+- **[lib/agent-tools.ts:650](lib/agent-tools.ts#L650)** — **Error message information disclosure**. The `get_reference_data` catch block passes the raw `err.message` into the tool response: `Failed to read reference data: ${err.message}`. Node's `ENOENT` errors include the full absolute filesystem path (e.g., `ENOENT: no such file or directory, open '/srv/railway/volume/data/suppliers.json'`). This error is returned to the Claude model which may relay it to the user, and is also sent over SSE via `send({ type: "tool_result", ... })`. While the route is auth-gated, exposing absolute server paths to any authenticated user violates the error-handling rule in `.claude/rules/security.md` ("Log full errors server-side; send generic messages to the client"). The same pattern applies to **[lib/agent-tools.ts:673](lib/agent-tools.ts#L673)** (`run_sync_diff` catch) and **[lib/agent-tools.ts:903](lib/agent-tools.ts#L903)** (`save_proposed_inventory` catch). Fix: Log the full error server-side with `console.error`, return a generic message without `err.message` (e.g., `{ error: "Failed to read reference data" }`).
+
+- **[lib/agent-tools.ts:886–904](lib/agent-tools.ts#L886-L904)** — **No content validation on `save_proposed_inventory` products array**. The tool accepts any array of objects from the AI model and writes it to disk as `inventory-proposed.json`. There is no schema validation or sanitisation of the objects inside the `products` array. If the AI model is manipulated (via prompt injection in a pasted pivot table, or an adversarial document), it could write arbitrary JSON content to `data/inventory-proposed.json` — including customer names, pricing, or other sensitive fields the model extracted from the pasted data. This file is later consumed by `computeDiff()` and by `applySync()` (B006). Attack vector: user pastes pivot table data containing customer names (Row 3); the system prompt instructs the model to strip them, but this is a soft control — the model may include them in the structured output. A second soft concern: there is no size limit on the `products` array, so an extremely large payload could be written to disk. Fix: At minimum, validate that each product object contains required fields (`id`, `product`, `commodity`, etc.) and does not contain known sensitive field names. Consider adding a max products count (e.g., 500).
+
+## Minor (nice to have)
+
+- **[lib/agent-tools.ts:644](lib/agent-tools.ts#L644), [lib/agent-tools.ts:655](lib/agent-tools.ts#L655), [lib/agent-tools.ts:895](lib/agent-tools.ts#L895)** — **Hardcoded `process.cwd()` for data directory paths**. The three new tools construct their data directory paths using `join(process.cwd(), "data")`. While this matches the existing pattern for `get_import_review` (line 625) and is functionally correct in both local and Railway environments, it creates coupling that LESSONS.md specifically warns about ("Reference file generators must accept an output directory — never hardcode `process.cwd()`"). Not a security issue per se, but noted for consistency with the project's defensive coding guidance.
+
+- **[app/api/agent/chat/route.ts:50–58](app/api/agent/chat/route.ts#L50-L58)** — **Customer name stripping relies solely on system prompt instruction**. Rule 14b instructs the model: "Row 3 = customer name (ALWAYS STRIP — never include in output)". This is a prompt-level control only. There is no server-side enforcement that customer names are excluded from the products array before `save_proposed_inventory` writes to disk. The model will almost certainly comply, but system prompt instructions are a soft control — not a security boundary. This is noted as "minor" because the data flow is entirely within the authenticated admin surface and customer names would only persist in a server-side JSON file (not exposed publicly), but it does conflict with the "never include customer names in any output" rule. Fix: If feasible, add a server-side post-processing step that strips known customer-name fields from each product object before writing.
+
+## Security Checklist
+
+- [x] All new API routes protected by auth check (session + role) — No new API routes added. The 3 new tools execute within `executeTool()` which is called from `app/api/agent/chat/route.ts`, already gated by `qa` or `reviewer` session check (line 71–79).
+- [x] No secrets in source code or logs — No secrets introduced. Error messages from the new tools could include filesystem paths (see Important finding above), but no API keys or credentials.
+- [x] All user input validated before use in SQL queries (parameterised) — No new SQL queries. All 3 tools operate on the filesystem only.
+- [x] All user input validated before use in file paths (sanitise + resolve + prefix) — `get_reference_data` and `run_sync_diff` construct paths from hardcoded filenames (`suppliers.json`, `warehouses.json`, `inventory.json`, `inventory-proposed.json`) joined to `process.cwd()/data`. No user-controlled path segments. `save_proposed_inventory` writes to a hardcoded path (`data/inventory-proposed.json`). No path traversal risk.
+- [x] No customer names, pricing, or sensitive ERP fields in any output — `get_reference_data` returns supplier/warehouse reference data (no customer names or pricing). `run_sync_diff` returns the diff report from `computeDiff()` + `formatDiffReport()` which contain product names, suppliers, warehouses, quantities, and weights — no customer names or pricing. `save_proposed_inventory` writes what the model provides (see Important finding about lack of content validation). The diff report has a `customer-name-detected` warning type which flags the *presence* of customer names but does not include the names themselves.
+- [x] Unauthorised access returns 404 (not 403) for file/document routes — No new file-serving routes added.
+- [x] File uploads validated server-side (size, MIME type, filename characters) — No new file upload functionality. `save_proposed_inventory` writes JSON, not user-uploaded files.
+- [ ] Error responses contain no stack traces, file paths, or internal details — **FAIL**: The 3 new tools pass raw `err.message` strings which can include absolute filesystem paths from Node.js `ENOENT` errors. See Important finding above.

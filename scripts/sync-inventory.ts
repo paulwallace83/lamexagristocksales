@@ -14,9 +14,23 @@ import { applySync } from "../lib/sync-apply";
 const dataDir = join(process.cwd(), "data");
 const proposedPath = join(dataDir, "inventory-proposed.json");
 const inventoryPath = join(dataDir, "inventory.json");
+const dryRun = process.argv.includes("--dry-run");
 
 try {
-  const result = applySync({ proposedPath, inventoryPath, dataDir });
+  const result = applySync({ proposedPath, inventoryPath, dataDir, dryRun });
+
+  // ── Dry-run summary ─────────────────────────────────────────
+  if (result.dryRun) {
+    console.log("[DRY RUN] Sync validation passed — no data was modified.\n");
+    console.log(`[DRY RUN] Would sync:`);
+    console.log(`   ${result.productCount} products`);
+    console.log(`   ${result.listingCount} listings`);
+    console.log(`   ${result.contractCount} contracts`);
+    console.log(`   ${result.lotCount} lots`);
+    console.log(`   ${result.warehouseCount} warehouses`);
+    console.log(`   ${result.supplierCount} suppliers`);
+    process.exit(0);
+  }
 
   // ── Snapshot ────────────────────────────────────────────────
   const snapStat = statSync(result.snapshotPath);
