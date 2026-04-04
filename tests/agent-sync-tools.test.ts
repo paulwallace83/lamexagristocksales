@@ -355,10 +355,12 @@ describe("run_sync_diff", () => {
 describe("apply_sync", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(existsSync).mockReturnValue(true);
   });
 
   it("returns success with sanitised result on happy path", async () => {
     const mockResult = {
+      dryRun: false,
       snapshotPath: "/Users/paul/projects/lamexinventory/data/snapshots/inventory-2026-04-04.json",
       productCount: 12,
       listingCount: 30,

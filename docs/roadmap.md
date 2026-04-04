@@ -34,6 +34,7 @@ Organized by status. Updated as priorities shift.
 | v0.11.5 | Sync-Apply Library (B004) | Extracted 480-line sync script into reusable `applySync()` in `lib/sync-apply.ts`. Atomic file lock (O_CREAT\|O_EXCL), structured `SyncApplyResult`, lot insertion fix (pre-existing gap), parameterized `rootDir`. Foundation for agent-powered sync (B005–B007). 9 tests. |
 | v0.11.6 | Agent Sync Read Tools (B005) | 3 new TDPAIB agent tools (`get_reference_data`, `save_proposed_inventory`, `run_sync_diff`). System prompt rule 14 with 8-step sync workflow. 15 tests. No new routes or tables. |
 | v0.11.7 | Agent Sync Write Tools (B006) | 2 new TDPAIB agent tools (`apply_sync`, `get_reconciliation`). System prompt rule 14 steps h–j (apply → reconcile → sign-off). Reviewer-only role gate on sync-action tools. 9 tests (6 tool + 3 role gate). End-to-end sync workflow now completable within `/admin/agent`. |
+| v0.11.8 | Sync Dry-Run Mode (B007) | `dryRun` option on `applySync()`, `--dry-run` CLI flag, `dry_run_sync` agent tool. Validates entire sync pipeline without writing data. 4-file pre-validation on all sync agent tools (`apply_sync`, `dry_run_sync`). System prompt step g2 suggests dry-run when user is uncertain. 10 new tests. |
 
 ---
 
@@ -41,7 +42,7 @@ Organized by status. Updated as priorities shift.
 
 | Slice | Description | Value |
 |-------|-------------|-------|
-| Agent-powered sync | Paste pivot data in agent chat → auto-parse and sync. Removes need for Claude Code session for routine weekly updates. Foundation: B004 (sync-apply library). ~~B005 (read tools)~~ ✓. ~~B006 (write tools)~~ ✓. Remaining: B007 (dry-run). | Operational efficiency |
+| ~~Agent-powered sync~~ | ~~Paste pivot data in agent chat → auto-parse and sync. Removes need for Claude Code session for routine weekly updates.~~ ✓ B004–B008 complete. Full workflow: paste → parse → save → diff → dry-run → apply → reconcile → sign-off. | Operational efficiency |
 | Enquiry tracking | Persist all enquiries to DB (not just doc requests). Sales gets visibility into lead volume, response times, product interest. | Sales insight |
 | ~~Pending request badge~~ | ~~Show document request count on "Requests" nav link across all admin pages.~~ ✓ B002 | QA workflow |
 | Automated email scheduling | Schedule weekly marketing emails to send automatically after sync, with manual override. Removes the "remember to send" step. | Consistency |
@@ -83,7 +84,7 @@ Organized by status. Updated as priorities shift.
 - **Supplier scorecard**: Track document completeness rate per supplier over time.
 - **Inventory age alerts**: Flag products approaching BBD thresholds (90/60/30 days) on admin dashboard.
 - **Health check endpoint**: `GET /api/health` — DB status, last sync, pending requests, disk usage.
-- **Sync dry-run**: `npm run sync -- --dry-run` — full pipeline without writing to DB.
+- ~~**Sync dry-run**~~: ✓ B007 — `npm run sync -- --dry-run` + `dry_run_sync` agent tool.
 
 ---
 

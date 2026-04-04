@@ -961,10 +961,28 @@ export async function executeTool(
 
     case "apply_sync": {
       const dataDir = join(process.cwd(), "data");
+      const proposedPath = join(dataDir, "inventory-proposed.json");
+      const inventoryPath = join(dataDir, "inventory.json");
+      const suppliersPath = join(dataDir, "suppliers.json");
+      const warehousesPath = join(dataDir, "warehouses.json");
+
+      if (!existsSync(proposedPath)) {
+        return { error: "No inventory-proposed.json found. Save a proposed inventory first using save_proposed_inventory." };
+      }
+      if (!existsSync(inventoryPath)) {
+        return { error: "No inventory.json found. Cannot sync without current inventory." };
+      }
+      if (!existsSync(suppliersPath)) {
+        return { error: "No suppliers.json found. Reference data is missing." };
+      }
+      if (!existsSync(warehousesPath)) {
+        return { error: "No warehouses.json found. Reference data is missing." };
+      }
+
       try {
         const result = applySync({
-          proposedPath: join(dataDir, "inventory-proposed.json"),
-          inventoryPath: join(dataDir, "inventory.json"),
+          proposedPath,
+          inventoryPath,
           dataDir,
         });
         // Sanitise snapshotPath to relative — never expose absolute filesystem paths
@@ -1002,12 +1020,20 @@ export async function executeTool(
       const dataDir = join(process.cwd(), "data");
       const proposedPath = join(dataDir, "inventory-proposed.json");
       const inventoryPath = join(dataDir, "inventory.json");
+      const suppliersPath = join(dataDir, "suppliers.json");
+      const warehousesPath = join(dataDir, "warehouses.json");
 
       if (!existsSync(proposedPath)) {
         return { error: "No inventory-proposed.json found. Save a proposed inventory first using save_proposed_inventory." };
       }
       if (!existsSync(inventoryPath)) {
         return { error: "No inventory.json found. Cannot run dry-run without current inventory." };
+      }
+      if (!existsSync(suppliersPath)) {
+        return { error: "No suppliers.json found. Reference data is missing." };
+      }
+      if (!existsSync(warehousesPath)) {
+        return { error: "No warehouses.json found. Reference data is missing." };
       }
 
       try {
