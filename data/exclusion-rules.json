@@ -9,6 +9,6 @@
   },
   "softExclusions": {
     "directCustomerKeywords": ["SOLD TO BULK STOCK"],
-    "treatAsAvailable": ["SOLD TO BULK STOCK", "CUSTOMER TO BE DETERMINED", "RP ACCOUNT"]
+    "treatAsAvailable": ["SOLD TO BULK STOCK", "CUSTOMER TO BE DETERMINED", "RP ACCOUNT", "JUICE CUSTOMER-SOLD TO BULK STOCK"]
   }
 }
