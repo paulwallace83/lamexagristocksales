@@ -899,6 +899,7 @@ function inferPackSize(format: string, unitType: string): string {
 
 /**
  * Summarize review items grouped by customer + product for display.
+ * CLI-only — includes customer names. Never use in agent tool results.
  */
 export function formatReviewSummary(review: ExcludedRow[]): string {
   const lines: string[] = [];
@@ -943,6 +944,52 @@ export function formatReviewSummary(review: ExcludedRow[]): string {
           `| ${cust} | ${prod} | ${fmtNum(agg.qty)} | ${fmtNum(Math.round(agg.weight))} | ${[...agg.wh].join(", ")} |`
         );
       }
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Sanitized review summary — no customer names.
+ * Safe for agent tool results and any output that reaches the chat UI.
+ */
+export function formatReviewSummarySanitized(review: ExcludedRow[]): string {
+  const lines: string[] = [];
+  lines.push("## Items for Review");
+  lines.push("");
+
+  // Group by reason category
+  const byReason = new Map<string, ExcludedRow[]>();
+  for (const r of review) {
+    const cat = r.reason.split(":")[0];
+    if (!byReason.has(cat)) byReason.set(cat, []);
+    byReason.get(cat)!.push(r);
+  }
+
+  for (const [cat, rows] of byReason) {
+    const heading = cat === "direct-customer" ? "Direct Customer Stock" : cat === "reserved-stock" ? "Reserved Stock" : cat;
+    lines.push(`### ${heading} (${rows.length} rows)`);
+    lines.push("");
+
+    // Aggregate by product only — no customer grouping
+    const byProd = new Map<string, { qty: number; weight: number; wh: Set<string> }>();
+    for (const r of rows) {
+      const prod = r.row.Stock_Description;
+      if (!byProd.has(prod)) byProd.set(prod, { qty: 0, weight: 0, wh: new Set() });
+      const p = byProd.get(prod)!;
+      p.qty += Math.abs(Number(r.row.Qty_Cases) || 0);
+      p.weight += Number(r.row.Qty_Weight_Net_Bal) || 0;
+      if (r.row.Stock_Cold_Store) p.wh.add(r.row.Stock_Cold_Store);
+    }
+
+    lines.push("| Product | Qty | Weight (lbs) | Warehouse |");
+    lines.push("|---------|-----|-------------|-----------|");
+    for (const [prod, agg] of byProd) {
+      lines.push(
+        `| ${prod} | ${fmtNum(agg.qty)} | ${fmtNum(Math.round(agg.weight))} | ${[...agg.wh].join(", ")} |`
+      );
     }
     lines.push("");
   }

@@ -44,7 +44,7 @@ vi.mock("../lib/sync-apply", () => ({
 }));
 vi.mock("../lib/excel-import", () => ({
   importFromBuffer: vi.fn(),
-  formatReviewSummary: vi.fn(() => "## Items for Review\n..."),
+  formatReviewSummarySanitized: vi.fn(() => "## Items for Review\n..."),
 }));
 vi.mock("fs", async (importOriginal) => {
   const actual = await importOriginal<typeof import("fs")>();
@@ -61,7 +61,7 @@ import type { FileData } from "../lib/agent-tools";
 import { clearFlags, getNewArrivalsWithNames } from "../lib/product-flags";
 import { computeDiff, formatDiffReport, reconciliationReport } from "../lib/sync";
 import { applySync } from "../lib/sync-apply";
-import { importFromBuffer, formatReviewSummary } from "../lib/excel-import";
+import { importFromBuffer, formatReviewSummarySanitized } from "../lib/excel-import";
 
 const emptyFileMap = new Map();
 
@@ -694,7 +694,7 @@ describe("import_inventory_file", () => {
     expect(result.reviewPath).toBe("data/import-review.json");
     expect(result.reviewSummary).toBeTruthy();
     expect(writeFileSync).toHaveBeenCalledTimes(2); // proposed + review
-    expect(formatReviewSummary).toHaveBeenCalledTimes(1);
+    expect(formatReviewSummarySanitized).toHaveBeenCalledTimes(1);
   });
 
   it("resolves file by case-insensitive name match", async () => {

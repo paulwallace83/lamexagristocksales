@@ -19,7 +19,7 @@ import { getDiscountItems, addDiscountItemsFromLots, restoreToInventory } from "
 import { clearFlags, getNewArrivalsWithNames } from "./product-flags";
 import { computeDiff, formatDiffReport, reconciliationReport } from "./sync";
 import { applySync } from "./sync-apply";
-import { importFromBuffer, formatReviewSummary } from "./excel-import";
+import { importFromBuffer, formatReviewSummarySanitized } from "./excel-import";
 import { getUploadsRoot } from "./paths";
 import type { DocCategory } from "./documents";
 import type { DiscountReason, DiscountStatus } from "./discount";
@@ -1134,8 +1134,8 @@ export async function executeTool(
           writeFileSync(reviewPath, JSON.stringify(sanitizedReview, null, 2));
         }
 
-        // Build review summary for the agent to present
-        const reviewSummary = review.length > 0 ? formatReviewSummary(review) : null;
+        // Build review summary for the agent to present (sanitized — no customer names)
+        const reviewSummary = review.length > 0 ? formatReviewSummarySanitized(review) : null;
 
         return {
           success: true,
