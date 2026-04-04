@@ -172,6 +172,15 @@ The `AdminHeader` component is shared, but each of the 7 admin layout files defi
 
 ---
 
+## Data Privacy
+
+### Audit function output for customer names when repurposing across contexts
+**What happened:** `formatReviewSummary()` in `lib/excel-import.ts` includes customer names in a markdown table because it was designed for CLI output (Paul's terminal). When B009 reused its output as the `reviewSummary` field in the `import_inventory_file` agent tool result, customer names flow through Claude → agent chat — violating the "no customer names in output" rule.
+**Pattern:** Before reusing a function in a new context (CLI → agent tool, server → client, internal → external), audit its output for data that's acceptable in the original context but not the new one. `formatReviewSummary()` needs a sanitized variant for the agent path.
+**Risk if ignored:** Customer names visible in agent chat conversations (which are persisted to SQLite).
+
+---
+
 ## Deployment (Railway)
 
 ### Volume path is not available during `next build`
