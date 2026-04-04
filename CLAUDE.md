@@ -117,10 +117,10 @@ Where to look for what:
 ### Batch Queue
 | Batch | Epic | Size | Status |
 |-------|------|------|--------|
-| B007 | E1 — Agent-Powered Sync | Medium | `ready` |
+| B007 | E1 — Agent-Powered Sync | Medium | `in-progress` |
 
 ### In Progress
-- Nothing active
+- B007: Sync dry-run mode — `dryRun` option on `applySync()`, `--dry-run` CLI flag, `dry_run_sync` agent tool
 
 ### Do Not Touch
 - `data/inventory.json` — live inventory data; only `npm run sync` should write this

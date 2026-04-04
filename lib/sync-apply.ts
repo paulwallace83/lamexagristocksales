@@ -47,6 +47,8 @@ export interface SyncApplyOptions {
   dataDir: string;
   /** Project root for reference file output (suppliers.md, warehouses.md). Defaults to process.cwd(). */
   rootDir?: string;
+  /** When true, validate everything but write nothing (no snapshot, no DB, no file changes). */
+  dryRun?: boolean;
 }
 
 // originalName is intentionally exposed via apply_sync tool — only visible to authenticated admin users (qa/reviewer roles)
@@ -57,6 +59,7 @@ export interface OrphanedDoc {
 }
 
 export interface SyncApplyResult {
+  dryRun: boolean;
   snapshotPath: string;
   productCount: number;
   listingCount: number;
@@ -156,6 +159,39 @@ export function applySync(options: SyncApplyOptions): SyncApplyResult {
     }
     if (!Array.isArray(warehouses.warehouses)) {
       throw new Error("warehouses.json missing 'warehouses' array");
+    }
+
+    // ── Dry-run early return ────────────────────────────────
+    if (options.dryRun) {
+      let dryListingCount = 0;
+      let dryContractCount = 0;
+      let dryLotCount = 0;
+      for (const p of inventory.products) {
+        for (const l of p.listings || []) {
+          dryListingCount++;
+          dryContractCount += (l.contracts || []).length;
+          dryLotCount += (l.lots || []).length;
+        }
+      }
+      return {
+        dryRun: true,
+        snapshotPath: "(dry run)",
+        productCount: inventory.products.length,
+        listingCount: dryListingCount,
+        contractCount: dryContractCount,
+        lotCount: dryLotCount,
+        warehouseCount: warehouses.warehouses.length,
+        supplierCount: suppliers.suppliers.length,
+        documentsPreserved: 0,
+        orphanedDocs: [],
+        relinkReport: { linked: 0, orphaned: 0 },
+        coaRelinkReport: { linked: 0, orphaned: 0 },
+        deductionReport: { lotsRemoved: 0, listingsEmptied: 0, productsRemoved: 0, missing: 0, details: [] },
+        validationReport: null,
+        newArrivals: [],
+        cleanedUp: false,
+        referenceFilesRegenerated: false,
+      };
     }
 
     // ── Snapshot ────────────────────────────────────────────
@@ -457,6 +493,7 @@ export function applySync(options: SyncApplyOptions): SyncApplyResult {
     }
 
     return {
+      dryRun: false,
       snapshotPath,
       productCount,
       listingCount,

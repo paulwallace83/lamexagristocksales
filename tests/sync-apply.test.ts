@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach, afterAll } from "vitest";
-import { existsSync, writeFileSync, unlinkSync, mkdirSync, rmSync } from "fs";
+import { existsSync, writeFileSync, unlinkSync, mkdirSync, rmSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -227,6 +227,7 @@ describe("applySync", () => {
     const result: SyncApplyResult = applySync({ proposedPath, inventoryPath, dataDir, rootDir: dataDir });
 
     // Verify all fields exist with correct types
+    expect(result.dryRun).toBe(false);
     expect(result.snapshotPath).toEqual(expect.stringContaining("snapshots/inventory-"));
     expect(result.productCount).toBe(1);
     expect(result.listingCount).toBe(1);
@@ -358,5 +359,119 @@ describe("applySync", () => {
     expect(() =>
       applySync({ proposedPath, inventoryPath, dataDir, rootDir: dataDir })
     ).toThrow("File not found");
+  });
+
+  // ── Dry-run mode ───────────────────────────────────────────
+
+  describe("dry-run mode", () => {
+    const inventoryWithLots = {
+      lastUpdated: "2026-04-01",
+      products: [
+        {
+          id: "apple-iqf",
+          product: "Apple IQF",
+          commodity: "Apple",
+          category: "Fruit",
+          format: "IQF",
+          processType: "Frozen",
+          packSize: "30 lb",
+          unitType: "cases",
+          organic: false,
+          listings: [
+            {
+              warehouse: "WH-001",
+              city: "Los Angeles",
+              state: "CA",
+              supplier: "Supplier A",
+              countryOfOrigin: "USA",
+              quantity: 100,
+              weightLbs: 3000,
+              arrived: "2026-03-01",
+              minBBD: "2027-03-01",
+              contracts: ["ABC-001", "ABC-002"],
+              lots: [
+                { lotNumber: "LOT-A1", quantity: 60, weightLbs: 1800, bbd: "2027-03-01" },
+                { lotNumber: "LOT-A2", quantity: 40, weightLbs: 1200, bbd: "2027-06-01" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    it("returns counts with dryRun: true without writing files", () => {
+      const proposedPath = writeJsonFile(dataDir, "inventory-proposed.json", inventoryWithLots);
+      const inventoryPath = writeJsonFile(dataDir, "inventory.json", minimalInventory);
+      writeJsonFile(dataDir, "suppliers.json", minimalSuppliers);
+      writeJsonFile(dataDir, "warehouses.json", minimalWarehouses);
+
+      const inventoryBefore = readFileSync(inventoryPath, "utf-8");
+
+      const result = applySync({ proposedPath, inventoryPath, dataDir, rootDir: dataDir, dryRun: true });
+
+      expect(result.dryRun).toBe(true);
+      expect(result.productCount).toBe(1);
+      expect(result.listingCount).toBe(1);
+      expect(result.contractCount).toBe(2);
+      expect(result.lotCount).toBe(2);
+      expect(result.warehouseCount).toBe(1);
+      expect(result.supplierCount).toBe(1);
+      expect(result.snapshotPath).toBe("(dry run)");
+
+      // inventory.json must be byte-identical
+      expect(readFileSync(inventoryPath, "utf-8")).toBe(inventoryBefore);
+
+      // No snapshot created
+      const snapshots = existsSync(join(dataDir, "snapshots"))
+        ? readdirSync(join(dataDir, "snapshots"))
+        : [];
+      expect(snapshots.length).toBe(0);
+
+      // proposed file NOT deleted
+      expect(existsSync(proposedPath)).toBe(true);
+    });
+
+    it("does not call getDb()", () => {
+      const proposedPath = writeJsonFile(dataDir, "inventory-proposed.json", minimalInventory);
+      const inventoryPath = writeJsonFile(dataDir, "inventory.json", minimalInventory);
+      writeJsonFile(dataDir, "suppliers.json", minimalSuppliers);
+      writeJsonFile(dataDir, "warehouses.json", minimalWarehouses);
+
+      vi.mocked(getDb).mockClear();
+
+      applySync({ proposedPath, inventoryPath, dataDir, rootDir: dataDir, dryRun: true });
+
+      expect(getDb).not.toHaveBeenCalled();
+    });
+
+    it("acquires and releases the lock", () => {
+      const proposedPath = writeJsonFile(dataDir, "inventory-proposed.json", minimalInventory);
+      const inventoryPath = writeJsonFile(dataDir, "inventory.json", minimalInventory);
+      writeJsonFile(dataDir, "suppliers.json", minimalSuppliers);
+      writeJsonFile(dataDir, "warehouses.json", minimalWarehouses);
+
+      applySync({ proposedPath, inventoryPath, dataDir, rootDir: dataDir, dryRun: true });
+
+      // Lock should be cleaned up after dry-run
+      expect(existsSync(lockFile)).toBe(false);
+    });
+
+    it("still throws on preflight errors (missing proposed file)", () => {
+      const inventoryPath = writeJsonFile(dataDir, "inventory.json", minimalInventory);
+      writeJsonFile(dataDir, "suppliers.json", minimalSuppliers);
+      writeJsonFile(dataDir, "warehouses.json", minimalWarehouses);
+
+      expect(() =>
+        applySync({
+          proposedPath: join(dataDir, "inventory-proposed.json"),
+          inventoryPath,
+          dataDir,
+          dryRun: true,
+        })
+      ).toThrow("inventory-proposed.json");
+
+      // Lock cleaned up even on error
+      expect(existsSync(lockFile)).toBe(false);
+    });
   });
 });
