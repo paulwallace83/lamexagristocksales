@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import "./globals.css";
@@ -6,6 +6,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Lamex Agri Foods — Stock Sales Inventory",
   description: "Browse available processed fruit and vegetable inventory from Lamex Agri Foods.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

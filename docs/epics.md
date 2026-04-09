@@ -35,13 +35,13 @@ Logical clusters of related work. Each epic maps to a theme from the roadmap. Ba
 ---
 
 ## E3 — QA Workflow: Document Management Improvements
-**Status:** `active` (B002 done — pending request badge; B003 done — inline delete/upload; supplier/status filters next)
+**Status:** `active` (B002 done — pending request badge; B003 done — inline delete/upload; B013 covers upload progress; supplier/status filters next)
 **Value:** QA can manage the full document lifecycle from the `/qa` portal without needing the agent or admin tools.
 **Roadmap items:**
 - ~~Delete/upload docs from expanded QA panel~~ ✓ B003
 - Filter by supplier or doc status on QA dashboard (Medium-Term)
 - ~~Pending request badge on nav~~ ✓ B002
-- QA upload progress: spinner/toast during COA extraction (UX Polish)
+- ~~QA upload progress: spinner/toast during COA extraction~~ → B013 (E5)
 - Agent doc gap report: automated email after sync listing lots missing COAs (Operational Improvements)
 
 **Acceptance shape:** QA can delete, replace, and filter documents from the dashboard without leaving `/qa`. New document requests appear as a badge on the nav without navigating to requests.
@@ -55,27 +55,29 @@ Logical clusters of related work. Each epic maps to a theme from the roadmap. Ba
 - Enquiry tracking: persist all enquiries to DB (Near-Term)
 - Admin dashboard homepage: pending requests, missing docs, last sync, quick links (Medium-Term)
 - Email delivery tracking: Resend webhooks for delivered/bounced/opened on document requests (Medium-Term)
-- Admin requests: sortable columns (date, product) (UX Polish)
+- ~~Admin requests: sortable columns (date, product)~~ → B013 (E5)
 
 **Acceptance shape:** Every enquiry submission is persisted. Admin dashboard shows pending request count, last sync date, and unresolved enquiries. Delivery status is visible on each document request.
 
 ---
 
 ## E5 — Buyer Experience: Self-Service Improvements
-**Status:** `backlog`
+**Status:** `active` (B011 done; B012–B014 planned — UX Polish; Sales & Marketing items remaining)
 **Value:** Buyers find and act on relevant stock faster, reducing friction before a quote request.
 **Roadmap items:**
+- ~~Enquiry form URL params for returning customers~~ → B011
+- ~~Enquiry success links: "Back to Product" / "Browse More"~~ → B011
+- ~~Rate limit feedback: show cooldown time~~ → B011
+- ~~Mobile sticky CTA fix~~ → B011
+- ~~"3 COAs available" summary badge on product page~~ → B012
+- ~~Related products on detail page~~ → B012
+- ~~Admin requests: sortable columns~~ → B013 (also E4)
+- ~~QA upload progress: spinner/toast during COA extraction~~ → B013 (also E3)
+- ~~Product comparison — side-by-side spec/COA table~~ → B014
 - OpenGraph previews on `/product/[id]` (Sales & Marketing)
-- Related products on detail page (UX Polish)
-- Product comparison — side-by-side spec/COA table (UX Polish)
-- Enquiry form URL params for returning customers (UX Polish)
-- Enquiry success links: "Back to Product" / "Browse More" (UX Polish)
-- Mobile sticky CTA fix (UX Polish)
 - Saved search / watchlist via localStorage (Sales & Marketing)
 - WhatsApp share button (Sales & Marketing)
 - PDF inventory export (Sales & Marketing)
-- "3 COAs available" summary badge on product page (UX Polish)
-- Rate limit feedback: show cooldown time (UX Polish)
 
 **Acceptance shape:** Product pages are shareable with previews. Mobile experience has no CTA overlap. Buyers can compare products and bookmark commodities.
 

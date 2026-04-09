@@ -12,13 +12,13 @@ COA, test results, and specification sheets are **restricted** — not publicly 
 
 ## Unified Product Enquiry Flow
 
-Product pages have a single "Request Quote" button linking to `/contact?productId={id}&product={name}`. The contact page renders a unified enquiry form:
+Product pages have a single "Request Quote" button linking to `/contact?productId={id}&product={name}`. The contact page also accepts optional pre-fill params for returning customers reached via external email/CRM links: `name`, `company`, `email` (URL-encoded). Example: `/contact?productId=apple-iqf&product=Apple+IQF&name=John&company=Acme&email=john@acme.com`. Pre-filled fields remain editable; values are length-clamped before reaching the form to prevent oversized URL injections. The contact page renders a unified enquiry form:
 
 1. Customer fills in contact info (name, company, email, phone, message).
 2. If the product has restricted documents, an "Also request product documents" toggle reveals per-lot/contract checkboxes for COA, test results, and spec sheets.
 3. `POST /api/enquiries` always sends a sales notification email to `sales@lamexfoods.us`.
 4. If documents were selected, also creates a `document_requests` record and sends QA notification to `coa@lamexfoods.us` — concurrent workflow.
-5. Rate limited: 5 requests per email per hour (in-memory for all enquiries + DB-based for doc requests).
+5. Rate limited: 5 requests per email per hour. The in-memory limiter (`lib/enquiry-rate-limit.ts`, applied to every enquiry) returns a structured 429 with `{ error, retryAfter }` JSON body and an HTTP `Retry-After` header so the client can show a friendly countdown. The DB-based doc-request limiter (`getRecentRequestCount` in `lib/document-requests.ts`) still returns a generic 429 with no `retryAfter`.
 6. General enquiries (no `productId`) show a product text input and no document section.
 
 ## Admin Review

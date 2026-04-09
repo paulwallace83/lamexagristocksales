@@ -159,6 +159,22 @@ Rows with descriptions starting `"DFRM "` are prepayment/finance rows from Teno 
 
 ## UI Components
 
+### `viewport-fit=cover` is required for `env(safe-area-inset-*)` to work
+**What happened:** B011 added `pb-[calc(1rem+env(safe-area-inset-bottom))]` to the mobile sticky CTA on the product detail page. Without `viewport-fit=cover` in the viewport meta tag, all `env()` safe-area values silently resolve to `0` — the safe-area padding has no effect on iOS, with no error or warning.
+**Pattern:** Always pair `safe-area-inset-*` usage with a `viewport` export in `app/layout.tsx` that sets `viewportFit: "cover"`. Use the typed `Viewport` from `next` (separate export from `metadata`).
+**Risk if ignored:** Notch/home-indicator devices clip content under system UI; padding looks correct in DevTools but fails on real iOS.
+
+### `position: sticky` reserves its own layout space — extra clearance padding is usually a mistake
+**What happened (B011):** The first attempt at AC #9 ("last lot row not obscured by mobile sticky CTA") added `pb-32 md:pb-8` to the outer container of `app/product/[id]/page.tsx`. The B011 reviews flagged this as wrong on two counts: (a) the outer padding sat outside the `overflow-hidden` white card that contains the sticky CTA, so it added empty space *after* the card rather than clearance *above* the CTA; and (b) it was unnecessary in the first place. A second attempt added an `<div className="md:hidden h-40" />` spacer inside the card directly above the CTA — also unnecessary.
+**Why no padding is needed:** `position: sticky` is a normal-flow layout position, not absolute. The element reserves its own block-level space in the document. At max scroll, the sticky element sits at its natural position (the last child of the card) and the content above it is fully visible. Mid-scroll, the CTA pins to the viewport bottom and visually overlaps content as the user scrolls past — this is the expected sticky CTA UX, not a bug.
+**Pattern:** For a sticky CTA at the end of a content card, no extra padding/spacers are needed for the "max-scroll content visibility" requirement. Only add padding to the sticky element itself for safe-area insets (`pb-[calc(1rem+env(safe-area-inset-bottom))]` plus `viewportFit: "cover"`).
+**When extra clearance IS needed:** Only if the design requires *mid-scroll* breathing room above the floating CTA — and even then, that's a UX preference, not a layout fix. Put any such padding **inside** the same scroll container as the sticky element (not on an outer wrapper that's outside the `overflow-hidden` parent).
+
+### `useState` initializers do NOT re-run on prop changes
+**What happened:** B011 pre-fills `EnquiryForm` fields from URL params via `useState({ name: initialName || "", ... })`. This runs only on mount. If a user navigates from `/contact?name=A` to `/contact?name=B` via Next.js client-side routing (without remounting), the form would still show "A".
+**Pattern:** For props that should sync on change *and* respect user edits, use a `useEffect` that only updates state when the field is empty or matches the previous initial value. For props that only need to apply once at mount (the typical "pre-fill from URL" case), `useState` initializers are correct — but document the constraint so future maintainers don't expect reactivity.
+**Risk if ignored:** Stale form state when URL params change without remounting; or, conversely, user edits silently overwritten by props.
+
 ### Nav links are duplicated across 7 layout files
 The `AdminHeader` component is shared, but each of the 7 admin layout files defines its own `navLinks` array independently. When adding a cross-cutting nav feature (badge, new link, rename), all 7 must be updated:
 - `app/qa/(protected)/layout.tsx`

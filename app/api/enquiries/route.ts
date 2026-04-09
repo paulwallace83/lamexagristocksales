@@ -4,39 +4,12 @@ import {
   getRecentRequestCount,
 } from "@/lib/document-requests";
 import type { CreateDocumentRequestInput } from "@/lib/document-requests";
+import { checkEnquiryRateLimit } from "@/lib/enquiry-rate-limit";
 
 export const dynamic = "force-dynamic";
 
 const EMAIL_REGEX =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
-
-// In-memory rate limiter for enquiries (supplements DB-based doc request limiter)
-const enquiryTimestamps = new Map<string, number[]>();
-let lastCleanup = Date.now();
-
-function checkEnquiryRateLimit(email: string, maxPerHour = 5): boolean {
-  const now = Date.now();
-  const windowMs = 60 * 60 * 1000;
-  const key = email.toLowerCase();
-
-  // Prune stale keys every 10 minutes to prevent memory leak
-  if (now - lastCleanup > 10 * 60 * 1000) {
-    for (const [k, ts] of enquiryTimestamps) {
-      const fresh = ts.filter((t) => now - t < windowMs);
-      if (fresh.length === 0) enquiryTimestamps.delete(k);
-      else enquiryTimestamps.set(k, fresh);
-    }
-    lastCleanup = now;
-  }
-
-  const timestamps = (enquiryTimestamps.get(key) || []).filter(
-    (t) => now - t < windowMs
-  );
-  if (timestamps.length >= maxPerHour) return false;
-  timestamps.push(now);
-  enquiryTimestamps.set(key, timestamps);
-  return true;
-}
 
 /**
  * POST — Public endpoint for product enquiries.
@@ -160,10 +133,17 @@ export async function POST(req: NextRequest) {
 
   // Rate limit: check both in-memory (all enquiries) and DB (doc requests)
   const emailLower = (requesterEmail as string).trim().toLowerCase();
-  if (!checkEnquiryRateLimit(emailLower)) {
+  const rateCheck = checkEnquiryRateLimit(emailLower);
+  if (!rateCheck.allowed) {
     return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      { status: 429 }
+      {
+        error: "Too many requests. Please try again later.",
+        retryAfter: rateCheck.retryAfter,
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateCheck.retryAfter) },
+      }
     );
   }
   if (hasDocRequest) {

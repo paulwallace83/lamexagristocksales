@@ -93,11 +93,11 @@ Where to look for what:
 
 ## Current Sprint Context
 
-**Last updated:** 2026-04-05
+**Last updated:** 2026-04-09
 
 ### Completed
 - Agentic coding governance migration (CLAUDE.md refactor, agent_docs/, .claude/rules/, /handoff skill, PostCompact hook)
-- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts`, `sync-validation.test.ts`, `agent-sync-tools.test.ts`, `sync-apply.test.ts` — 151 tests
+- Unit test suite (vitest): `coa-data.test.ts`, `sync.test.ts`, `documents.test.ts`, `sync-validation.test.ts`, `agent-sync-tools.test.ts`, `sync-apply.test.ts`, `enquiry-rate-limit.test.ts` — 158 tests
 - CI pipeline: `.github/workflows/ci.yml` — TypeScript type check + vitest on push/PR to main
 - `LESSONS.md` created with accumulated project knowledge
 - `docs/project-brief.md` — product context, personas, constraints, glossary
@@ -115,11 +115,15 @@ Where to look for what:
 - B006: Agent sync write tools — `apply_sync` + `get_reconciliation` agent tools, system prompt rule 14 steps h–j, reviewer-only role gate on sync-action tools (`lib/agent-tools.ts`, `app/api/agent/chat/route.ts`, `tests/agent-sync-tools.test.ts`)
 - B007: Sync dry-run mode — `dryRun` option on `applySync()`, `--dry-run` CLI flag, `dry_run_sync` agent tool, 4-file pre-validation on all sync agent tools (`lib/sync-apply.ts`, `scripts/sync-inventory.ts`, `lib/agent-tools.ts`, `app/api/agent/chat/route.ts`)
 - B009: Agent CSV/Excel file import — `import_inventory_file` agent tool, `importFromBuffer()` in `lib/excel-import.ts`, CSV/XLSX MIME types in agent upload pipeline, system prompt file-upload sync workflow (`lib/agent-tools.ts`, `lib/excel-import.ts`, `app/api/agent/chat/route.ts`, `app/admin/agent/AgentChat.tsx`)
+- B010: COA extraction review queue — `review_status` gating on public COA display, QA dashboard review panel, `review_coa_data` agent tool (`lib/coa-data.ts`, `app/product/[id]/page.tsx`, `app/qa/(protected)/QADashboardClient.tsx`, `app/api/coa-review/route.ts`)
+- B011: Enquiry flow polish — URL pre-fill for returning customers (`name`/`company`/`email`), success-state nav links, friendly 429 cooldown (`retryAfter` + `Retry-After` header), iOS safe-area sticky CTA via `viewportFit: "cover"`. Extracted `checkEnquiryRateLimit` to `lib/enquiry-rate-limit.ts` with 7 unit tests (`lib/enquiry-rate-limit.ts`, `tests/enquiry-rate-limit.test.ts`, `app/api/enquiries/route.ts`, `app/contact/EnquiryForm.tsx`, `app/contact/page.tsx`, `app/layout.tsx`, `app/product/[id]/page.tsx`)
 
 ### Batch Queue
 | Batch | Epic | Size | Status |
 |-------|------|------|--------|
-| B010 — COA Extraction Review Queue | E2 — Data Quality | Medium | `in-progress` |
+| B012 — Product Detail Enhancements | E5 — Buyer Experience | Medium | `ready` |
+| B013 — Admin UX Polish | E5 — Buyer Experience | Small–Medium | `ready` |
+| B014 — Product Comparison | E5 — Buyer Experience | Large | `ready` |
 
 ### Do Not Touch
 - `data/inventory.json` — live inventory data; only `npm run sync` should write this

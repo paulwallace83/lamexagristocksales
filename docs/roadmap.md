@@ -37,6 +37,7 @@ Organized by status. Updated as priorities shift.
 | v0.11.8 | Sync Dry-Run Mode (B007) | `dryRun` option on `applySync()`, `--dry-run` CLI flag, `dry_run_sync` agent tool. Validates entire sync pipeline without writing data. 4-file pre-validation on all sync agent tools (`apply_sync`, `dry_run_sync`). System prompt step g2 suggests dry-run when user is uncertain. 10 new tests. |
 | v0.11.9 | Agent CSV/Excel File Import (B009) | `import_inventory_file` agent tool accepts CSV/XLSX/XLS file uploads via drag-and-drop. `importFromBuffer()` in `lib/excel-import.ts` shares parsing pipeline with CLI. Spreadsheets excluded from Claude content blocks via `RENDERABLE_MIME_TYPES` gate. `sanitizeReviewForExport()` shared function eliminates code duplication. `formatReviewSummarySanitized()` strips customer names for agent path. 135 tests. |
 | v0.12.0 | COA Extraction Review Queue (B010) | `review_status` column on `coa_data` (pending/approved/rejected). Auto-extracted values start pending and are gated from public display until approved. QA dashboard: amber lot pills for pending, "Pending Review" filter, approve/reject panel in expanded view. `review_coa_data` agent tool. `GET/POST /api/coa-review` route. Existing data grandfathered as approved. Review status survives weekly sync via export/relink. 151 tests. |
+| v0.12.1 | Enquiry Flow Polish (B011) | Returning-customer URL pre-fill (`/contact?name=…&company=…&email=…`), success-state navigation links, friendly 429 cooldown copy (`retryAfter` JSON field + HTTP `Retry-After` header), iOS safe-area sticky CTA via `viewportFit: "cover"`. `checkEnquiryRateLimit` extracted to `lib/enquiry-rate-limit.ts` with 7 unit tests (158 tests total). Refactor pass: form remounts on URL param change via `key` prop, pluralization fix, pre-fill values length-clamped before reaching the form. |
 
 ---
 
@@ -68,15 +69,15 @@ Organized by status. Updated as priorities shift.
 
 ## UX Polish
 
-- Enquiry form: accept `name`, `company`, `email` as URL params for returning customers.
-- Enquiry success: "Back to Product" and "Browse More Products" links after submission.
-- Product page: "3 COAs available" summary badge instead of per-lot badges.
-- Admin requests: sortable columns (date, product).
-- Rate limit feedback: show remaining cooldown time, not generic error.
-- QA upload progress: spinner/toast during COA extraction.
-- Related products on detail page: same commodity, different origin/format.
-- Product comparison: select 2–3 products for side-by-side spec/COA table.
-- Mobile sticky CTA: bottom padding to prevent overlap with fixed "Request Quote" footer.
+- ~~Enquiry form: accept `name`, `company`, `email` as URL params for returning customers.~~ → B011
+- ~~Enquiry success: "Back to Product" and "Browse More Products" links after submission.~~ → B011
+- ~~Product page: "3 COAs available" summary badge instead of per-lot badges.~~ → B012
+- ~~Admin requests: sortable columns (date, product).~~ → B013
+- ~~Rate limit feedback: show remaining cooldown time, not generic error.~~ → B011
+- ~~QA upload progress: spinner/toast during COA extraction.~~ → B013
+- ~~Related products on detail page: same commodity, different origin/format.~~ → B012
+- ~~Product comparison: select 2–3 products for side-by-side spec/COA table.~~ → B014
+- ~~Mobile sticky CTA: bottom padding to prevent overlap with fixed "Request Quote" footer.~~ → B011
 
 ---
 
