@@ -162,7 +162,7 @@ uploads/
 | `qa` | `/qa/login` | `/qa` | Upload documents, use TDPAIB agent |
 | `reviewer` | `/qa/login` | `/review` | All `qa` + import review, admin tools, email, discount, requests |
 
-**No public session:** The public inventory and enquiry form are unauthenticated. The enquiry form relies on Resend for basic delivery throttling.
+**No public session:** The public inventory and enquiry form are unauthenticated. The enquiry form is rate-limited by two parallel mechanisms: an in-memory per-process limiter (`lib/enquiry-rate-limit.ts`, 5/email/hour, returns structured 429 with `retryAfter`) for every enquiry, and a DB-backed per-email limiter (`getRecentRequestCount` in `lib/document-requests.ts`, also 5/hour) when document requests are attached. The DB limiter is the only cross-instance backstop on multi-instance deployments.
 
 ---
 

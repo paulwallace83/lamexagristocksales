@@ -114,8 +114,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           requiredContractDocs={getRequiredDocs(product).contractLevel}
         />
 
-        {/* Sticky CTA on mobile */}
-        <div className="md:hidden sticky bottom-0 p-4 bg-white border-t border-gray-200 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+        {/* Sticky CTA on mobile.
+            position: sticky reserves its own space in document flow, so at max
+            scroll the CTA sits at its natural position at the end of the card
+            and the last content row is fully visible above it — no extra
+            clearance padding needed. Mid-scroll, the CTA hovers over content;
+            this is the standard sticky CTA UX. The pb-[calc(...)] adds the
+            iOS safe-area inset (requires viewport-fit=cover in app/layout.tsx). */}
+        <div className="md:hidden sticky bottom-0 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-white border-t border-gray-200 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
           <Link
             href={`/contact?productId=${encodeURIComponent(id)}&product=${encodeURIComponent(product.product)}`}
             className="block w-full text-center bg-[#1a2b5f] text-white font-semibold py-3 rounded-md hover:bg-[#4a90c4] transition-colors"

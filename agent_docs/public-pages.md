@@ -18,7 +18,7 @@
 - Lot rows show: quantity, weight, BBD, COA pill data (max 6 pills), test type badges.
 - Past-BBD dates highlighted in amber for buyer awareness — no "expired" language or removal.
 - Lot numbers and Lamex reference numbers visible to customers.
-- "Request Quote" button links to `/contact?productId={id}&product={name}`.
+- "Request Quote" button links to `/contact?productId={id}&product={name}`. The `/contact` page also accepts optional `name`, `company`, `email` query params for returning-customer pre-fill (used by external CRM/email links — not by the in-app Request Quote button).
 - Product photos shown only for IQF/frozen (not JC or Puree).
 - Certifications listed in header; "Organic" filtered out (shown as dedicated badge instead).
 

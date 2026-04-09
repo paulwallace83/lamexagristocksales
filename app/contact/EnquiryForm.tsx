@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 interface LotAvailability {
   lotNumber: string;
@@ -30,9 +31,15 @@ interface RequestedDocItem {
 export default function EnquiryForm({
   productId,
   productName,
+  initialName,
+  initialCompany,
+  initialEmail,
 }: {
   productId?: string;
   productName?: string;
+  initialName?: string;
+  initialCompany?: string;
+  initialEmail?: string;
 }) {
   const [docsData, setDocsData] = useState<AvailableDocsData | null>(null);
   const [docsLoading, setDocsLoading] = useState(false);
@@ -42,9 +49,9 @@ export default function EnquiryForm({
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [form, setForm] = useState({
-    name: "",
-    company: "",
-    email: "",
+    name: initialName || "",
+    company: initialCompany || "",
+    email: initialEmail || "",
     phone: "",
     product: productName || "",
     message: "",
@@ -133,6 +140,17 @@ export default function EnquiryForm({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (res.status === 429 && typeof data.retryAfter === "number") {
+          const seconds = data.retryAfter;
+          let friendly: string;
+          if (seconds >= 60) {
+            const mins = Math.ceil(seconds / 60);
+            friendly = `Too many requests. Try again in ${mins} ${mins === 1 ? "minute" : "minutes"}.`;
+          } else {
+            friendly = `Too many requests. Try again in ${seconds} ${seconds === 1 ? "second" : "seconds"}.`;
+          }
+          throw new Error(friendly);
+        }
         throw new Error(data.error || "Failed to submit enquiry");
       }
 
@@ -176,6 +194,22 @@ export default function EnquiryForm({
             Your document request has also been submitted for review.
           </p>
         )}
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-6">
+          {productId && (
+            <Link
+              href={`/product/${encodeURIComponent(productId)}`}
+              className="text-sm font-medium text-[#4a90c4] hover:underline"
+            >
+              &larr; Back to Product
+            </Link>
+          )}
+          <Link
+            href="/"
+            className="text-sm font-medium text-[#4a90c4] hover:underline"
+          >
+            Browse More Products &rarr;
+          </Link>
+        </div>
       </div>
     );
   }
