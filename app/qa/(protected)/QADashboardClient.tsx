@@ -2,9 +2,10 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ProductDocStatus } from "@/lib/documents";
 
-type StatusCategory = "all" | "missing" | "partial" | "complete";
+type StatusCategory = "all" | "missing" | "partial" | "complete" | "pending-review";
 
 interface DocEntry {
   id: string;
@@ -42,9 +43,11 @@ const FILTER_CONFIG: { key: StatusCategory; label: string; activeClass: string }
   { key: "missing", label: "Missing", activeClass: "bg-red-100 text-red-800" },
   { key: "partial", label: "Partial", activeClass: "bg-amber-100 text-amber-700" },
   { key: "complete", label: "Complete", activeClass: "bg-green-100 text-green-800" },
+  { key: "pending-review", label: "Pending Review", activeClass: "bg-amber-100 text-amber-700" },
 ];
 
 export default function QADashboardClient({ statuses, today }: { statuses: ProductDocStatus[]; today: string }) {
+  const router = useRouter();
   const [filter, setFilter] = useState<StatusCategory>("all");
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [docsCache, setDocsCache] = useState<Record<string, DocEntry[]>>({});
@@ -90,14 +93,19 @@ export default function QADashboardClient({ statuses, today }: { statuses: Produ
   }, []);
 
   const counts = useMemo(() => {
-    const c = { all: statuses.length, missing: 0, partial: 0, complete: 0 };
+    const c = { all: statuses.length, missing: 0, partial: 0, complete: 0, "pending-review": 0 };
     for (const s of statuses) {
       c[getCategory(s)]++;
+      if (s.pendingCoaReviewCount > 0) c["pending-review"]++;
     }
     return c;
   }, [statuses]);
 
-  const filtered = filter === "all" ? statuses : statuses.filter((s) => getCategory(s) === filter);
+  const filtered = filter === "all"
+    ? statuses
+    : filter === "pending-review"
+      ? statuses.filter((s) => s.pendingCoaReviewCount > 0)
+      : statuses.filter((s) => getCategory(s) === filter);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -221,9 +229,22 @@ export default function QADashboardClient({ statuses, today }: { statuses: Produ
                         <td colSpan={9} className="px-4 py-2 bg-gray-50/60">
                           <div className="flex flex-wrap gap-1.5">
                             {s.lots.map((lot) => {
-                              const pillColor = lot.hasCOA
-                                ? "bg-green-50 text-green-700 border border-green-200"
-                                : "bg-red-50 text-red-700 border border-red-200";
+                              // Pill color reflects COA coverage AND extraction review status:
+                              // - amber  : COA uploaded, extraction pending/rejected review
+                              // - green  : COA uploaded, extraction approved (or no extraction)
+                              // - red    : no COA document
+                              const pendingReview = lot.hasCOA &&
+                                (lot.coaReviewStatus === "pending" || lot.coaReviewStatus === "rejected");
+                              const pillColor = !lot.hasCOA
+                                ? "bg-red-50 text-red-700 border border-red-200"
+                                : pendingReview
+                                  ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                  : "bg-green-50 text-green-700 border border-green-200";
+                              const coaGlyph = !lot.hasCOA
+                                ? " \u2717"
+                                : pendingReview
+                                  ? " \u23F3"
+                                  : " \u2713";
                               return (
                                 <span
                                   key={lot.id}
@@ -243,7 +264,7 @@ export default function QADashboardClient({ statuses, today }: { statuses: Produ
                                       <span className="text-[10px] opacity-50">BBD: {lot.bbd}</span>
                                     )
                                   )}
-                                  {lot.hasCOA ? " \u2713" : " \u2717"}
+                                  {coaGlyph}
                                 </span>
                               );
                             })}
@@ -254,6 +275,12 @@ export default function QADashboardClient({ statuses, today }: { statuses: Produ
                     {expandedProductId === s.productId && (
                       <tr className="border-b border-gray-200">
                         <td colSpan={9} className="px-4 py-3 bg-gray-50/60">
+                          {s.pendingCoaReviewCount > 0 && (
+                            <CoaReviewPanel
+                              productId={s.productId}
+                              onReviewed={() => router.refresh()}
+                            />
+                          )}
                           <DocumentsPanel
                             productId={s.productId}
                             docs={docsCache[s.productId]}
@@ -594,5 +621,172 @@ function CoverageBadge({ have, total }: { have: number; total: number }) {
     <span className={`${color} font-bold`}>
       {have}/{total}
     </span>
+  );
+}
+
+// ─── COA Extraction Review ─────────────────────────────────────────────
+
+interface ReviewItem {
+  lotId: number;
+  lotNumber: string;
+  productId: string;
+  reviewStatus: "pending" | "approved" | "rejected";
+  updatedAt: string;
+  updatedBy: string;
+  fields: Array<{ label: string; value: string }>;
+}
+
+function CoaReviewPanel({
+  productId,
+  onReviewed,
+}: {
+  productId: string;
+  onReviewed: () => void;
+}) {
+  const [items, setItems] = useState<ReviewItem[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<Set<number>>(new Set());
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/coa-review?productId=${encodeURIComponent(productId)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setItems(data.items ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load review queue");
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [productId]);
+
+  // Load on mount
+  React.useEffect(() => { load(); }, [load]);
+
+  const act = async (lotIds: number[], action: "approve" | "reject") => {
+    setBusy((prev) => {
+      const next = new Set(prev);
+      for (const id of lotIds) next.add(id);
+      return next;
+    });
+    setError(null);
+    try {
+      const res = await fetch("/api/coa-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lotIds, action }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Optimistically remove approved items (approved lots drop from pending queue)
+      // Rejected items stay visible (reviewStatus = 'rejected').
+      setItems((prev) => {
+        if (!prev) return prev;
+        if (action === "approve") return prev.filter((i) => !lotIds.includes(i.lotId));
+        return prev.map((i) => lotIds.includes(i.lotId) ? { ...i, reviewStatus: "rejected" } : i);
+      });
+      onReviewed();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Review action failed");
+    } finally {
+      setBusy((prev) => {
+        const next = new Set(prev);
+        for (const id of lotIds) next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <p className="text-xs text-amber-700">Loading COA review queue…</p>
+      </div>
+    );
+  }
+
+  if (!items || items.length === 0) return null;
+
+  const pendingIds = items.filter((i) => i.reviewStatus === "pending").map((i) => i.lotId);
+
+  return (
+    <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-sm font-semibold text-amber-900">COA Extraction Review</h3>
+          <p className="text-xs text-amber-700 mt-0.5">
+            {pendingIds.length} lot{pendingIds.length === 1 ? "" : "s"} with auto-extracted values awaiting verification.
+            These extracted values are not shown publicly until approved.
+          </p>
+        </div>
+        {pendingIds.length > 1 && (
+          <button
+            onClick={() => act(pendingIds, "approve")}
+            disabled={busy.size > 0}
+            className="text-xs font-semibold bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 disabled:opacity-50"
+          >
+            Approve All ({pendingIds.length})
+          </button>
+        )}
+      </div>
+      {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
+      <div className="space-y-2">
+        {items.map((item) => (
+          <div key={item.lotId} className="bg-white border border-amber-200 rounded px-3 py-2">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono font-bold text-xs text-[#1a2b5f]">Lot {item.lotNumber}</span>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                    item.reviewStatus === "rejected"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}>
+                    {item.reviewStatus === "rejected" ? "Rejected" : "Pending"}
+                  </span>
+                  <span className="text-[10px] text-gray-400">
+                    {item.updatedBy} · {item.updatedAt.slice(0, 10)}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {item.fields.map((f) => (
+                    <span
+                      key={f.label}
+                      className="text-xs bg-[#1a2b5f]/5 text-[#1a2b5f]/70 px-1.5 py-0.5 rounded"
+                    >
+                      <span className="font-medium">{f.label}:</span> {f.value}
+                    </span>
+                  ))}
+                  {item.fields.length === 0 && (
+                    <span className="text-xs text-gray-400 italic">No displayable fields</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                {item.reviewStatus !== "rejected" && (
+                  <button
+                    onClick={() => act([item.lotId], "reject")}
+                    disabled={busy.has(item.lotId)}
+                    className="text-xs font-semibold bg-white border border-red-300 text-red-700 px-2.5 py-1 rounded hover:bg-red-50 disabled:opacity-50"
+                  >
+                    Reject
+                  </button>
+                )}
+                <button
+                  onClick={() => act([item.lotId], "approve")}
+                  disabled={busy.has(item.lotId)}
+                  className="text-xs font-semibold bg-green-600 text-white px-2.5 py-1 rounded hover:bg-green-700 disabled:opacity-50"
+                >
+                  Approve
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

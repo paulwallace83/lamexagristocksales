@@ -222,8 +222,12 @@ function LotRow({ lot, unitType, documents, coaDataMap }: { lot: Lot; unitType: 
   const testDocs = lotDocs.filter((d) => d.category === "test-results");
   const hasCOA = coaDocs.length > 0;
   const coaData = coaDataMap.get(lot.id);
-  const formattedFields = coaData ? formatCoaFields(coaData.fields) : [];
-  const coaTestTypes = coaData ? detectCoaTestTypes(coaData.fields) : { hasHeavyMetals: false, hasPesticide: false };
+  // Only show publicly once a QA user has approved the AI extraction.
+  const coaApproved = coaData?.reviewStatus === "approved";
+  const formattedFields = coaApproved && coaData ? formatCoaFields(coaData.fields) : [];
+  const coaTestTypes = coaApproved && coaData
+    ? detectCoaTestTypes(coaData.fields)
+    : { hasHeavyMetals: false, hasPesticide: false };
 
   return (
     <div className="bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-100 border-l-4 border-l-[#1a2b5f]">

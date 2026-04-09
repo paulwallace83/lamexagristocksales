@@ -36,6 +36,7 @@ Organized by status. Updated as priorities shift.
 | v0.11.7 | Agent Sync Write Tools (B006) | 2 new TDPAIB agent tools (`apply_sync`, `get_reconciliation`). System prompt rule 14 steps h–j (apply → reconcile → sign-off). Reviewer-only role gate on sync-action tools. 9 tests (6 tool + 3 role gate). End-to-end sync workflow now completable within `/admin/agent`. |
 | v0.11.8 | Sync Dry-Run Mode (B007) | `dryRun` option on `applySync()`, `--dry-run` CLI flag, `dry_run_sync` agent tool. Validates entire sync pipeline without writing data. 4-file pre-validation on all sync agent tools (`apply_sync`, `dry_run_sync`). System prompt step g2 suggests dry-run when user is uncertain. 10 new tests. |
 | v0.11.9 | Agent CSV/Excel File Import (B009) | `import_inventory_file` agent tool accepts CSV/XLSX/XLS file uploads via drag-and-drop. `importFromBuffer()` in `lib/excel-import.ts` shares parsing pipeline with CLI. Spreadsheets excluded from Claude content blocks via `RENDERABLE_MIME_TYPES` gate. `sanitizeReviewForExport()` shared function eliminates code duplication. `formatReviewSummarySanitized()` strips customer names for agent path. 135 tests. |
+| v0.12.0 | COA Extraction Review Queue (B010) | `review_status` column on `coa_data` (pending/approved/rejected). Auto-extracted values start pending and are gated from public display until approved. QA dashboard: amber lot pills for pending, "Pending Review" filter, approve/reject panel in expanded view. `review_coa_data` agent tool. `GET/POST /api/coa-review` route. Existing data grandfathered as approved. Review status survives weekly sync via export/relink. 151 tests. |
 
 ---
 
@@ -57,7 +58,7 @@ Organized by status. Updated as priorities shift.
 |-------|-------------|-------|
 | QA Dashboard enhancements | ~~Delete/upload docs from expanded panel~~ ✓ B003, filter by supplier or doc status. | QA workflow |
 | Admin dashboard homepage | `/admin` landing page: pending requests, missing docs, agent usage, last sync, quick links. | Overview |
-| COA extraction review queue | Flag lots for QA review after auto-extraction. Values verified before going public. | Data quality |
+| ~~COA extraction review queue~~ | ~~Flag lots for QA review after auto-extraction. Values verified before going public.~~ ✓ B010 | Data quality |
 | Reporting & analytics | Inventory trends from snapshots, doc completion velocity, agent usage and cost trends. | Business insight |
 | Email delivery tracking | Resend webhook events (delivered, bounced, opened) on document requests. QA knows if docs arrived. | Reliability |
 | Customer portal | Repeat buyers log in to see request history, re-request documents, saved pricing. Reduces repeat enquiries. | Sales efficiency |

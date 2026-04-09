@@ -191,3 +191,9 @@ The `AdminHeader` component is shared, but each of the 7 admin layout files defi
 - `POST /api/backfill-coa` (via `/admin/tools`)
 - `POST /api/rename-uploads` (via `/admin/tools`)
 Running the CLI scripts on a local machine in production mode will not touch the Railway volume.
+
+### `upsertCoaData` re-extraction must not downgrade review status
+When a COA is re-extracted (via backfill or re-upload), the new data should replace the old fields but NOT reset an existing `approved` review status to `pending`. The fix is SQL-level: `CASE WHEN excluded.review_status = 'pending' THEN coa_data.review_status ELSE excluded.review_status END`. This preserves the prior approval while still updating the extracted data. Any column that represents a human decision (review status, approval flags) should be preserved on data refresh unless the new value represents an equal or higher authority.
+
+### ALTER TABLE default vs CREATE TABLE default can differ intentionally
+The `coa_data` migration uses `DEFAULT 'approved'` to grandfather existing rows, while the `CREATE TABLE` DDL uses `DEFAULT 'pending'` for new databases. SQLite applies the ALTER default to existing rows on add. This intentional mismatch serves two purposes: existing data stays visible (approved) and new extractions start gated (pending). Use the migration default to express the grandfather policy, and the DDL default to express the ongoing policy.

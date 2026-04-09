@@ -10,10 +10,17 @@ import { getDb } from "./db";
 // Flexible key-value pairs — any COA parameter can be stored
 export type CoaFields = Record<string, number | string>;
 
+/** COA extraction review status. AI-extracted data starts as 'pending' and
+ *  is only shown publicly once a QA user approves it. */
+export type CoaReviewStatus = "pending" | "approved" | "rejected";
+
 export interface CoaData {
   fields: CoaFields;
   updatedAt: string;
   updatedBy: string;
+  reviewStatus: CoaReviewStatus;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
 }
 
 // ── Query ──────────────────────────────────────────────────────────────
@@ -26,15 +33,33 @@ export function getCoaDataForLots(lotIds: number[]): Map<number, CoaData> {
   const db = getDb();
   const placeholders = lotIds.map(() => "?").join(",");
   const rows = db
-    .prepare(`SELECT lot_id, data, updated_at, updated_by FROM coa_data WHERE lot_id IN (${placeholders})`)
-    .all(...lotIds) as Array<{ lot_id: number; data: string; updated_at: string; updated_by: string }>;
+    .prepare(
+      `SELECT lot_id, data, updated_at, updated_by, review_status, reviewed_at, reviewed_by
+       FROM coa_data WHERE lot_id IN (${placeholders})`,
+    )
+    .all(...lotIds) as Array<{
+      lot_id: number;
+      data: string;
+      updated_at: string;
+      updated_by: string;
+      review_status: CoaReviewStatus;
+      reviewed_at: string | null;
+      reviewed_by: string | null;
+    }>;
 
   const map = new Map<number, CoaData>();
   for (const row of rows) {
     try {
       const fields = JSON.parse(row.data) as CoaFields;
       if (typeof fields === "object" && fields !== null && Object.keys(fields).length > 0) {
-        map.set(row.lot_id, { fields, updatedAt: row.updated_at, updatedBy: row.updated_by });
+        map.set(row.lot_id, {
+          fields,
+          updatedAt: row.updated_at,
+          updatedBy: row.updated_by,
+          reviewStatus: row.review_status,
+          reviewedAt: row.reviewed_at,
+          reviewedBy: row.reviewed_by,
+        });
       }
     } catch {
       // Skip malformed JSON
@@ -47,16 +72,44 @@ export function getCoaDataForLots(lotIds: number[]): Map<number, CoaData> {
 
 /**
  * Insert or replace COA data for a lot.
+ *
+ * `reviewStatus` defaults to 'pending' for AI-extracted data.
+ * On conflict (lot already has COA data): the data/timestamp/updated_by are always refreshed.
+ * The review_status is only updated if the caller passes 'approved' or 'rejected' — i.e.,
+ * a re-extraction (pending) will NOT downgrade a row that a QA user previously approved.
  */
-export function upsertCoaData(lotId: number, fields: CoaFields, updatedBy: string): void {
+export function upsertCoaData(
+  lotId: number,
+  fields: CoaFields,
+  updatedBy: string,
+  reviewStatus: CoaReviewStatus = "pending",
+): void {
   const db = getDb();
   const now = new Date().toISOString();
   const data = JSON.stringify(fields);
+  // On approve/reject, record reviewed_at + reviewed_by. On pending re-extract, preserve existing review.
+  const reviewedAt = reviewStatus === "pending" ? null : now;
+  const reviewedBy = reviewStatus === "pending" ? null : updatedBy;
   db.prepare(
-    `INSERT INTO coa_data (lot_id, data, updated_at, updated_by)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(lot_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
-  ).run(lotId, data, now, updatedBy);
+    `INSERT INTO coa_data (lot_id, data, updated_at, updated_by, review_status, reviewed_at, reviewed_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(lot_id) DO UPDATE SET
+       data = excluded.data,
+       updated_at = excluded.updated_at,
+       updated_by = excluded.updated_by,
+       review_status = CASE
+         WHEN excluded.review_status = 'pending' THEN coa_data.review_status
+         ELSE excluded.review_status
+       END,
+       reviewed_at = CASE
+         WHEN excluded.review_status = 'pending' THEN coa_data.reviewed_at
+         ELSE excluded.reviewed_at
+       END,
+       reviewed_by = CASE
+         WHEN excluded.review_status = 'pending' THEN coa_data.reviewed_by
+         ELSE excluded.reviewed_by
+       END`,
+  ).run(lotId, data, now, updatedBy, reviewStatus, reviewedAt, reviewedBy);
 }
 
 // ── Sync preservation ──────────────────────────────────────────────────
@@ -67,6 +120,9 @@ export interface ExportedCoaRow {
   data: string;
   updatedAt: string;
   updatedBy: string;
+  reviewStatus: CoaReviewStatus;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
 }
 
 /**
@@ -78,7 +134,8 @@ export function exportCoaData(): ExportedCoaRow[] {
   return db
     .prepare(
       `SELECT l.lot_number AS lotNumber, li.product_id AS productId,
-              cd.data, cd.updated_at AS updatedAt, cd.updated_by AS updatedBy
+              cd.data, cd.updated_at AS updatedAt, cd.updated_by AS updatedBy,
+              cd.review_status AS reviewStatus, cd.reviewed_at AS reviewedAt, cd.reviewed_by AS reviewedBy
        FROM coa_data cd
        JOIN lots l ON cd.lot_id = l.id
        JOIN listings li ON l.listing_id = li.id`,
@@ -102,14 +159,24 @@ export function relinkCoaData(saved: ExportedCoaRow[]): { linked: number; orphan
      WHERE li.product_id = ? AND lo.lot_number = ?`,
   );
   const insert = db.prepare(
-    `INSERT OR IGNORE INTO coa_data (lot_id, data, updated_at, updated_by) VALUES (?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO coa_data
+       (lot_id, data, updated_at, updated_by, review_status, reviewed_at, reviewed_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
 
   const tx = db.transaction(() => {
     for (const row of saved) {
       const lot = findLot.get(row.productId, row.lotNumber) as { id: number } | undefined;
       if (lot) {
-        insert.run(lot.id, row.data, row.updatedAt, row.updatedBy);
+        insert.run(
+          lot.id,
+          row.data,
+          row.updatedAt,
+          row.updatedBy,
+          row.reviewStatus,
+          row.reviewedAt,
+          row.reviewedBy,
+        );
         linked++;
       } else {
         orphaned++;
@@ -119,6 +186,94 @@ export function relinkCoaData(saved: ExportedCoaRow[]): { linked: number; orphan
   tx();
 
   return { linked, orphaned };
+}
+
+// ── Review workflow ────────────────────────────────────────────────────
+
+/**
+ * Approve or reject the COA data for a specific lot.
+ * Returns true if a row was updated, false if the lot has no COA data.
+ */
+export function reviewCoaData(
+  lotId: number,
+  action: "approve" | "reject",
+  reviewedBy: string,
+): boolean {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const newStatus: CoaReviewStatus = action === "approve" ? "approved" : "rejected";
+  const result = db
+    .prepare(
+      `UPDATE coa_data
+       SET review_status = ?, reviewed_at = ?, reviewed_by = ?
+       WHERE lot_id = ?`,
+    )
+    .run(newStatus, now, reviewedBy, lotId);
+  return result.changes > 0;
+}
+
+export interface CoaReviewQueueRow {
+  lotId: number;
+  lotNumber: string;
+  productId: string;
+  productName: string;
+  fields: CoaFields;
+  reviewStatus: CoaReviewStatus;
+  updatedAt: string;
+  updatedBy: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+}
+
+/**
+ * Return COA data rows that need review (pending or rejected).
+ * Optionally filter to a single product.
+ */
+export function getCoaReviewQueue(productId?: string): CoaReviewQueueRow[] {
+  const db = getDb();
+  const base = `
+    SELECT cd.lot_id AS lotId, lo.lot_number AS lotNumber,
+           li.product_id AS productId, p.product AS productName,
+           cd.data, cd.review_status AS reviewStatus,
+           cd.updated_at AS updatedAt, cd.updated_by AS updatedBy,
+           cd.reviewed_at AS reviewedAt, cd.reviewed_by AS reviewedBy
+    FROM coa_data cd
+    JOIN lots lo ON cd.lot_id = lo.id
+    JOIN listings li ON lo.listing_id = li.id
+    JOIN products p ON li.product_id = p.id
+    WHERE cd.review_status IN ('pending','rejected')`;
+  type CoaReviewDbRow = {
+    lotId: number; lotNumber: string; productId: string; productName: string; data: string;
+    reviewStatus: CoaReviewStatus; updatedAt: string; updatedBy: string;
+    reviewedAt: string | null; reviewedBy: string | null;
+  };
+  const rows = productId
+    ? (db.prepare(`${base} AND li.product_id = ? ORDER BY p.product, lo.lot_number`).all(productId) as CoaReviewDbRow[])
+    : (db.prepare(`${base} ORDER BY p.product, lo.lot_number`).all() as CoaReviewDbRow[]);
+
+  const out: CoaReviewQueueRow[] = [];
+  for (const r of rows) {
+    try {
+      const fields = JSON.parse(r.data) as CoaFields;
+      if (typeof fields === "object" && fields !== null && Object.keys(fields).length > 0) {
+        out.push({
+          lotId: r.lotId,
+          lotNumber: r.lotNumber,
+          productId: r.productId,
+          productName: r.productName,
+          fields,
+          reviewStatus: r.reviewStatus,
+          updatedAt: r.updatedAt,
+          updatedBy: r.updatedBy,
+          reviewedAt: r.reviewedAt,
+          reviewedBy: r.reviewedBy,
+        });
+      }
+    } catch {
+      // Skip malformed JSON
+    }
+  }
+  return out;
 }
 
 // ── Display formatting ─────────────────────────────────────────────────

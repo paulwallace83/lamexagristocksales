@@ -211,10 +211,14 @@ CREATE INDEX IF NOT EXISTS idx_doc_requests_status ON document_requests(status);
 CREATE INDEX IF NOT EXISTS idx_doc_requests_product ON document_requests(product_id);
 
 CREATE TABLE IF NOT EXISTS coa_data (
-  lot_id      INTEGER PRIMARY KEY REFERENCES lots(id),
-  data        TEXT NOT NULL,
-  updated_at  TEXT NOT NULL,
-  updated_by  TEXT NOT NULL
+  lot_id        INTEGER PRIMARY KEY REFERENCES lots(id),
+  data          TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  updated_by    TEXT NOT NULL,
+  review_status TEXT NOT NULL DEFAULT 'pending'
+    CHECK(review_status IN ('pending','approved','rejected')),
+  reviewed_at   TEXT,
+  reviewed_by   TEXT
 );
 `;
 
@@ -240,6 +244,22 @@ function migrate(db: Database.Database): void {
   const hasRole = userInfo.some((col) => col.name === "role");
   if (userInfo.length > 0 && !hasRole) {
     db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'qa'");
+  }
+
+  // Migrate coa_data table: add review columns (B010)
+  // Existing rows are grandfathered to 'approved' since they've already been publicly visible.
+  // New rows (CREATE TABLE default) start as 'pending' — see SCHEMA_SQL.
+  const coaInfo = db.prepare("PRAGMA table_info(coa_data)").all() as Array<{ name: string }>;
+  if (coaInfo.length > 0) {
+    const hasReviewStatus = coaInfo.some((col) => col.name === "review_status");
+    if (!hasReviewStatus) {
+      db.exec(
+        "ALTER TABLE coa_data ADD COLUMN review_status TEXT NOT NULL DEFAULT 'approved' " +
+        "CHECK(review_status IN ('pending','approved','rejected'))"
+      );
+      db.exec("ALTER TABLE coa_data ADD COLUMN reviewed_at TEXT");
+      db.exec("ALTER TABLE coa_data ADD COLUMN reviewed_by TEXT");
+    }
   }
 }
 

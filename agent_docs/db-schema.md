@@ -25,7 +25,7 @@ SQLite via better-sqlite3 (`lamex.db`). Full DDL in `lib/db.ts`. Foreign keys en
 | `conversation_messages` | Agent chat messages (role, content, file_names). CASCADE deletes with parent. | **Preserved during sync** |
 | `api_usage` | Per-request token usage and cost (model, tokens, iterations, cost_usd) | **Preserved during sync** |
 | `document_requests` | Customer document requests with status workflow (pending/approved/rejected/sent) | **Preserved during sync** |
-| `coa_data` | Extracted COA key aspects per lot (lot_id PK, data JSON, updated_at, updated_by) | Re-linked via `relinkCoaData()` |
+| `coa_data` | Extracted COA key aspects per lot (lot_id PK, data JSON, updated_at, updated_by, review_status, reviewed_at, reviewed_by). `review_status` gates public display: only `'approved'` data is shown. | Re-linked via `relinkCoaData()` |
 
 ## Sync/Seed Notes
 
