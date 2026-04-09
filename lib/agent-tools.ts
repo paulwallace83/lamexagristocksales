@@ -296,7 +296,7 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
   {
     name: "save_coa_data",
     description:
-      "Save or update extracted COA key aspects (brix, acidity, color, clarity, ratio, defects, overripe, underripe, NTU, etc.) for a specific lot. COA data is auto-extracted on upload, but use this tool to correct values, add missing data, or manually enter data after reviewing a COA. Only include fields you can clearly verify.",
+      "Save or update extracted COA key aspects (brix, acidity, color, clarity, ratio, defects, overripe, underripe, NTU, etc.) for a specific lot. COA data is auto-extracted on upload, but use this tool to correct values, add missing data, or manually enter data after reviewing a COA. Only include fields you can clearly verify. Data saved via this tool is marked as approved (bypasses review queue) because manual entry is a deliberate human verification step.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -309,6 +309,24 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
         },
       },
       required: ["lotNumber", "productId", "fields"],
+    },
+  },
+  {
+    name: "review_coa_data",
+    description:
+      "Approve or reject auto-extracted COA key aspects. AI-extracted COA data is created in 'pending' status and is NOT shown publicly until approved. Use this tool to bulk-approve or reject pending extractions after a human has verified the values. If lotNumbers is omitted, reviews ALL pending lots for the product. ALWAYS confirm with the user before calling this tool.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        productId: { type: "string", description: "Product ID whose lots should be reviewed" },
+        action: { type: "string", enum: ["approve", "reject"], description: "Whether to approve or reject the extracted data" },
+        lotNumbers: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional: specific lot numbers to review. Omit to review ALL pending/rejected lots for this product.",
+        },
+      },
+      required: ["productId", "action"],
     },
   },
   {
@@ -1237,11 +1255,78 @@ export async function executeTool(
         return { error: "No valid fields provided (values must be finite numbers or strings under 500 chars)" };
       }
 
-      upsertCoaData(lot.id, cleanFields, "agent");
+      // Manual entry via agent is a deliberate human verification step — mark as approved.
+      upsertCoaData(lot.id, cleanFields, "agent", "approved");
       return {
         success: true,
         message: `Saved COA data for lot ${lotNumber}: ${Object.keys(cleanFields).join(", ")}`,
         fields: cleanFields,
+      };
+    }
+
+    case "review_coa_data": {
+      const productId = String(input.productId ?? "");
+      const action = String(input.action ?? "");
+      const lotNumbersRaw = Array.isArray(input.lotNumbers)
+        ? (input.lotNumbers as unknown[])
+            .filter((s) => typeof s === "string" && (s as string).trim())
+            .map((s) => (s as string).slice(0, 100))
+        : undefined;
+
+      if (!productId || productId.length > 200) return { error: "productId is required (max 200 chars)" };
+      if (action !== "approve" && action !== "reject") return { error: "action must be 'approve' or 'reject'" };
+
+      const { getCoaReviewQueue, reviewCoaData } = await import("./coa-data");
+      const queue = getCoaReviewQueue(productId);
+      if (queue.length === 0) {
+        return { message: `No pending or rejected COA extractions for product '${productId}'.`, reviewed: 0 };
+      }
+
+      // Filter to requested lot numbers, if provided
+      if (lotNumbersRaw !== undefined && lotNumbersRaw.length === 0) {
+        return { error: "lotNumbers contained no valid lot number strings." };
+      }
+      const targets = lotNumbersRaw && lotNumbersRaw.length > 0
+        ? queue.filter((q) => lotNumbersRaw.includes(q.lotNumber))
+        : queue;
+
+      // Split missing lot numbers into "already reviewed", "no extraction", or "truly not found"
+      const alreadyReviewed: string[] = [];
+      const noExtraction: string[] = [];
+      const notFound: string[] = [];
+      if (lotNumbersRaw) {
+        const { getCoaDataForLots } = await import("./coa-data");
+        const db = (await import("./db")).getDb();
+        const allLotIds = db.prepare(
+          `SELECT lo.id, lo.lot_number FROM lots lo JOIN listings li ON lo.listing_id = li.id WHERE li.product_id = ?`
+        ).all(productId) as Array<{ id: number; lot_number: string }>;
+        const requestedMissing = lotNumbersRaw.filter((ln) => !queue.some((q) => q.lotNumber === ln));
+        for (const ln of requestedMissing) {
+          const lot = allLotIds.find((l) => l.lot_number === ln);
+          if (lot) {
+            const coaMap = getCoaDataForLots([lot.id]);
+            if (coaMap.has(lot.id)) alreadyReviewed.push(ln);
+            else noExtraction.push(ln);
+          } else {
+            notFound.push(ln);
+          }
+        }
+      }
+
+      let reviewed = 0;
+      for (const item of targets) {
+        if (reviewCoaData(item.lotId, action as "approve" | "reject", `agent:${uploaderEmail}`)) reviewed++;
+      }
+
+      return {
+        success: true,
+        action,
+        reviewed,
+        lots: targets.map((t) => t.lotNumber),
+        ...(alreadyReviewed.length > 0 ? { alreadyReviewed } : {}),
+        ...(noExtraction.length > 0 ? { noExtraction } : {}),
+        ...(notFound.length > 0 ? { notFound } : {}),
+        message: `${action === "approve" ? "Approved" : "Rejected"} COA extraction for ${reviewed} lot${reviewed === 1 ? "" : "s"}.${alreadyReviewed.length > 0 ? ` ${alreadyReviewed.length} lot(s) already reviewed.` : ""}${noExtraction.length > 0 ? ` ${noExtraction.length} lot(s) have no COA extraction.` : ""}${notFound.length > 0 ? ` ${notFound.length} lot(s) not found.` : ""}`,
       };
     }
 

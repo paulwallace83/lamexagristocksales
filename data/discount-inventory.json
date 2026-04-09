@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-29",
+  "lastUpdated": "2026-04-04",
   "items": [
     {
       "id": "disc-001",
@@ -26,9 +26,9 @@
       "reason": "expired",
       "notes": "Product is now past expiration and slightly brown",
       "askingPrice": "0.30",
-      "status": "active",
+      "status": "missing",
       "addedDate": "2026-03-28",
-      "lastValidated": "2026-03-29"
+      "lastValidated": "2026-04-04"
     }
   ]
 }

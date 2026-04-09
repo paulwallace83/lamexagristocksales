@@ -52,11 +52,15 @@ export interface ProductDocStatus {
     supplier: string;
     hasCOA: boolean;
     hasTestResult: boolean;
+    /** COA extraction review status — null when the lot has no extracted COA data. */
+    coaReviewStatus: "pending" | "approved" | "rejected" | null;
   }>;
   contractCount: number;
   contractsWithSpecs: number;
   contractsWithLabels: number;
   contractsWithPhotos: number;
+  /** Number of lots in this product with pending/rejected COA extraction awaiting review. */
+  pendingCoaReviewCount: number;
   complete: boolean;
 }
 
@@ -455,6 +459,15 @@ export function getDocumentStatus(): ProductDocStatus[] {
   const { products } = getInventory();
   const { documents } = getDocuments();
 
+  // Fetch COA review status for every lot in one query
+  const coaReviewByLot = new Map<number, "pending" | "approved" | "rejected">();
+  const coaRows = getDb()
+    .prepare("SELECT lot_id, review_status FROM coa_data")
+    .all() as Array<{ lot_id: number; review_status: "pending" | "approved" | "rejected" }>;
+  for (const row of coaRows) {
+    coaReviewByLot.set(row.lot_id, row.review_status);
+  }
+
   return products.map((p) => {
     const required = getRequiredDocs(p);
     const productDocs = documents.filter((d) => d.productId === p.id);
@@ -525,11 +538,16 @@ export function getDocumentStatus(): ProductDocStatus[] {
         supplier: lotSupplier.get(lot.id) || "",
         hasCOA: lotIdsWithCOA.has(lot.id),
         hasTestResult: lotIdsWithTestResult.has(lot.id),
+        coaReviewStatus: coaReviewByLot.get(lot.id) ?? null,
       })),
       contractCount: baseContracts.length,
       contractsWithSpecs,
       contractsWithLabels,
       contractsWithPhotos,
+      pendingCoaReviewCount: lots.reduce((acc, lot) => {
+        const s = coaReviewByLot.get(lot.id);
+        return s === "pending" || s === "rejected" ? acc + 1 : acc;
+      }, 0),
       complete: lotComplete && contractComplete,
     };
   });
